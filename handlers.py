@@ -1,46 +1,51 @@
 # base imports
 import csv
 import json
+from datetime import date, timedelta
 
 # self imports
 import debug
+
+# defines
+_CSV_Directory_ = './csvFiles/'
+_JSON_Directory_ = './jsonFiles/'
 
 class handler_csv:
     def __init__(self):
         debug.debug_print("CSV Handler is up", 1)
 
-    # Get 2 attribute and their data types, then compare to each ohter
-    def _isEqual(self, firstAttribute, secondAttribute, dataType):
-        if dataType == 'int':
-            try:
-                return int(firstAttribute, 10) == int(secondAttribute, 10)  # ERROR-throw exception but works fine... idk
-            except:
-                debug.debug_print("ERROR, comparing: %s & %s" % (firstAttribute, secondAttribute), 2)
-        else:
-            return firstAttribute == secondAttribute
-
     def _loadData(self, csvFilename):
         csvData = []
         csvFileFieldnames = []
-        with open(csvFilename) as csvFile:
+        with open(_CSV_Directory_ + csvFilename) as csvFile:
             csvDriver = csv.DictReader(csvFile)
             csvFileFieldnames = csvDriver.fieldnames
             for row in csvDriver:
                 csvData.append(row)
         return (csvData, csvFileFieldnames)
 
+    def _keyValues(self, dictionary, keys):
+        return list(dictionary[key] for key in keys)
+
+    def _isEqual(self, list1, list2):
+        if len(list1) != len(list2):
+            return 0
+        for i in range(len(list1)):
+            if list1[i] != list2[i]:
+                return 0
+        return 1
+
     # Function that merge two CSV files on 'commonColumn'
-    def merge_csvFiles_addColumns(self, csvFilename1, csvFilename2, destinationFilename, commonColumnNameOnFile1, commonColumnNameOnFile2, commonColumnDataType='string'):
+    def merge_csvFiles_addColumns(self, csvFilename1, csvFilename2, destinationFilename, file1Keys, file2Keys, newColumns):
         # Get csvFiles data
         csvData1, csvFile1Fieldnames = self._loadData(csvFilename1)
-        csvData2, csvFile2Fieldnames = self._loadData(csvFilename2)
+        csvData2 = self._loadData(csvFilename2)[0]
         
-        # Generate final fieldnames after merge and remove duplication of 'commonColumn'
-        mergedDataFieldnames = csvFile1Fieldnames + csvFile2Fieldnames
-        mergedDataFieldnames.remove(commonColumnNameOnFile2)
+        # Generate new file fieldnames, add newClumns to fieldnames
+        mergedDataFieldnames = csvFile1Fieldnames + newColumns
 
         # Merge and save data 
-        with open(destinationFilename, 'w') as destinationFile:
+        with open(_CSV_Directory_ + destinationFilename, 'w') as destinationFile:
             csvDriver = csv.DictWriter(destinationFile, fieldnames=mergedDataFieldnames)
             csvDriver.writeheader()
 
@@ -48,19 +53,15 @@ class handler_csv:
                 # Find correspondingRow on csvData2
                 found = False
                 for item in csvData2:
-                    if self._isEqual(item.get(commonColumnNameOnFile2), row.get(commonColumnNameOnFile1), commonColumnDataType):
-                        correspondingRow = item
-                        found = True
-                        break
+                    if self._isEqual(self._keyValues(row, file1Keys), self._keyValues(item, file2Keys)):
+                        correspondingRow = {key:item[key] for key in newColumns}
 
                 if found == False:
-                    debug.debug_print("county not found:\t%s:%s" % (commonColumnNameOnFile1, row.get(commonColumnNameOnFile1)), 3)
+                    debug.debug_print("key not found:\t" + ', '.join(self._keyValues(row, file1Keys)), 3)
                     continue
 
-                # Remove duplication of commonColumn and update row
-                del correspondingRow[commonColumnNameOnFile2]
+                # Generate and add row to file
                 row.update(correspondingRow)
-                # Add row to file
                 csvDriver.writerow(row)
         
         debug.debug_print("SUCCESS: merge completed", 2)
@@ -75,7 +76,7 @@ class handler_csv:
             debug.debug_print("ERROR: mismatch in columns", 2)
             return
 
-        with open(destinationFilename, 'w') as destinationFile:
+        with open(_CSV_Directory_ + destinationFilename, 'w') as destinationFile:
             csvDriver = csv.DictWriter(destinationFile, fieldnames=csvFile1Fieldnames)
             csvDriver.writeheader()
             csvDriver.writerows(csvData1)
@@ -86,13 +87,9 @@ class handler_csv:
     # Load a CSV file, save interested fields known as 'fieldnames' to DestinationFilename, ignore others
     def simplify_csvFile(self, csvFilename, destinationFilename, fieldnames):
         # Get csvFile data
-        csvData = []
-        with open(csvFilename) as csvFile:
-            csvDriver = csv.DictReader(csvFile)
-            for row in csvDriver:
-                csvData.append(row)
+        csvData = self._loadData(csvFilename)[0]
 
-        with open(destinationFilename, 'w') as DestinationFile:
+        with open(_CSV_Directory_ + destinationFilename, 'w') as DestinationFile:
             csvDriver = csv.DictWriter(DestinationFile, fieldnames)
             csvDriver.writeheader()
             for row in csvData:
@@ -107,7 +104,7 @@ class handler_json:
 
     def _loadData(self, jsonFilename):
         jsonMetaData = []
-        with open(jsonFilename) as jsonFile:
+        with open(_JSON_Directory_ + jsonFilename) as jsonFile:
             jsonMetaData = json.load(jsonFile)
         return jsonMetaData
 
@@ -120,7 +117,7 @@ class handler_json:
         jsonCountiesData = jsonMetaData['objects']['counties']['geometries']
         singleCountyData = {}
 
-        with open(csvFilename, 'w') as csvFile:
+        with open(_CSV_Directory_ + csvFilename, 'w') as csvFile:
             csvDriver = csv.DictWriter(csvFile, fieldnames=fieldnames)
             csvDriver.writeheader()
             for row in jsonCountiesData:
@@ -140,7 +137,7 @@ class handler_json:
         jsonCountiesData = jsonMetaData['hits']['hits']
         singleCountyData = {}
 
-        with open(csvFilename, 'w') as csvFile:
+        with open(_CSV_Directory_ + csvFilename, 'w') as csvFile:
             csvDriver = csv.DictWriter(csvFile, fieldnames=(countyFieldnames+dataFieldnames))
             csvDriver.writeheader()
             for county in jsonCountiesData:
@@ -152,3 +149,30 @@ class handler_json:
                     csvDriver.writerow(singleCountyData)
         
         debug.debug_print("SUCCESS: transform completed(socialDistancingData)", 2)
+
+    # Function that transform a JSON file to CSV file. Design for confirmAndDeathMetaData
+    def transform_jsonToCsv_confirmAndDeathData(self, jsonFilename, csvFilename):
+        startDay = date.fromisoformat('2020-01-22')
+        jsonMetaData = []
+        countyFieldnames = ['stateFIPS', 'stateAbbr', 'countyFIPS', 'county']
+        dataFieldnames = ['date', 'confirmed', 'deaths']
+        jsonMetaData = self._loadData(jsonFilename)
+
+        singleCountyData = {}
+
+        with open(_CSV_Directory_ + csvFilename, 'w') as csvFile:
+            csvDriver = csv.DictWriter(csvFile, fieldnames=(countyFieldnames+dataFieldnames))
+            csvDriver.writeheader()
+            for county in jsonMetaData:
+                # set county data
+                singleCountyData = {field:county[field] for field in countyFieldnames}
+                # pass invalid county
+                if int(singleCountyData['countyFIPS'], 10) == 0:
+                    continue
+                # set Grade of county for each day, specified with 'date'
+                for i in range(len(county['deaths'])):
+                    singleCountyData.update({field:county[field][i] for field in dataFieldnames if field in county})
+                    singleCountyData.update({'date':(startDay+timedelta(days=i)).isoformat()})
+                    csvDriver.writerow(singleCountyData)
+        
+        debug.debug_print("SUCCESS: transform completed(confirmAndDeathData)", 2)
