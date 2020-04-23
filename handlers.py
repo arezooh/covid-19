@@ -123,7 +123,7 @@ class handler_json:
             csvDriver = csv.DictWriter(csvFile, fieldnames=fieldnames)
             csvDriver.writeheader()
             for row in jsonCountiesData:
-                singleCountyData = {fieldnames[k]:unicode(row['properties'][fieldnames[k]]).encode('utf-8') for k in range(1, len(fieldnames))}
+                singleCountyData = {fieldnames[k]:(row['properties'][fieldnames[k]]).encode('utf-8') for k in range(1, len(fieldnames))}
                 singleCountyData['county_fips'] = int(row['id'], 10)
                 csvDriver.writerow(singleCountyData)
         
@@ -144,7 +144,7 @@ class handler_json:
             csvDriver.writeheader()
             for county in jsonCountiesData:
                 # set county data
-                singleCountyData = {field:county['_source'][field] for field in countyFieldnames}
+                singleCountyData = {field:(county['_source'][field]).encode('utf-8') for field in countyFieldnames}
                 # set Grade of county for each day, specified with 'date'
                 for data in county['_source']['data']:
                     singleCountyData.update({field:data[field] for field in dataFieldnames})
