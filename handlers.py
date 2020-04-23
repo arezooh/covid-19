@@ -55,6 +55,8 @@ class handler_csv:
                 for item in csvData2:
                     if self._isEqual(self._keyValues(row, file1Keys), self._keyValues(item, file2Keys)):
                         correspondingRow = {key:item[key] for key in newColumns}
+                        found = True
+                        break
 
                 if found == False:
                     debug.debug_print("key not found:\t" + ', '.join(self._keyValues(row, file1Keys)), 3)

@@ -27,9 +27,9 @@ class mediumClass:
             self.jsonHandler.transform_jsonToCsv_socialDistancingData('sd-state%02d.json' % (fips), 'socialDistancing-s%02d.csv' % (fips))
 
 if __name__ == "__main__":
-    # jsonHandler = handler_json()
-    # csvHandler = handler_csv()
-    # downloadHandler = extractor()
+    jsonHandler = handler_json()
+    csvHandler = handler_csv()
+    downloadHandler = extractor()
 
     # downloadHandler.get_socialDistancingData(2, 'sd-state%02d.json' % (2))
     # downloadHandler.get_confirmAndDeathData(_JSON_Directory_ + 'confirmAndDeath.json')
@@ -42,5 +42,5 @@ if __name__ == "__main__":
     # jsonHandler.transform_jsonToCsv_socialDistancingData(_JSON_Directory_ + 'sd-state01.json', _CSV_Directory_ + 'socialDistancing-s01.csv')
     # jsonHandler.transform_jsonToCsv_socialDistancingData(_JSON_Directory_ + 'sd-state02.json', _CSV_Directory_ + 'socialDistancing-s02.csv')
 
-    medium = mediumClass()
-    medium.generate_allSocialDistancingData('temp.csv')
+    # medium = mediumClass()
+    # medium.generate_allSocialDistancingData('temp.csv')
