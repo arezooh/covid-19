@@ -23,8 +23,14 @@ class mediumClass:
         statesData = self.csvHandler._loadData('states.csv')[0]
         for state in statesData:
             fips = int(state['state-fips'], 10)
-            self.downloadHandler.get_socialDistancingData(fips, 'sd-state%02d.json' % (fips))
-            self.jsonHandler.transform_jsonToCsv_socialDistancingData('sd-state%02d.json' % (fips), 'socialDistancing-s%02d.csv' % (fips))
+            self.downloadHandler.get_socialDistancingData(fips, 'temp.json')
+            # First step, create socialDistancing.csv file
+            if state == statesData[0]:
+                self.jsonHandler.transform_jsonToCsv_socialDistancingData('temp.json', 'socialDistancing.csv')
+            # Other steps, merge new data to socialDistancing.csv file
+            else:
+                self.jsonHandler.transform_jsonToCsv_socialDistancingData('temp.json', 'temp.csv')
+                self.csvHandler.merge_csvFiles_addRows('socialDistancing.csv', 'temp.csv', 'socialDistancing.csv')
 
 if __name__ == "__main__":
     jsonHandler = handler_json()
