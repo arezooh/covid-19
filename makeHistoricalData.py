@@ -64,7 +64,7 @@ def makeHistoricalData(h, r):
 	newDataFrame = pd.concat([newDataFrame, dates['date of day t']], axis=1)
 
 	# Merging historical data and independant of time dataframes to each other
-	dataFrameOfStaticCovariates.rename(columns={'county FIPS code': ('FIPS code')}, inplace = True)
+	dataFrameOfStaticCovariates.rename(columns={'county_fips': ('FIPS code')}, inplace = True)
 	result = pd.merge(dataFrameOfStaticCovariates, newDataFrame, on='FIPS code')
 	
 	# Storing the result in a csv file
