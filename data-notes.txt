@@ -5,38 +5,28 @@ fixed-data.csv:
 		county_fips
 
 		county_name
-		total_population
-:
+		total_population:
 
 				Total population of each county
-		total_female
-:
+		total_female:
 
 				Total female population of each county
 				source: https://data.ers.usda.gov/reports.aspx?ID=17829 (Data from census)
 		area:
-		This is land area in Miles^2
-
+				This is land area in Miles^2
 				source: https://www2.census.gov/library/publications/2011/compendia/usa-counties/excel/LND01.xls (Data from census)
-		population_density
-:
+		population_density:
 				Calculated as "population" / "area"
 		latitude:
-
 				This is latitude of a random city in each county. The city latitudes extracted from uscities.csv
 		hospital_beds:
-
 				Calculated as "population" * "beds(per1000)" / 1000
-
 				"beds(per1000)" is extracted from hospital-beds.csv
-
 				source: https://www.urban.org/policy-centers/health-policy-center/projects/understanding-hospital-bed-capacities-nationwide-amid-covid-19
 		poverty_estimate:
-
 				Percent of persons in poverty
 				source: https://www.census.gov/programs-surveys/saipe.html
 		median_household_income:
-
 				Median household income in the Past 12 Months
 				source: https://www.census.gov/programs-surveys/saipe.html
 		houses_density:
