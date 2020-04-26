@@ -48,7 +48,7 @@ if __name__ == "__main__":
     # jsonHandler.transform_jsonToCsv_socialDistancingData( + 'sd-state01.json',  + 'socialDistancing-s01.csv')
     # jsonHandler.transform_jsonToCsv_socialDistancingData('sd-state02.json',  + 'socialDistancing-s02.csv')
 
-    medium = mediumClass()
-    medium.generate_allSocialDistancingData('temp.csv')
+    # medium = mediumClass()
+    # medium.generate_allSocialDistancingData('temp.csv')
 
-    # jsonHandler.transform_jsonToCsv_socialDistancingData('sd-state35.json', 'socialDistancing-s35.csv')
+    jsonHandler.transform_jsonToCsv_confirmAndDeathData('confirmAndDeath.json', 'temp-confirmAndDeath.csv')
