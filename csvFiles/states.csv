@@ -1,4 +1,4 @@
-state-name,state-i,state-fips
+state_name,state_id,state_fips
 Alabama,AL,1
 Alaska,AK,2
 Arizona,AZ,4

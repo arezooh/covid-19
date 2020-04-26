@@ -1,0 +1,21 @@
+fixed-data.csv:
+	state_fips
+	county_fips
+	county_name
+	total_population
+	total_female
+	area:
+		This is land area in Miles^2
+	population_density
+	latitude:
+		This is latitude of a random city in each county. The city latitudes extracted from uscities.csv
+	hospital_beds:
+		Calculated as "population" * "beds(per1000)" / 1000
+		"beds(per1000)" is extracted from hospital-beds.csv
+		source: https://www.urban.org/policy-centers/health-policy-center/projects/understanding-hospital-bed-capacities-nationwide-amid-covid-19
+	poverty_estimate:
+	mediuan_household_income:
+	houses_density:
+		Calculated as "number of houses" / "land area"
+	
+temporal-data.csv:

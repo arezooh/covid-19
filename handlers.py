@@ -165,16 +165,21 @@ class handler_json:
         with open(_CSV_Directory_ + csvFilename, 'w') as csvFile:
             csvDriver = csv.DictWriter(csvFile, fieldnames=(countyFieldnames+dataFieldnames))
             csvDriver.writeheader()
-            for county in jsonMetaData:
-                # set county data
-                singleCountyData = {field:county[field] for field in countyFieldnames}
-                # pass invalid county
-                if int(singleCountyData['countyFIPS'], 10) == 0:
-                    continue
-                # set Grade of county for each day, specified with 'date'
-                for i in range(len(county['deaths'])):
-                    singleCountyData.update({field:county[field][i] for field in dataFieldnames if field in county})
-                    singleCountyData.update({'date':(startDay+timedelta(days=i)).isoformat()})
+
+            numberOfDays = len(jsonMetaData[0]['deaths'])
+            for day in range(numberOfDays):
+                singleCountyData = {'date':(startDay+timedelta(days=day)).isoformat()}
+                for county in jsonMetaData:
+                    # pass invalid county
+                    if int(county['countyFIPS'], 10) == 0:
+                        continue
+                    # set county data
+                    singleCountyData.update({field:county[field] for field in countyFieldnames})
+                    singleCountyData.update({field:county[field][day] for field in dataFieldnames if field in county})
+                    # remove summation
+                    if day != 0:
+                        singleCountyData.update({field:(county[field][day] - county[field][day - 1]) for field in ['confirmed', 'deaths'] if field in county})
+                    # write in file
                     csvDriver.writerow(singleCountyData)
-        
+
         debug.debug_print("SUCCESS: transform completed(confirmAndDeathData)", 2)
