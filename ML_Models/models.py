@@ -7,16 +7,24 @@ from sklearn.model_selection import train_test_split
 from sklearn.neighbors import KNeighborsRegressor
 from sklearn.model_selection import GridSearchCV
 from sklearn import linear_model
+from sklearn import svm
 import tensorflow as tf
 import tensorflow.compat.v1 as tf
-
 tf.disable_v2_behavior()
 import seaborn as sns
 from sklearn.preprocessing import MinMaxScaler
+from sys import argv
 
+########################################################## SVM-poly
+def SVM(X_train, X_test, y_train):
 
+    svmModelObject = svm.SVC(kernel = 'poly')
+    svmModelObject.fit(X_train, y_train)
+    y_prediction = svmModelObject.predict(X_test)
+
+    return y_prediction
 ####################################################### GBM
-def GBM(X_train, X_test, y_train, y_test):
+def GBM(X_train, X_test, y_train):
 
     parameters = {'n_estimators': 500, 'max_depth': 4, 'min_samples_split': 2,
                   'learning_rate': 0.01, 'loss': 'ls'}
@@ -29,7 +37,7 @@ def GBM(X_train, X_test, y_train, y_test):
 
 
 ###################################################### GLM
-def GLM(X_train, X_test, y_train, y_test):
+def GLM(X_train, X_test, y_train):
 
     alpha = 0.1
     GLM_Model = linear_model.Lasso(alpha=alpha)
@@ -40,11 +48,11 @@ def GLM(X_train, X_test, y_train, y_test):
 
 
 ####################################################### KNN
-def KNN(X_train, X_test, y_train, y_test):
+def KNN(X_train, X_test, y_train):
 
     KNeighborsRegressorObject = KNeighborsRegressor()
     # Grid search over different Ks to choose the best one
-    parameters = {'n_neighbors': [5, 6, 7, 8, 9, 10, 15, 20, 25, 30, 40, 50]}
+    parameters = {'n_neighbors': [5, 10, 15, 20, 25, 30, 40, 50]}
     GridSearchOnKs = GridSearchCV(KNeighborsRegressorObject, parameters, cv=5)
     GridSearchOnKs.fit(X_train, y_train)
     best_K = GridSearchOnKs.best_params_
@@ -105,19 +113,19 @@ def NN(X_train, X_test, y_train, y_test):
 
         c_t = []
         c_test = []
-        for i in range(30):
+        for i in range(10):
             for j in range(X_train_scaled.shape[0]):
                 sess.run([cost, train],
-                         feed_dict={xs: X_train_scaled[j, :].reshape(1, X_train.shape[1]), ys: y_train_scaled[j]})
+                         feed_dict={xPlaceHolder: X_train_scaled[j, :].reshape(1, X_train.shape[1]), yPlaceHolder: y_train_scaled[j]})
                 # Run cost and train with each sample
-            c_t.append(sess.run(cost, feed_dict={xs: X_train_scaled, ys: y_train_scaled}))
-            c_test.append(sess.run(cost, feed_dict={xs: X_test_scaled, ys: y_test_scaled}))
+            c_t.append(sess.run(cost, feed_dict={xPlaceHolder: X_train_scaled, yPlaceHolder: y_train_scaled}))
+            c_test.append(sess.run(cost, feed_dict={xPlaceHolder: X_test_scaled, yPlaceHolder: y_test_scaled}))
             print('Epoch :', i, 'Cost :', c_t[i])
 
         # predict output of test data after training
-        y_prediction = sess.run(output, feed_dict={xs: X_test_scaled})
+        y_prediction = sess.run(output, feed_dict={xPlaceHolder: X_test_scaled})
 
-        print('Cost :', sess.run(cost, feed_dict={xs: X_test_scaled, ys: y_test_scaled}))
+        print('Cost :', sess.run(cost, feed_dict={xPlaceHolder: X_test_scaled, yPlaceHolder: y_test_scaled}))
         # Denormalize data
         # y_test_denormalized = denormalize(y_test, y_test_scaled)
         y_prediction = denormalize(y_test, y_prediction)
@@ -125,8 +133,8 @@ def NN(X_train, X_test, y_train, y_test):
     return y_prediction
 
 
-########################################################## MM
-def MM(X_train, X_test, y_train, y_test):
+########################################################## MM-LR
+def MM_LR(X_train, X_test, y_train):
 
     # fit a linear regression model on the outputs of the other models
     regressionModelObject = linear_model.LinearRegression()
@@ -175,30 +183,38 @@ def preprocess(path):
 ########################################################## main
 
 def main():
-    path = "./covid2.csv"
+
+    path = argv[1]
     X_train, X_test, y_train, y_test = preprocess(path)
 
-    methods = ['GBM', 'GLM', 'NN', 'NB', 'KNN', 'MM']
+    methods = ['GBM', 'GLM', 'KNN','NN', 'MM-LR', 'MM-NN']
 
     y_predictions = []
 
     for method in methods:
-        if method == 'GBM':
-            y_prediction_GBM = GBM(X_train, X_test, y_train, y_test)
+        if method == 'SVM-poly':
+            y_prediction_SVM = SVM(X_train, X_test, y_train)
+            # Construct the outputs for the training dataset of the 'MM' method
+            y_predictions.append(y_prediction_SVM)
+            mse = mean_squared_error(y_test, y_prediction_SVM)
+            print("MSE of SVM: %.4f" % mse)
+
+        elif method == 'GBM':
+            y_prediction_GBM = GBM(X_train, X_test, y_train)
             # Construct the outputs for the training dataset of the 'MM' method
             y_predictions.append(y_prediction_GBM)
             mse = mean_squared_error(y_test, y_prediction_GBM)
             print("MSE of GBM: %.4f" % mse)
 
         elif method == 'GLM':
-            y_prediction_GLM = GLM(X_train, X_test, y_train, y_test)
+            y_prediction_GLM = GLM(X_train, X_test, y_train)
             # Construct the outputs for the training dataset of the 'MM' method
             y_predictions.append(y_prediction_GLM)
             mse = mean_squared_error(y_test, y_prediction_GLM)
             print("MSE of GLM: %.4f" % mse)
 
         elif method == 'KNN':
-            y_prediction_KNN = KNN(X_train, X_test, y_train, y_test)
+            y_prediction_KNN = KNN(X_train, X_test, y_train)
             # Construct the outputs for the training dataset of the 'MM' method
             y_predictions.append(y_prediction_KNN)
             mse = mean_squared_error(y_test, y_prediction_KNN)
@@ -206,18 +222,29 @@ def main():
 
         elif method == 'NN':
             y_prediction_NN = NN(X_train, X_test, y_train, y_test)
+            y_prediction_NN = np.array(y_prediction_NN).reshape(-1)
             # Construct the outputs for the training dataset of the 'MM' method
             y_predictions.append(y_prediction_NN)
             mse = mean_squared_error(y_test, y_prediction_NN)
             print("MSE of NN: %.4f" % mse)
 
-        elif method == 'MM':
+
+        elif method == 'MM-LR':
             y_prediction_np = np.array(y_predictions).reshape(len(y_predictions), -1)
-            X_mixedModel = pd.DataFrame(y_prediction_np.transpose())
-            X_train_MM, X_test_MM, y_train_MM, y_test_MM = train_test_split(X_mixedModel, y_test, test_size=0.20)
-            y_prediction_MM = MM(X_train_MM, X_test_MM, y_train_MM, y_test_MM)
+            X_mixedModel_LR = pd.DataFrame(y_prediction_np.transpose())
+            X_train_MM, X_test_MM, y_train_MM, y_test_MM = train_test_split(X_mixedModel_LR, y_test, test_size=0.25)
+            y_prediction_MM = MM_LR(X_train_MM, X_test_MM, y_train_MM)
             mse = mean_squared_error(y_test_MM, y_prediction_MM)
-            print("MSE of MM: %.4f" % mse)
+            print("MSE of MM-LR: %.4f" % mse)
+
+
+        elif method == 'MM-NN':
+            y_prediction_np = np.array(y_predictions).reshape(len(y_predictions), -1)
+            X_mixedModel_NN = pd.DataFrame(y_prediction_np.transpose())
+            X_train_MM, X_test_MM, y_train_MM, y_test_MM = train_test_split(X_mixedModel_NN, y_test, test_size=0.25)
+            y_prediction_MM = NN(X_train_MM, X_test_MM, y_train_MM, y_test_MM)
+            mse = mean_squared_error(y_test_MM, y_prediction_MM)
+            print("MSE of MM-NN: %.4f" % mse)
 
 
 if __name__ == "__main__":
