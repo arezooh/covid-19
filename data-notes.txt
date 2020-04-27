@@ -33,6 +33,10 @@ fixed-data.csv:
 		median_household_income:
 				Median household income in the Past 12 Months
 				source: https://www.census.gov/programs-surveys/saipe.html
+		gdp_per_capita:
+				gross domestic product per capita for each county (economic measure)
+				source: https://ssti.org/blog/useful-stats-10-year-changes-real-gdp-county-and-industry-2009-2018
+					https://www.bea.gov/data/gdp/gdp-county-metro-and-other-areas
 		houses_density:
 				Calculated as "number of houses" / "land area"
 
