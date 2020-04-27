@@ -67,12 +67,14 @@ def makeHistoricalData(h, r):
 	newDataFrame = pd.concat([newDataFrame, dates['date of day t']], axis=1)
 
 	# Merging historical data and independant of time dataframes to each other
-	independantOfTimeData.rename(columns={'county FIPS code': ('FIPS code')}, inplace = True)
+  
+	independantOfTimeData.rename(columns={'county_fips': ('FIPS code')}, inplace = True)
 	result = pd.merge(independantOfTimeData, newDataFrame, on='FIPS code')
 	
 	# Convert type of date column values from string to datetime
 	result['date of day t']= pd.to_datetime(result['date of day t'])
 	result = result.sort_values(by=['date of day t', 'FIPS code'])
+
 	
 	# Storing the result in a csv file
 	result.to_csv('dataset_h='+str(h)+'.csv', mode='w', index=False)
