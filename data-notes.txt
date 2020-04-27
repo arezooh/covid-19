@@ -23,6 +23,13 @@ fixed-data.csv:
 				Calculated as "population" * "beds(per1000)" / 1000
 				"beds(per1000)" is extracted from hospital-beds.csv
 				source: https://www.urban.org/policy-centers/health-policy-center/projects/understanding-hospital-bed-capacities-nationwide-amid-covid-19
+		icu_bed:
+				number of icu beds for each county
+				sourse: https://public.tableau.com/profile/todd.bellemare#!/vizhome/DefinitiveHCCOVID-19CapacityPredictor/DefinitiveHealthcareCOVID-19CapacityPredictor
+				
+		ventilator_capacity:
+				number of ventilator for each county
+				sourse: https://public.tableau.com/profile/todd.bellemare#!/vizhome/DefinitiveHCCOVID-19CapacityPredictor/DefinitiveHealthcareCOVID-19CapacityPredictor
 		poverty_estimate:
 				Percent of persons in poverty
 				source: https://www.census.gov/programs-surveys/saipe.html
