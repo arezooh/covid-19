@@ -6,10 +6,8 @@ fixed-data.csv:
 
 		county_name
 		total_population:
-
 				Total population of each county
 		total_female:
-
 				Total female population of each county
 				source: https://data.ers.usda.gov/reports.aspx?ID=17829 (Data from census)
 		area:
@@ -25,8 +23,7 @@ fixed-data.csv:
 				source: https://www.urban.org/policy-centers/health-policy-center/projects/understanding-hospital-bed-capacities-nationwide-amid-covid-19
 		icu_bed:
 				number of icu beds for each county
-				sourse: https://public.tableau.com/profile/todd.bellemare#!/vizhome/DefinitiveHCCOVID-19CapacityPredictor/DefinitiveHealthcareCOVID-19CapacityPredictor
-				
+				sourse: https://public.tableau.com/profile/todd.bellemare#!/vizhome/DefinitiveHCCOVID-19CapacityPredictor/DefinitiveHealthcareCOVID-19CapacityPredictor		
 		ventilator_capacity:
 				number of ventilator for each county
 				sourse: https://public.tableau.com/profile/todd.bellemare#!/vizhome/DefinitiveHCCOVID-19CapacityPredictor/DefinitiveHealthcareCOVID-19CapacityPredictor
