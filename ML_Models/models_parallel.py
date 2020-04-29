@@ -112,16 +112,16 @@ def NN(X_train, X_test, y_train, y_test):
         sess.run(tf.global_variables_initializer())
         saver = tf.train.Saver()
 
-        c_t = []
-        c_test = []
+        results_train = []
+        results_test = []
         for i in range(10):
             for j in range(X_train_scaled.shape[0]):
                 sess.run([cost, train],
                          feed_dict={xPlaceHolder: X_train_scaled[j, :].reshape(1, X_train.shape[1]), yPlaceHolder: y_train_scaled[j]})
                 # Run cost and train with each sample
-            c_t.append(sess.run(cost, feed_dict={xPlaceHolder: X_train_scaled, yPlaceHolder: y_train_scaled}))
-            c_test.append(sess.run(cost, feed_dict={xPlaceHolder: X_test_scaled, yPlaceHolder: y_test_scaled}))
-            print('Epoch :', i, 'Cost :', c_t[i])
+            results_train.append(sess.run(cost, feed_dict={xPlaceHolder: X_train_scaled, yPlaceHolder: y_train_scaled}))
+            results_test.append(sess.run(cost, feed_dict={xPlaceHolder: X_test_scaled, yPlaceHolder: y_test_scaled}))
+            print('Epoch :', i, 'Cost :', results_train[i])
 
         # predict output of test data after training
         y_prediction = sess.run(output, feed_dict={xPlaceHolder: X_test_scaled})
