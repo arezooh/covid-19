@@ -85,13 +85,14 @@ def NN(X_train, X_test, y_train, y_test):
 
     def neural_net_model(X_data, input_dim):  # a 1-layer NN
 
+        neurons = int(input_dim/2)
         # layer 1 multiplying and adding bias and activation function
-        W_1 = tf.Variable(tf.random_uniform([input_dim, 10]))
-        b_1 = tf.Variable(tf.zeros([10]))
+        W_1 = tf.Variable(tf.random_uniform([input_dim, neurons]))
+        b_1 = tf.Variable(tf.zeros([neurons]))
         layer_1 = tf.add(tf.matmul(X_data, W_1), b_1)
         layer_1 = tf.nn.relu(layer_1)
         # output layer
-        W_O = tf.Variable(tf.random_uniform([10, 1]))
+        W_O = tf.Variable(tf.random_uniform([neurons, 1]))
         b_O = tf.Variable(tf.zeros([1]))
         output = tf.add(tf.matmul(layer_1, W_O), b_O)
         # output layer multiplying and adding bias then activation function
@@ -113,7 +114,8 @@ def NN(X_train, X_test, y_train, y_test):
 
         results_train = []
         results_test = []
-        for i in range(10):
+        epochs = 10
+        for i in range(epochs):
             for j in range(X_train_scaled.shape[0]):
                 sess.run([cost, train],
                          feed_dict={xPlaceHolder: X_train_scaled[j, :].reshape(1, X_train.shape[1]), yPlaceHolder: y_train_scaled[j]})
@@ -192,33 +194,34 @@ def main():
     y_predictions = []
 
     for method in methods:
-        if method == 'SVM-poly':
-            y_prediction_SVM = SVM(X_train, X_test, y_train)
-            # Construct the outputs for the training dataset of the 'MM' method
-            y_predictions.append(y_prediction_SVM)
-            mse = mean_squared_error(y_test, y_prediction_SVM)
-            print("MSE of SVM: %.4f" % mse)
 
-        elif method == 'GBM':
+        if method == 'GBM':
             y_prediction_GBM = GBM(X_train, X_test, y_train)
             # Construct the outputs for the training dataset of the 'MM' method
             y_predictions.append(y_prediction_GBM)
             mse = mean_squared_error(y_test, y_prediction_GBM)
-            print("MSE of GBM: %.4f" % mse)
+            print("Mean Squared Error of Generalized Boosted Regressor: %.4f" % mse)
+            sumOfAbsoluteError = sum(abs(y_test - y_prediction_GBM))
+            print("Sum of Absolute Error of Generalized Boosted Regressor: %.4f" % sumOfAbsoluteError)
+
 
         elif method == 'GLM':
             y_prediction_GLM = GLM(X_train, X_test, y_train)
             # Construct the outputs for the training dataset of the 'MM' method
             y_predictions.append(y_prediction_GLM)
             mse = mean_squared_error(y_test, y_prediction_GLM)
-            print("MSE of GLM: %.4f" % mse)
+            print("Mean Squared Error of Generalized Linear Model: %.4f" % mse)
+            sumOfAbsoluteError = sum(abs(y_test - y_prediction_GLM))
+            print("Sum of Absolute Error of Generalized Linear Model: %.4f" % sumOfAbsoluteError)
 
         elif method == 'KNN':
             y_prediction_KNN = KNN(X_train, X_test, y_train)
             # Construct the outputs for the training dataset of the 'MM' method
             y_predictions.append(y_prediction_KNN)
             mse = mean_squared_error(y_test, y_prediction_KNN)
-            print("MSE of KNN: %.4f" % mse)
+            print("Mean Squared Error of K-Nearest Neighbors: %.4f" % mse)
+            sumOfAbsoluteError = sum(abs(y_test - y_prediction_KNN))
+            print("Sum of Absolute Error of K-Nearest Neighbors: %.4f" % sumOfAbsoluteError)
 
         elif method == 'NN':
             y_prediction_NN = NN(X_train, X_test, y_train, y_test)
@@ -226,8 +229,9 @@ def main():
             # Construct the outputs for the training dataset of the 'MM' method
             y_predictions.append(y_prediction_NN)
             mse = mean_squared_error(y_test, y_prediction_NN)
-            print("MSE of NN: %.4f" % mse)
-
+            print("Mean Squared Error of Neural Network: %.4f" % mse)
+            sumOfAbsoluteError = sum(abs(y_test - y_prediction_NN))
+            print("Sum of Absolute Error of Neural Network: %.4f" % sumOfAbsoluteError)
 
         elif method == 'MM-LR':
             y_prediction_np = np.array(y_predictions).reshape(len(y_predictions), -1)
@@ -235,8 +239,9 @@ def main():
             X_train_MM, X_test_MM, y_train_MM, y_test_MM = train_test_split(X_mixedModel_LR, y_test, test_size=0.25)
             y_prediction_MM = MM_LR(X_train_MM, X_test_MM, y_train_MM)
             mse = mean_squared_error(y_test_MM, y_prediction_MM)
-            print("MSE of MM-LR: %.4f" % mse)
-
+            print("Mean Squared Error of Mixed Model with Linear Regression: %.4f" % mse)
+            sumOfAbsoluteError = sum(abs(y_test_MM - y_prediction_MM_LR))
+            print("Sum of Absolute Error of Mixed Model with Linear Regression: %.4f" % sumOfAbsoluteError)
 
         elif method == 'MM-NN':
             y_prediction_np = np.array(y_predictions).reshape(len(y_predictions), -1)
@@ -244,7 +249,9 @@ def main():
             X_train_MM, X_test_MM, y_train_MM, y_test_MM = train_test_split(X_mixedModel_NN, y_test, test_size=0.25)
             y_prediction_MM = NN(X_train_MM, X_test_MM, y_train_MM, y_test_MM)
             mse = mean_squared_error(y_test_MM, y_prediction_MM)
-            print("MSE of MM-NN: %.4f" % mse)
+            print("Mean Squared Error of Mixed Model with Neural Network: %.4f" % mse)
+            sumOfAbsoluteError = sum(abs(y_test_MM - y_prediction_MM_NN))
+            print("Sum of Absolute Error of Mixed Model with Neural Network: %.4f" % sumOfAbsoluteError)
 
 
 if __name__ == "__main__":
