@@ -54,5 +54,5 @@ temporal-data.csv:
 				and 'social-distancing-total-grade'
 								range from 1 to 12
 				Source: https://unacast-2019.webflow.io/covid19/social-distancing-scoreboard
-		virus-presure:
+		virus-pressure:
 				Calculated as Sum(0.5 * "confirmed") over neighboring counties at day t
