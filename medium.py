@@ -51,4 +51,5 @@ if __name__ == "__main__":
     # medium = mediumClass()
     # medium.generate_allSocialDistancingData('temp.csv')
 
-    jsonHandler.transform_jsonToCsv_confirmAndDeathData('confirmAndDeath.json', 'temp-confirmAndDeath.csv')
+    # jsonHandler.transform_jsonToCsv_confirmAndDeathData('confirmAndDeath.json', 'temp-confirmAndDeath.csv')
+    downloadHandler.get_allStations('stations.csv')
