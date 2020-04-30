@@ -6,7 +6,7 @@ def train_test_split(datasetPath):
 	dataset = pd.read_csv(datasetPath)
 
 	totalNumberOfDays = len(dataset['date of day t'].unique())
-	totalNumberOfCounties = len(dataset['FIPS code'].unique())
+	totalNumberOfCounties = len(dataset['county_fips'].unique())
 
 	# last 14 days are for test dataset and the rest are for train dataset
 	train_dataset = dataset.head(totalNumberOfCounties * (totalNumberOfDays-14))
