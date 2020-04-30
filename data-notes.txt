@@ -43,3 +43,16 @@ fixed-data.csv:
 
 
 temporal-data.csv:
+
+		social-distancing-grades:
+				measure of social distancing observance in each county at day t
+				consist of:
+				'social-distancing-visitation-grade'
+				'social-distancing-encounters-grade'
+				'social-distancing-travel-distance-grade'
+								range from 1 to 5
+				and 'social-distancing-total-grade'
+								range from 1 to 12
+				Source: https://unacast-2019.webflow.io/covid19/social-distancing-scoreboard
+		virus-presure:
+				Calculated as Sum(0.5 * "confirmed") over neighboring counties at day t
