@@ -16,31 +16,31 @@ def using_mask(df):
 		result[0] = 0
 		return result
 
-	mask = df.groupby(['FIPS code'])['FIPS code'].transform(mask_first).astype(bool)
+	mask = df.groupby(['county_fips'])['county_fips'].transform(mask_first).astype(bool)
 	return df.loc[mask]
 
 
 # h is the number of days before day (t)
 # r indicates how many days after day (t) --> target-day = day(t+r)
 def makeHistoricalData(h, r):
-	independantOfTimeDataPath = 'final-fixed-data.csv'	# Static Data is the data independant of time
+	independantOfTimeDataPath = 'fixed-data.csv'	# Static Data is the data independant of time
 	independantOfTimeData = pd.read_csv(independantOfTimeDataPath)
 
-	timeDependantData = pd.read_excel('confirnew2.xlsx')	# Dynaimc Data is the data that is time dependant
+	timeDependantData = pd.read_csv('temporal-data.csv')	# Dynaimc Data is the data that is time dependant
 	nameOfTimeDependantCovariates = timeDependantData.columns.values.tolist()	# Getting name of time dependant covariates
 
-	nameOfTimeDependantCovariates.remove('FIPS code')
+	nameOfTimeDependantCovariates.remove('county_fips')
 	nameOfTimeDependantCovariates.remove('date')
 
 	newDataFrame = pd.DataFrame()	# We store historical dynamic covariates in this dataframe
 	totalNumberOfDays = len(timeDependantData['date'].unique())
 	# In this loop we make historical data from time dependant covariates
 	for name in nameOfTimeDependantCovariates:	# name would be name of a time dependant covariate
-		temporalDataFrame = timeDependantData[['FIPS code', name]]
+		temporalDataFrame = timeDependantData[['county_fips', name]]
 		threshold = 0
 		while threshold != h:
 			# By the line bellow, we get first (totalNumberOfDays-h-r+1) rows of each group distinguished by FIPS code
-			temp = temporalDataFrame.groupby('FIPS code').head(totalNumberOfDays-h-r+1).reset_index(drop=True)
+			temp = temporalDataFrame.groupby('county_fips').head(totalNumberOfDays-h-r+1).reset_index(drop=True)
 			temp.rename(columns={name: (name+' '+str(threshold))}, inplace = True)
 			newDataFrame = pd.concat([newDataFrame, temp], axis=1)
 			temporalDataFrame = using_mask(temporalDataFrame)	# Shifting each group one time
@@ -57,23 +57,23 @@ def makeHistoricalData(h, r):
 	newDataFrame = newDataFrame.iloc[:,~newDataFrame.columns.duplicated()]
 
 	# By the lines bellow we concatenate date of day (t) to historical dataframe
-	dates = timeDependantData[['FIPS code', 'date']]
+	dates = timeDependantData[['county_fips', 'date']]
 	# Deleting first (h-1) dates from each group
 	for i in range(h-1):
 		dates = using_mask(dates)
 	dates = dates.reset_index(drop=True)
-	dates = dates.groupby('FIPS code').head(totalNumberOfDays-h-r+1).reset_index(drop=True)	# Get first (totalNumberOfDays-h-r+1) dates of each group
+	dates = dates.groupby('county_fips').head(totalNumberOfDays-h-r+1).reset_index(drop=True)	# Get first (totalNumberOfDays-h-r+1) dates of each group
 	dates.rename(columns={'date': ('date of day t')}, inplace = True)
 	newDataFrame = pd.concat([newDataFrame, dates['date of day t']], axis=1)
 
 	# Merging historical data and independant of time dataframes to each other
   
-	independantOfTimeData.rename(columns={'county_fips': ('FIPS code')}, inplace = True)
-	result = pd.merge(independantOfTimeData, newDataFrame, on='FIPS code')
+	independantOfTimeData.rename(columns={'county_fips': ('county_fips')}, inplace = True)
+	result = pd.merge(independantOfTimeData, newDataFrame, on='county_fips')
 	
 	# Convert type of date column values from string to datetime
 	result['date of day t']= pd.to_datetime(result['date of day t'])
-	result = result.sort_values(by=['date of day t', 'FIPS code'])
+	result = result.sort_values(by=['date of day t', 'county_fips'])
 
 	
 	# Storing the result in a csv file
