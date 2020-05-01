@@ -81,7 +81,7 @@ class extractor:
         debug.debug_print("SUCCESS: data extracted (weather stations)", 2)
 
     def get_countyWeatherData(self, stationID, startDate, endDate, destinationFilename):
-        csvData = requests.get('https://www.ncei.noaa.gov/access/services/data/v1?dataset=daily-summaries&dataTypes=&stations={0}&startDate={1}&endDate={2}&boundingBox=90,-180,-90,180'.format(stationID, startDate, endDate))
+        csvData = requests.get('https://www.ncei.noaa.gov/access/services/data/v1?dataset=daily-summaries&dataTypes=TAVG,TMAX,TMIN,PRCP,WT16,WT01,TSUN&stations={0}&startDate={1}&endDate={2}&boundingBox=90,-180,-90,180&format=csv'.format(stationID, startDate, endDate)).text
         with open(_CSV_Directory_ + destinationFilename, 'w') as csvFile:
             csvFile.write(csvData)
 
