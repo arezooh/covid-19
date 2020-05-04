@@ -71,10 +71,15 @@ class extractor:
                 )
 
                 print('[*] sending request...')
-                jsonData = requests.get('https://www.ncdc.noaa.gov/cdo-web/api/v2/stations', headers=headers, params=params, cookies=cookies).json()
-                print('[*] request sent. Analyzing response')
-                csvDriver.writerows(jsonData['results'])
-                progressBar.update(i + 1)
+                try:
+                    jsonData = requests.get('https://www.ncdc.noaa.gov/cdo-web/api/v2/stations', headers=headers, params=params, cookies=cookies).json()
+                    print('[*] request sent. Analyzing response')
+                    csvDriver.writerows(jsonData['results'])
+                    progressBar.update(i + 1)
+                except Exception as e:
+                    print('[-] an error occurred while getting stations of {0} with fips: {1}'.format(countyData[i]['name'], countyData[i]['fips']))
+                    print(e)
+                    exit(1)
 
             progressBar.finish()
 
