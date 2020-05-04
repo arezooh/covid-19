@@ -1,12 +1,7 @@
-import subprocess
-import sys
-# Installing required packages (pandas)
-subprocess.check_call([sys.executable, "-m", "pip", "install", 'pandas'])
 import pandas as pd
 
-def correlatinosWithTarget(inputDataset):
-	# Reading dataset
-	dataset = pd.read_csv(inputDataset)
+def correlatinosWithTarget(dataset):
+
 	# Computing correlation of each Covariate with Target
 	corr_matrix = dataset.corr()
 	covariates = corr_matrix["Target"].sort_values(ascending=False)
@@ -16,17 +11,18 @@ def correlatinosWithTarget(inputDataset):
 	newDataFrame = pd.DataFrame()
 	for name in nameOfCovariates:
 		newDataFrame[name] = dataset[name]
-	newDataFrame['date of day t'] = dataset['date of day t']
+	#newDataFrame['date of day t'] = dataset['date of day t']
 
-	# Store new data frame to a csv file
-	newDataFrame.to_csv('new_'+inputDataset, mode = 'w', index=False)
-
-	return nameOfCovariates
+	return newDataFrame, nameOfCovariates
 
 
 def main():
-	dataset = ('dataset_h=3.csv')
-	correlations = correlatinosWithTarget(dataset)
+	path = ('dataset_h=3.csv')
+	# Reading dataset
+	dataset = pd.read_csv(path)
+	newDataFrame, correlations = correlatinosWithTarget(dataset)
+	# Store new data frame to a csv file
+	newDataFrame.to_csv('new_' + inputDataset, mode='w', index=False)
 
 
 if __name__ == "__main__":
