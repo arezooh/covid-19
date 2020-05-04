@@ -77,7 +77,7 @@ class extractor:
                     csvDriver.writerows(jsonData['results'])
                     progressBar.update(i + 1)
                 except Exception as e:
-                    print('[-] an error occurred')
+                    print('[-] an error occurred while getting stations of {0} with fips: {1}'.format(countyData[i]['name'], countyData[i]['fips']))
                     print(e)
                     exit(1)
 
