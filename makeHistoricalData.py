@@ -37,7 +37,7 @@ def makeHistoricalData(h, r):
         while threshold != h:
             # By the line bellow, we get first (totalNumberOfDays-h-r+1) rows of each group distinguished by FIPS code
             temp = temporalDataFrame.groupby('county_fips').head(totalNumberOfDays - h - r + 1).reset_index(drop=True)
-            temp.rename(columns={name: (name + ' ' + str(threshold))}, inplace=True)
+            temp.rename(columns={name: (name + ' t-' + str(h-threshold))}, inplace=True)
             newDataFrame = pd.concat([newDataFrame, temp], axis=1)
             temporalDataFrame = using_mask(temporalDataFrame)  # Shifting each group one time
             threshold += 1
