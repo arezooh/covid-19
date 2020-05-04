@@ -76,7 +76,8 @@ def makeHistoricalData(h, r):
 
 
 def main():
-    result = makeHistoricalData(3, 14)
+    h = 3
+    result = makeHistoricalData(h, 14)
     # Storing the result in a csv file
     result.to_csv('dataset_h=' + str(h) + '.csv', mode='w', index=False)
 
