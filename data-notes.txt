@@ -50,10 +50,10 @@ temporal-data.csv:
 				'social-distancing-visitation-grade'
 				'social-distancing-encounters-grade'
 				'social-distancing-travel-distance-grade'
-								range as (A,B,C,D,F) transformed to range from 1 to 5 where:
+								Values are (A,B,C,D,F) transformed to range from 1 to 5 where:
 									A=5,B=4,C=3,D=2,F=1
 				and 'social-distancing-total-grade'
-								range as (A,A-,B+,B,B-,C+,C,C-,D+,D,D-,F) transformed to range from 1 to 12 where:
+								Values are (A,A-,B+,B,B-,C+,C,C-,D+,D,D-,F) transformed to range from 1 to 12 where:
 									A=12,A-=11,B+=10,B=9,B-=8,C+=7,C=6,C-=5,D+=4,D=3,D-=2,F=1
 				Source: https://unacast-2019.webflow.io/covid19/social-distancing-scoreboard
 		virus-pressure:
