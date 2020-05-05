@@ -51,4 +51,6 @@ if __name__ == "__main__":
     # medium = mediumClass()
     # medium.generate_allSocialDistancingData('temp.csv')
 
-    jsonHandler.transform_jsonToCsv_confirmAndDeathData('confirmAndDeath.json', 'temp-confirmAndDeath.csv')
+    # jsonHandler.transform_jsonToCsv_confirmAndDeathData('confirmAndDeath.json', 'temp-confirmAndDeath.csv')
+    downloadHandler.get_allStations('stations.csv')
+    # downloadHandler.get_countyWeatherData('USW00093228', '2020-04-19', '2020-04-28', 'test.csv') #https://www.ncdc.noaa.gov/cdo-web/datasets/GHCND/stations/GHCND:USW00093228/detail
