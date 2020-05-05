@@ -55,7 +55,7 @@ class extractor:
         }
 
         fieldnames = [u'elevation', u'name', u'maxdate', u'datacoverage', u'longitude', u'latitude', u'elevationUnit', u'id', u'mindate']
-        with open(_CSV_Directory_ + destinationFilename, 'w') as csvFile:
+        with open(_CSV_Directory_ + destinationFilename, 'a') as csvFile:
             csvDriver = csv.DictWriter(csvFile, fieldnames=fieldnames)
             csvDriver.writeheader()
 
