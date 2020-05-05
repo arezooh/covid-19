@@ -60,9 +60,29 @@ class extractor:
             csvDriver.writeheader()
 
             numberOfCounties = len(countyData)
-            progressBar = progressbar.ProgressBar(maxval=numberOfCounties, widgets=[progressbar.Bar('#', '|', '|'), ' ', progressbar.Percentage()])
+            progressBarWidget = [progressbar.Percentage(),
+            ' ',
+            progressbar.Bar('#', '|', '|'),
+            ' ',
+            progressbar.Variable('County', width=12, precision=12),
+            ]
+            progressBar = progressbar.ProgressBar(maxval=numberOfCounties, widgets=progressBarWidget, redirect_stdout=True)
             progressBar.start()
-            for i in range(numberOfCounties):
+
+            step = 0
+            try:
+                logFile = open('station.log', 'r')
+                step = int(logFile.read(), 10)
+                logFile.close()
+            except:
+                logFile = open('station.log', 'w')
+                step = logFile.write(str(step))
+                logFile.close()
+
+            for i in range(step, numberOfCounties):
+                with open('station.log', 'w') as logFile:
+                    logFile.write(str(i))
+
                 params = (
                     ('limit', '1000'),
                     ('datasetid', 'GHCND'),
@@ -72,10 +92,10 @@ class extractor:
 
                 print('[*] sending request...')
                 try:
+                    progressBar.update(i, County=countyData[i]['name'])
                     jsonData = requests.get('https://www.ncdc.noaa.gov/cdo-web/api/v2/stations', headers=headers, params=params, cookies=cookies).json()
                     print('[*] request sent. Analyzing response')
                     csvDriver.writerows(jsonData['results'])
-                    progressBar.update(i + 1)
                 except Exception as e:
                     print('[-] an error occurred while getting stations of {0} with fips: {1}'.format(countyData[i]['name'], countyData[i]['fips']))
                     print(e)
