@@ -17,7 +17,7 @@ def makeHistoricalData(h, r, target):
 	allData = allData.sort_values(by=['date', 'county_fips'])
 	allData = allData.reset_index(drop=True)
 	# this columns are not numercal and wouldn't be included in correlation matrix, we store them to concatenate them later
-	notNumericlData = allData[['county_name', 'state_name', 'poverty_estimate', 'date']]
+	notNumericlData = allData[['county_name', 'state_name', 'date']]
 
 	# next 2 lines arranges columns in order of correlations with target
 	ix = allData.corr().sort_values(target, ascending=False).index
