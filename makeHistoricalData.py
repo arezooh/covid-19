@@ -40,7 +40,7 @@ def makeHistoricalData(h, r, target):
 			while threshold != h:
 				# get value of covariate that is being processed in first (totalNumberOfDays-h-r+1) days
 				temp = temporalDataFrame.head((totalNumberOfDays-h-r+1)*totalNumberOfCounties).copy().reset_index(drop=True)
-				temp.rename(columns={name: (name + ' t-' + str(h-threshold))}, inplace=True) # renaming column
+				temp.rename(columns={name: (name + ' t-' + str(h-threshold-1))}, inplace=True) # renaming column
 				result = pd.concat([result, temp], axis=1)
 				# deleting the values in first day in temporalDataFrame dataframe (similiar to shift)
 				temporalDataFrame = temporalDataFrame.iloc[totalNumberOfCounties:]
@@ -66,6 +66,9 @@ def makeHistoricalData(h, r, target):
 	temporalDataFrame = allData[[target]]
 	temporalDataFrame = temporalDataFrame.tail((totalNumberOfDays-h-r+1)*totalNumberOfCounties).reset_index(drop=True)
 	result.insert(1, 'Target', temporalDataFrame)
+	for i in result.columns:
+            if i.endswith('t-0'):
+                result.rename(columns={i: i[:-2]}, inplace=True)
 
 	return result
 
