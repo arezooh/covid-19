@@ -25,7 +25,13 @@ class handler_csv:
         return (csvData, csvFileFieldnames)
 
     def _keyValues(self, dictionary, keys):
-        return list(dictionary[key] for key in keys)
+        returnList = []
+        for key in keys:
+            try:
+                returnList.append(int(dictionary[key], 10))
+            except:
+                returnList.append(dictionary[key])
+        return returnList
 
     def _isEqual(self, list1, list2):
         if len(list1) != len(list2):
@@ -59,7 +65,7 @@ class handler_csv:
                         break
 
                 if found == False:
-                    debug.debug_print("key not found:\t" + ', '.join(self._keyValues(row, file1Keys)), 3)
+                    debug.debug_print("key not found:\t" + ', '.join(str(item) for item in self._keyValues(row, file1Keys)), 3)
                     continue
 
                 # Generate and add row to file
