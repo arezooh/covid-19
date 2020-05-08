@@ -54,10 +54,9 @@ class extractor:
             'Connection': 'keep-alive',
         }
 
-        fieldnames = [u'elevation', u'name', u'maxdate', u'datacoverage', u'longitude', u'latitude', u'elevationUnit', u'id', u'mindate']
+        fieldnames = ['county_fips', 'county_name', u'id', u'elevation', u'name', u'maxdate', u'datacoverage', u'longitude', u'latitude', u'elevationUnit', u'mindate']
         with open(_CSV_Directory_ + destinationFilename, 'a') as csvFile:
             csvDriver = csv.DictWriter(csvFile, fieldnames=fieldnames)
-            csvDriver.writeheader()
 
             numberOfCounties = len(countyData)
             progressBarWidget = [progressbar.Percentage(),
@@ -76,8 +75,9 @@ class extractor:
                 logFile.close()
             except:
                 logFile = open('station.log', 'w')
-                step = logFile.write(str(step))
+                logFile.write(str(step))
                 logFile.close()
+                csvDriver.writeheader()
 
             for i in range(step, numberOfCounties):
                 with open('station.log', 'w') as logFile:
@@ -90,16 +90,17 @@ class extractor:
                     ('sortfield', 'name'),
                 )
 
-                print('[*] sending request...')
                 try:
                     progressBar.update(i, County=countyData[i]['name'])
                     jsonData = requests.get('https://www.ncdc.noaa.gov/cdo-web/api/v2/stations', headers=headers, params=params, cookies=cookies).json()
-                    print('[*] request sent. Analyzing response')
-                    csvDriver.writerows(jsonData['results'])
+                    stationData = {'county_name': countyData[i]['name'], 'county_fips': countyData[i]['fips']}
+                    for row in jsonData['results']:
+                        stationData.update(row)
+                        csvDriver.writerow(stationData)
+
                 except Exception as e:
                     print('[-] an error occurred while getting stations of {0} with fips: {1}'.format(countyData[i]['name'], countyData[i]['fips']))
                     print(e)
-                    exit(1)
 
             progressBar.finish()
 
