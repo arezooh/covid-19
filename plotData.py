@@ -1,4 +1,5 @@
 import pandas as pd
+import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.backends.backend_pdf
 import random
@@ -7,65 +8,52 @@ import random
 each covariate is represented in one graph
 number of counties to be included in graphs is "numberOfCountinesToBePlotted" '''
 def plotData(numberOfCountinesToBePlotted=10):
-    df = pd.read_csv('csvFiles/temporal-data.csv')
-
-    # creating a list of all counties
-    counties = df.county_fips.unique().tolist()
+    # reading data
+    timeDependantData = pd.read_csv('csvFiles/temporal-data.csv')
+    independantOfTimeData = pd.read_csv('csvFiles/fixed-data.csv')
 
     # creating a list of time dependant covariates
-    timeDependantCovariates = df.columns.values.tolist()
+    timeDependantCovariates = timeDependantData.columns.values.tolist()
     timeDependantCovariates.remove('county_fips')
     timeDependantCovariates.remove('date')
 
+    # creating a new dataframe to be used for plotting
+    independantOfTimeData = independantOfTimeData[['county_fips', 'county_name']]
+    data = pd.merge(timeDependantData ,independantOfTimeData)
+
     # choosing some random counties for plotting
-    randomCounties = random.sample(counties, numberOfCountinesToBePlotted)
-    ''' one county of new york must be in the list of counties, here we check this and if this situation doesn't have happened
-    we add county with county_fips=36001 to the list '''
-    if 36001 not in randomCounties:
-        random_item_from_list = random.choice(randomCounties)
-        randomCounties.remove(random_item_from_list)
-        randomCounties.append(36001)
-    
-    # creating a list of colors, one color for each county
-    number_of_colors = numberOfCountinesToBePlotted
-    colors = ["#"+''.join([random.choice('0123456789ABCDEF') for j in range(6)])
-                for i in range(number_of_colors)]
+    random_fips_codes = random.sample(data['county_fips'].unique().tolist(), numberOfCountinesToBePlotted-1)
+    nameOfCounties = [independantOfTimeData.loc[independantOfTimeData['county_fips'] == i, 'county_name'].iloc[0] for i in random_fips_codes]
+    counties = dict(zip(random_fips_codes, nameOfCounties))
 
     # pdf is the output file
-    pdf = matplotlib.backends.backend_pdf.PdfPages("output.pdf")
+    pdf = matplotlib.backends.backend_pdf.PdfPages('output.pdf')
 
-    for covariate in timeDependantCovariates:
-        # in each iteration newDataFrame includes values of one time dependant covariate for the counties selected before
-        newDataFrame = pd.DataFrame()
-        # completing newDataFrame happens in this loop
-        for county in randomCounties:
-            temp = df.loc[df['county_fips'] == county, ['date', covariate]]
-            temp = temp.sort_values(by=['date'])
-            temp.reset_index(drop=True, inplace=True)
-            temp.rename(columns={covariate: (str(county))}, inplace=True)
-            newDataFrame = pd.concat([newDataFrame, temp], axis=1)
+    dates = data['date'].unique()
+    figs = plt.figure()
 
-        # removing duplicated columns
-        newDataFrame = newDataFrame.loc[:,~newDataFrame.columns.duplicated()]
-        #newDataFrame = newDataFrame.set_index('date')
-        # next three lines moves date column to the first column
-        dateCol = newDataFrame['date']
-        newDataFrame.drop(labels=['date'], axis=1, inplace = True)
-        newDataFrame.insert(0, 'date', dateCol)
-        #max_value = newDataFrame.values.max()
-        numberOfDays = len(newDataFrame.index)
-        
-        # plotting data
-        ax = newDataFrame.plot.scatter(x='date', y=newDataFrame.columns[1], color=colors[0], 
-                            figsize=(numberOfDays, 30), label=newDataFrame.columns[1], title=covariate, 
-                            s=100, rot=90, fontsize=25)
-        for cnt in range(2, 11):
-            newDataFrame.plot.scatter(x='date', y=newDataFrame.columns[cnt], 
-                            color=colors[cnt-1], label=newDataFrame.columns[cnt], 
-                            s=100, rot=90, fontsize=25, ax=ax)
-        # get figure of the graph
-        fig = ax.get_figure()
-        # save figure in the pdf file
+    # this outer loop goes through time dependant covariates, we access covariates with their position in 'timeDependantCovariates' list
+    for cnt in range(0, len(timeDependantCovariates), 4):
+        # creating a figure that will contain 4 graphs, size is for an A4 page
+        fig = plt.figure(figsize=(21, 29.7))
+        # with subplot_number we set the position of graph in page
+        subplot_number = 411
+        # this inner loop, each time goes through four time dependant covariates to plot them in one figure and save them in one page of pdf file
+        for i in range(cnt, cnt+4):
+            # checking for not to be out of band
+            if i < len(timeDependantCovariates):
+                plt.subplot(subplot_number)
+                # new york must be in all of grphs, so we fisrt plot information about new york in grphs
+                plt.plot(dates, data.loc[data['county_name'].str.contains('New York'), timeDependantCovariates[i]].tolist(), label='New York')
+                # and here we plot information about other countines
+                for fips_code in random_fips_codes:
+                    plt.plot(dates, data.loc[data['county_fips']==fips_code, timeDependantCovariates[i]].tolist(), label=counties[fips_code])
+                plt.ylabel(timeDependantCovariates[i])
+                plt.xlabel('date')
+                plt.xticks(rotation=60)
+                plt.legend()
+                subplot_number += 1
+        # saving the figure in pdf file
         pdf.savefig(fig)
     pdf.close()
 
