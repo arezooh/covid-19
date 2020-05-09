@@ -47,6 +47,10 @@ fixed-data.csv:
 
 temporal-data.csv:
 
+    weather_data:
+				source: https://www.ncdc.noaa.gov/cdo-web/datatools/selectlocation
+				We find stations once from source page, then we used them and API to gather weather data
+				API page: https://www.ncei.noaa.gov/support/access-data-service-api-user-documentation
 		social-distancing-grades:
 				measure of social distancing observance in each county at day t
 				consist of:
@@ -63,3 +67,4 @@ temporal-data.csv:
 				Calculated as Sum(0.5 * "confirmed") over neighboring counties at day t
 		severe_cases:
 				number of severe cases in each county at day t
+
