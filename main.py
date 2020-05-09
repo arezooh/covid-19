@@ -26,11 +26,11 @@ if __name__ == "__main__":
 
 
     #       |--Use these two lines to get all stations--|
-    mediumObject = medium.mediumClass()
-    mediumObject.downloadHandler.get_allStations('stations.csv')
+    # mediumObject = medium.mediumClass()
+    # mediumObject.downloadHandler.get_allStations('stations.csv')
     #       |--|
 
 
     #       |--Use this line to test merging two temporalDataFile: 'confirmAndDeath.csv' and 'socialDistancing.csv'--|
-    # mediumObject.csvHandler.merge_csvFiles_addColumns('confirmAndDeath.csv', 'socialDistancing.csv', 'temporal-data.csv', ['countyFIPS', 'date'], ['countyFips', 'date'], ['totalGrade', 'visitationGrade', 'encountersGrade', 'travelDistanceGrade'])
+    mediumObject.csvHandler.merge_csvFiles_addColumns('confirmAndDeath.csv', 'socialDistancing.csv', 'temporal-data.csv', ['countyFIPS', 'date'], ['countyFips', 'date'], ['totalGrade', 'visitationGrade', 'encountersGrade', 'travelDistanceGrade'])
     #       |--|

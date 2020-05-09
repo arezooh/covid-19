@@ -35,3 +35,12 @@ fixed-data.csv:
 
 
 temporal-data.csv:
+
+		weather_data:
+				source: https://www.ncdc.noaa.gov/cdo-web/datatools/selectlocation
+				We find stations once from source page, then we used them and API to gather weather data
+				API page: https://www.ncei.noaa.gov/support/access-data-service-api-user-documentation
+		social_distancing_data:
+				source: https://unacast-2019.webflow.io/covid19/social-distancing-scoreboard
+		confirm_and_death:
+				source: https://usafacts.org/visualizations/coronavirus-covid-19-spread-map/
