@@ -1,79 +1,85 @@
-import subprocess
-import sys
-# Installing required packages (pandas and numpy)
-subprocess.check_call([sys.executable, "-m", "pip", "install", 'pandas'])
-subprocess.check_call([sys.executable, "-m", "pip", "install", 'numpy'])
 import pandas as pd
 import numpy as np
 
-
-'''	This function gets a dataframe and removes first row of each group (gropus are distinguished by FIPS code)
-	we use it for shifting dataframes'''
-def using_mask(df):
-	def mask_first(x):
-		result = np.ones_like(x)
-		result[0] = 0
-		return result
-
-	mask = df.groupby(['FIPS code'])['FIPS code'].transform(mask_first).astype(bool)
-	return df.loc[mask]
-
-
-def makeHistoricalData(h, r):
-	staticDataPath = 'final-fixed-data.csv'	# Static Data is the data independant of time
-	dataFrameOfStaticCovariates = pd.read_csv(staticDataPath)
-
-	dynamicData = pd.read_excel('confirnew2.xlsx')	# Dynaimc Data is the data that is time dependant
-	nameOfDynamicCovariates = dynamicData.columns.values.tolist()	# Getting name of time dependant covariates
-
-	nameOfDynamicCovariates.remove('FIPS code')
-	nameOfDynamicCovariates.remove('date')
-
-	newDataFrame = pd.DataFrame()	# We store historical dynamic covariates in this dataframe
-	totalNumberOfDays = len(dynamicData['date'].unique())
-	# In this loop we make historical data from time dependant covariates
-	for name in nameOfDynamicCovariates:	# name would be name of a time dependant covariate
-		temporalDataFrame = dynamicData[['FIPS code', name]]
-		threshold = 0
-		while threshold != h:
-			# By the line bellow, we get first (totalNumberOfDays-h-r+1) rows of each group distinguished by FIPS code
-			temp = temporalDataFrame.groupby('FIPS code').head(totalNumberOfDays-h-r+1).reset_index(drop=True)
-			temp.rename(columns={name: (name+' '+str(threshold))}, inplace = True)
-			newDataFrame = pd.concat([newDataFrame, temp], axis=1)
-			temporalDataFrame = using_mask(temporalDataFrame)	# Shifting each group one time
-			threshold += 1
-
-	# By the lines bellow we concatenate target variable to historical datas were made before		
-	backupData = dynamicData.copy()
-	for i in range(r+h-1):
-		backupData = using_mask(backupData)
-	backupData.rename(columns = {'confirmed':'Target'}, inplace = True)
-	backupData = backupData.reset_index(drop=True)
-	backupData = backupData['Target']
-	newDataFrame = pd.concat([newDataFrame, backupData], axis=1)
-	newDataFrame = newDataFrame.iloc[:,~newDataFrame.columns.duplicated()]
-
-	# By the lines bellow we concatenate date of day (t) to historical dataframe
-	dates = dynamicData[['FIPS code', 'date']]
-	# Deleting first (h-1) dates from each group
-	for i in range(h-1):
-		dates = using_mask(dates)
-	dates = dates.reset_index(drop=True)
-	dates = dates.groupby('FIPS code').head(totalNumberOfDays-h-r+1).reset_index(drop=True)	# Get first (totalNumberOfDays-h-r+1) dates of each group
-	dates.rename(columns={'date': ('date of day t')}, inplace = True)
-	newDataFrame = pd.concat([newDataFrame, dates['date of day t']], axis=1)
-
-	# Merging historical data and independant of time dataframes to each other
-	dataFrameOfStaticCovariates.rename(columns={'county_fips': ('FIPS code')}, inplace = True)
-	result = pd.merge(dataFrameOfStaticCovariates, newDataFrame, on='FIPS code')
+# h is the number of days before day (t)
+# r indicates how many days after day (t) --> target-day = day(t+r)
+# target could be number of deaths or number of confirmed 
+def makeHistoricalData(h, r, target):
+	''' in this code when h is 1, it means there is no history and we have just one column for each covariate
+	so when h is 0, we put h equal to 1, because when h is 0 that means there no history (as when h is 1) '''
+	if h == 0:
+		h = 1
 	
-	# Storing the result in a csv file
-	reslut = result.sort_values(by=['FIPS code'])
-	result.to_csv('dataset_h='+str(h)+'.csv')
+	independantOfTimeData = pd.read_csv('csvFiles/fixed-data.csv')
+	timeDeapandantData = pd.read_csv('csvFiles/temporal-data.csv')
+
+	allData = pd.merge(independantOfTimeData, timeDeapandantData, on='county_fips')
+	allData = allData.sort_values(by=['date', 'county_fips'])
+	allData = allData.reset_index(drop=True)
+	# this columns are not numercal and wouldn't be included in correlation matrix, we store them to concatenate them later
+	notNumericlData = allData[['county_name', 'state_name', 'date']]
+
+	# next 2 lines arranges columns in order of correlations with target
+	ix = allData.corr().sort_values(target, ascending=False).index
+	allData = allData.loc[:, ix]
+	allData = pd.concat([allData, notNumericlData], axis=1)
+
+	nameOfTimeDependantCovariates = timeDeapandantData.columns.values.tolist()
+	nameOfAllCovariates = allData.columns.values.tolist()
+
+	result = pd.DataFrame()  # we store historical data in this dataframe
+	totalNumberOfCounties = len(allData['county_fips'].unique())
+	totalNumberOfDays = len(allData['date'].unique())
+
+	# in this loop we make historical data
+	for name in nameOfAllCovariates:
+		# if covariate is time dependant
+		if name in nameOfTimeDependantCovariates and name not in ['date', 'county_fips']:
+			temporalDataFrame = allData[[name]] # selecting column of the covariate that is being processed
+			threshold = 0
+			while threshold != h:
+				# get value of covariate that is being processed in first (totalNumberOfDays-h-r+1) days
+				temp = temporalDataFrame.head((totalNumberOfDays-h-r+1)*totalNumberOfCounties).copy().reset_index(drop=True)
+				temp.rename(columns={name: (name + ' t-' + str(h-threshold-1))}, inplace=True) # renaming column
+				result = pd.concat([result, temp], axis=1)
+				# deleting the values in first day in temporalDataFrame dataframe (similiar to shift)
+				temporalDataFrame = temporalDataFrame.iloc[totalNumberOfCounties:]
+				threshold += 1
+		# if covariate is independant of time
+		elif name not in nameOfTimeDependantCovariates and name not in ['date', 'county_fips']:
+			temporalDataFrame = allData[[name]]
+			temp = temporalDataFrame.head((totalNumberOfDays-h-r+1)*totalNumberOfCounties).copy().reset_index(drop=True)
+			result = pd.concat([result, temp], axis=1)
+
+	# next 3 lines is for adding FIPS code to final dataframe
+	temporalDataFrame = allData[['county_fips']]
+	temp = temporalDataFrame.head((totalNumberOfDays-h-r+1)*totalNumberOfCounties).copy().reset_index(drop=True)
+	result.insert(0, 'county_fips', temp)
+
+	# next 3 lines is for adding date of day (t) to final dataframe
+	temporalDataFrame = allData[['date']]
+	temporalDataFrame = temporalDataFrame[totalNumberOfCounties*(h-1):]
+	temp = temporalDataFrame.head((totalNumberOfDays-h-r+1)*totalNumberOfCounties).copy().reset_index(drop=True)
+	result.insert(1, 'date of day t', temp)
+
+	# next 3 lines is for adding target to final dataframe
+	temporalDataFrame = allData[[target]]
+	temporalDataFrame = temporalDataFrame.tail((totalNumberOfDays-h-r+1)*totalNumberOfCounties).reset_index(drop=True)
+	result.insert(1, 'Target', temporalDataFrame)
+	for i in result.columns:
+            if i.endswith('t-0'):
+                result.rename(columns={i: i[:-2]}, inplace=True)
+
+	return result
 
 
 def main():
-	makeHistoricalData(3, 14)
+	h = 0
+	r = 14
+	target = 'confirmed'
+	result = makeHistoricalData(h, r, target)
+	# Storing the result in a csv file
+	result.to_csv('dataset_h=' + str(h) + '.csv', mode='w', index=False)
 
 
 if __name__ == "__main__":
