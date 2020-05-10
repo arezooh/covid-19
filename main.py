@@ -32,5 +32,9 @@ if __name__ == "__main__":
 
 
     #       |--Use this line to test merging two temporalDataFile: 'confirmAndDeath.csv' and 'socialDistancing.csv'--|
-    mediumObject.csvHandler.merge_csvFiles_addColumns('confirmAndDeath.csv', 'socialDistancing.csv', 'temporal-data.csv', ['countyFIPS', 'date'], ['countyFips', 'date'], ['totalGrade', 'visitationGrade', 'encountersGrade', 'travelDistanceGrade'])
+    # mediumObject = medium.mediumClass()
+    # mediumObject.csvHandler.merge_csvFiles_addColumns('confirmAndDeath.csv', 'socialDistancing.csv', 'temporal-data.csv', ['countyFIPS', 'date'], ['countyFips', 'date'], ['totalGrade', 'visitationGrade', 'encountersGrade', 'travelDistanceGrade'])
     #       |--|
+
+    mediumObject = medium.mediumClass()
+    mediumObject.clean_stations()
