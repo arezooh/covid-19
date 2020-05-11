@@ -106,10 +106,20 @@ class extractor:
 
         debug.debug_print("SUCCESS: data extracted (weather stations)", 2)
 
-    def get_countyWeatherData(self, stationID, startDate, endDate, destinationFilename):
+    def get_countyWeatherData(self, county_fips, stationID, startDate, endDate, destinationFilename):
         csvData = requests.get('https://www.ncei.noaa.gov/access/services/data/v1?dataset=daily-summaries&dataTypes=TAVG,TMAX,TMIN,PRCP,WT16,WT01,TSUN&stations={0}&startDate={1}&endDate={2}&boundingBox=90,-180,-90,180&format=csv'.format(stationID, startDate, endDate)).text
+        csvData = (csvData.replace('"', '')).split('\n')
+
         with open(_CSV_Directory_ + destinationFilename, 'w') as csvFile:
-            csvFile.write(csvData)
+            for row in csvData:
+                # Frist step, add 'county_fips' to header
+                if row == csvData[0]:
+                    row = 'county_fips,' + row + '\n'
+                # Other steps, add county_fips code to data
+                elif row != '':
+                    row = '{0},'.format(county_fips) + row + '\n'
+
+                csvFile.write(row)
 
         debug.debug_print("SUCCESS: data extracted (weatherData of station:{0})".format(stationID), 2)
 

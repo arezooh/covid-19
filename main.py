@@ -37,5 +37,5 @@ if __name__ == "__main__":
     #       |--|
 
     mediumObject = medium.mediumClass()
-    # mediumObject.downloadHandler.get_countyWeatherData('USW00093228', '2020-05-02', '2020-05-04', 'test.csv')
+    # mediumObject.downloadHandler.get_countyWeatherData('1001', 'USW00093228', '2020-05-02', '2020-05-04', 'test.csv')
     mediumObject.generate_allWeatherData('2020-05-04', '2020-05-04')

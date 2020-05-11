@@ -75,13 +75,14 @@ class mediumClass:
         
         for i in range(numberOfStations):
             stationID = stationsData[i]['id'].split(':')[1]
-            progressBar.update(i, FIPS=stationsData[i]['county_fips'], ID=stationID)
+            countyFips = stationsData[i]['county_fips']
+            progressBar.update(i, FIPS=countyFips, ID=stationID)
             # First step, create weather.csv file
             if i == 0:
-                self.downloadHandler.get_countyWeatherData(stationID, startDate, endDate, 'weather.csv')
+                self.downloadHandler.get_countyWeatherData(countyFips, stationID, startDate, endDate, 'weather.csv')
             # Other steps, merge new data to weather.csv file
             else:
-                self.downloadHandler.get_countyWeatherData(stationID, startDate, endDate, 'temp.csv')
+                self.downloadHandler.get_countyWeatherData(countyFips, stationID, startDate, endDate, 'temp.csv')
                 self.csvHandler.merge_csvFiles_addRows('weather.csv', 'temp.csv', 'weather.csv')
 
         progressBar.finish()
