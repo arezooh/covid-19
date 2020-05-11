@@ -1,9 +1,11 @@
 # base imports
 import csv
 import os
+import progressbar
 
 # self imports
 import debug
+from datetime import date
 from handlers import handler_csv, handler_json
 from extractor import extractor
 
@@ -20,7 +22,7 @@ class mediumClass:
         
         debug.debug_print("Medium Class is up", 1)
 
-    def generate_allSocialDistancingData(self, destinationFilename):
+    def generate_allSocialDistancingData(self):
         statesData = self.csvHandler._loadData('states.csv')[0]
         for state in statesData:
             fips = int(state['state-fips'], 10)
@@ -32,3 +34,55 @@ class mediumClass:
             else:
                 self.jsonHandler.transform_jsonToCsv_socialDistancingData('temp.json', 'temp.csv')
                 self.csvHandler.merge_csvFiles_addRows('socialDistancing.csv', 'temp.csv', 'socialDistancing.csv')
+
+    # This functions remove useless stations from it's csv files. useless mean the stations that their max-date is less than 2020-1-22
+    def clean_stations(self):
+        stationsData = []
+        fieldnames = []
+        with open(_CSV_Directory_ + 'stations.csv') as csvFile:
+            csvDriver = csv.DictReader(csvFile)
+            fieldnames = csvDriver.fieldnames
+            for row in csvDriver:
+                stationsData.append(row)
+
+        with open(_CSV_Directory_ + 'new_stations.csv', 'w') as csvFile:
+            csvDriver = csv.DictWriter(csvFile, fieldnames)
+            csvDriver.writeheader()
+            startDay = date.fromisoformat('2020-01-22')
+            for station in stationsData:
+                try:
+                    if date.fromisoformat(station['maxdate']) > startDay:
+                        csvDriver.writerow(station)
+                except:
+                    continue
+
+        debug.debug_print("SUCCESS: useless stations removed", 2)
+
+    def generate_allWeatherData(self, startDate, endDate):
+        stationsData = self.csvHandler._loadData('stations.csv')[0]
+
+        numberOfStations = len(stationsData)
+        progressBarWidget = [progressbar.Percentage(),
+        ' ',
+        progressbar.Bar('#', '|', '|'),
+        ' ',
+        progressbar.Variable('FIPS', width=12, precision=12),
+        ' ',
+        progressbar.Variable('ID', width=12, precision=12),
+        ]
+        progressBar = progressbar.ProgressBar(maxval=numberOfStations, widgets=progressBarWidget, redirect_stdout=True)
+        progressBar.start()
+        
+        for i in range(numberOfStations):
+            stationID = stationsData[i]['id'].split(':')[1]
+            progressBar.update(i, FIPS=stationsData[i]['county_fips'], ID=stationID)
+            # First step, create weather.csv file
+            if i == 0:
+                self.downloadHandler.get_countyWeatherData(stationID, startDate, endDate, 'weather.csv')
+            # Other steps, merge new data to weather.csv file
+            else:
+                self.downloadHandler.get_countyWeatherData(stationID, startDate, endDate, 'temp.csv')
+                self.csvHandler.merge_csvFiles_addRows('weather.csv', 'temp.csv', 'weather.csv')
+
+        progressBar.finish()
+        debug.debug_print("SUCCESS: data extracted (weather data)", 2)

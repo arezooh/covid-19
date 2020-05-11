@@ -113,4 +113,3 @@ class extractor:
 
         debug.debug_print("SUCCESS: data extracted (weatherData of station:{0})".format(stationID), 2)
 
-
