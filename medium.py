@@ -72,8 +72,21 @@ class mediumClass:
         ]
         progressBar = progressbar.ProgressBar(maxval=numberOfStations, widgets=progressBarWidget, redirect_stdout=True)
         progressBar.start()
+
+        step = 0
+        try:
+            logFile = open('weather.log', 'r')
+            step = int(logFile.read(), 10)
+            logFile.close()
+        except:
+            logFile = open('weather.log', 'w')
+            logFile.write(str(step))
+            logFile.close()
         
-        for i in range(numberOfStations):
+        for i in range(step, numberOfStations):
+            with open('weather.log', 'w') as logFile:
+                logFile.write(str(i))
+
             stationID = stationsData[i]['id'].split(':')[1]
             countyFips = stationsData[i]['county_fips']
             progressBar.update(i, FIPS=countyFips, ID=stationID)
