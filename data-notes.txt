@@ -50,6 +50,7 @@ fixed-data.csv:
 				Source: https://www.countyhealthrankings.org/app/alabama/2020/downloads
 		religious:
 				Percent of religious followers in each county
+				Source: http://www.thearda.com/Archive/Files/Downloads/RCMSCY10_DL.asp
 		
 
 
