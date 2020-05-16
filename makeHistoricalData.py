@@ -20,7 +20,7 @@ def makeHistoricalData(h, r, target):
 	notNumericlData = allData[['county_name', 'state_name', 'date']]
 
 	# next 2 lines arranges columns in order of correlations with target
-	ix = allData.corr().sort_values(target, ascending=False).index
+	ix = allData.corr().abs().sort_values(target, ascending=False).index
 	allData = allData.loc[:, ix]
 	allData = pd.concat([allData, notNumericlData], axis=1)
 
