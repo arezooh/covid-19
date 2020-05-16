@@ -57,7 +57,7 @@ fixed-data.csv:
 
 temporal-data.csv:
 
-    weather_data:
+    	weather_data:
 				source: https://www.ncdc.noaa.gov/cdo-web/datatools/selectlocation
 				We find stations once from source page, then we used them and API to gather weather data
 				API page: https://www.ncei.noaa.gov/support/access-data-service-api-user-documentation
@@ -77,5 +77,10 @@ temporal-data.csv:
 				Calculated as Sum(0.5 * "confirmed") over neighboring counties at day t
 		severe_cases:
 				number of severe cases in each county at day t
-				sourse: https://public.tableau.com/profile/todd.bellemare#!/vizhome/DefinitiveHCCOVID-19CapacityPredictor/DefinitiveHealthcareCOVID-19CapacityPredictor	
+        sourse: https://public.tableau.com/profile/todd.bellemare#!/vizhome/DefinitiveHCCOVID-19CapacityPredictor/DefinitiveHealthcareCOVID-19CapacityPredictor	
 
+		airlines-data:
+				source: https://www.flightradar24.com/31.11,-95.18/4 , 
+				api: https://data-live.flightradar24.com/zones/fcgi/feed.js?bounds=51.70,0.51,-139.20,-51.16&faa=1&satellite=1&mlat=1&flarm=1&adsb=1&gnd=1&air=1&vehicles=1&estimated=1&maxage=14400&gliders=1&stats=1
+
+			
