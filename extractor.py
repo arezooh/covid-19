@@ -123,3 +123,72 @@ class extractor:
 
         debug.debug_print("SUCCESS: data extracted (weatherData of station:{0})".format(stationID), 2)
 
+    def get_airlines(self):
+        airportsData = []
+        with open(_CSV_Directory_ + 'airports.csv') as csvFile:
+            csvDriver = csv.DictReader(csvFile)
+            for row in csvDriver:
+                airportsData.append(row)
+
+        headers = {
+            'authority': 'data-live.flightradar24.com',
+            'accept': 'application/json, text/javascript, */*; q=0.01',
+            'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/81.0.4044.138 Safari/537.36',
+            'origin': 'https://www.flightradar24.com',
+            'sec-fetch-site': 'same-site',
+            'sec-fetch-mode': 'cors',
+            'sec-fetch-dest': 'empty',
+            'referer': 'https://www.flightradar24.com/ABX903/24821153',
+            'accept-language': 'en-US,en;q=0.9',
+        }
+
+        params = (
+            ('bounds', '48.85,25.22,-125.94,-81.92^'),
+            ('faa', '1^'),
+            ('satellite', '1^'),
+            ('mlat', '1^'),
+            ('flarm', '1^'),
+            ('adsb', '1^'),
+            ('gnd', '1^'),
+            ('air', '1^'),
+            ('vehicles', '1^'),
+            ('estimated', '1^'),
+            ('maxage', '14400^'),
+            ('gliders', '1^'),
+            ('stats', '1^'),
+            ('selected', '24821153^'),
+            ('ems', '1'),
+        )
+
+        airlinesJson = requests.get('https://data-live.flightradar24.com/zones/fcgi/feed.js', headers=headers, params=params).json()
+    
+        # airlinesJson = requests.get('https://data-live.flightradar24.com/zones/fcgi/feed.js?bounds=51.70,0.51,-139.20,-51.16&faa=1&satellite=1&mlat=1&flarm=1&adsb=1&gnd=1&air=1&vehicles=1&estimated=1&maxage=14400&gliders=1&stats=1').json()
+        airlinesKeys = airlinesJson.keys()
+
+        fieldnames = ['source', 'destination', 'airline_code']
+        with open(_CSV_Directory_ + 'airlines.csv', 'w') as csvFile:
+            csvDriver = csv.DictWriter(csvFile, fieldnames=fieldnames)
+            csvDriver.writeheader()
+
+            for row in airlinesKeys:
+                airline = {}
+                try:
+                    singleAirlineData = airlinesJson[row]
+                    airline['airline_code'] = singleAirlineData[16]
+                    for airport in airportsData:
+                        if airport['origin'] == singleAirlineData[11]:
+                            airline['source'] = airport['County']
+                        if airport['origin'] == singleAirlineData[12]:
+                            airline['destination'] = airport['County']
+
+                        if len(airline) == 3:
+                            csvDriver.writerow(airline)
+                            break
+                    
+                except:
+                    continue
+
+        debug.debug_print("SUCCESS: data extracted (airlines)", 2)
+
+
+        

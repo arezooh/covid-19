@@ -36,6 +36,9 @@ if __name__ == "__main__":
     # mediumObject.csvHandler.merge_csvFiles_addColumns('confirmAndDeath.csv', 'socialDistancing.csv', 'temporal-data.csv', ['countyFIPS', 'date'], ['countyFips', 'date'], ['totalGrade', 'visitationGrade', 'encountersGrade', 'travelDistanceGrade'])
     #       |--|
 
-    mediumObject = medium.mediumClass()
+    # mediumObject = medium.mediumClass()
     # mediumObject.downloadHandler.get_countyWeatherData('1001', 'USW00093228', '2020-05-02', '2020-05-04', 'test.csv')
-    mediumObject.generate_allWeatherData('2020-05-04', '2020-05-04')
+    # mediumObject.generate_allWeatherData('2020-05-04', '2020-05-04')
+
+    mediumObject = medium.mediumClass()
+    mediumObject.downloadHandler.get_airlines()
