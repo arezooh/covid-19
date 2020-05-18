@@ -408,7 +408,7 @@ def main(maxHistory):
         result = pd.DataFrame(historical_y_test[method], columns=['y_test'])
         result['y_prediction'] = y_prediction[method]
         result['absolute_error'] = abs(historical_y_test[method] - y_prediction[method])
-        result.to_csv('results/counties=' + str(numberOfSelectedCounties) + ' max_history=' + str(maxHistory) + '/test/' + method + '.csv')
+        result.to_csv(test_address + method + '.csv')
     table_name = 'non-mixed methods best results'
     plot_table(table_data, columns_table, table_name)
 
@@ -452,8 +452,7 @@ def main(maxHistory):
         result = pd.DataFrame(y_test_MM_dict[mixed_method], columns=['y_test'])
         result['y_prediction'] = y_prediction[mixed_method]
         result['absolute_error'] = abs(y_test_MM_dict[mixed_method] - y_prediction[mixed_method])
-        result.to_csv('results/counties=' + str(numberOfSelectedCounties) + ' max_history=' + str(
-            maxHistory) + '/test/' + mixed_method + '.csv')
+        result.to_csv(test_address + mixed_method + '.csv')
     # save the entire session
     filename = str(argv[1]) + 'test.pkl'
     dill.dump_session(filename)
