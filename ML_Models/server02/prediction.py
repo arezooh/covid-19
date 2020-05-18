@@ -17,7 +17,7 @@ import dill
 import subprocess as cmd
 
 r = 14  # the following day to predict
-numberOfSelectedCounties = 2997
+numberOfSelectedCounties = 50
 
 
 ######################################################### split data to train, val, test
@@ -258,7 +258,7 @@ def get_errors(h, c, method, y_prediction, y_test):
 
 ########################################################### push results to github
 def push():
-    cmd.run("git pull" , check=True, shell=True)
+    cmd.run("git pull", check=True, shell=True)
     print("everything has been pulled")
     cmd.run("git add .", check=True, shell=True)
     message = 'new results added'
@@ -466,7 +466,7 @@ def main(maxHistory):
 if __name__ == "__main__":
 
     begin = time.time()
-    maxHistory = 14
+    maxHistory = 1
     # make directories for saving the results
     validation_address = str(argv[1]) + '/results/counties=' + str(numberOfSelectedCounties) + ' max_history=' + str(maxHistory) + '/validation/'
     test_address = str(argv[1]) + '/results/counties=' + str(numberOfSelectedCounties) + ' max_history=' + str(maxHistory) + '/test/'
