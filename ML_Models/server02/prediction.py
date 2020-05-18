@@ -262,7 +262,7 @@ def push():
     print("everything has been pulled")
     cmd.run("git add .", check=True, shell=True)
     message = 'new results added'
-    cmd.run("git commit -m '{message}'", check=True, shell=True)
+    cmd.run(f"git commit -m '{message}'", check=True, shell=True)
     cmd.run("git push -u origin master -f", check=True, shell=True)
     print('pushed.')
 
