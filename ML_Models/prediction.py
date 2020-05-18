@@ -226,11 +226,11 @@ def plot_results(row, col, numberOfCovariates, methods, history, errors, mode):
 
 ########################################################### plot table for final results
 def plot_table(table_data, cols, name):
-    fig = plt.figure(dpi=150)
+    fig = plt.figure(dpi=100)
     ax = fig.add_subplot(1, 1, 1)
     table = ax.table(cellText=table_data, colLabels=cols, loc='center')
     table.set_fontsize(14)
-    table.scale(1, 5)
+    table.scale(1, 3)
     ax.axis('off')
     plt.savefig(test_address + name + '.png')
 
@@ -464,7 +464,7 @@ def main(maxHistory):
 if __name__ == "__main__":
 
     begin = time.time()
-    maxHistory = 2
+    maxHistory = 1
     # make directories for saving the results
     validation_address = str(argv[1]) + '/results/counties=' + str(numberOfSelectedCounties) + ' max_history=' + str(maxHistory) + '/validation/'
     test_address = str(argv[1]) + '/results/counties=' + str(numberOfSelectedCounties) + ' max_history=' + str(maxHistory) + '/test/'

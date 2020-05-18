@@ -39,7 +39,7 @@ def GBM(X_train, X_test, y_train):
 ###################################################### GLM: Generalized Linear Model, we use Lasso
 def GLM(X_train, X_test, y_train):
 
-    GLM_Model = ElasticNetCV(random_state=0, tol=0.01, cv=5, max_iter=2000)
+    GLM_Model = ElasticNetCV(random_state=0, tol=0.01, cv=5, max_iter=20000)
     GLM_Model.fit(X_train, y_train)
     y_prediction = GLM_Model.predict(X_test)
 
