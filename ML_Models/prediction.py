@@ -17,7 +17,7 @@ import dill
 import subprocess as cmd
 
 r = 14  # the following day to predict
-numberOfSelectedCounties = 30
+numberOfSelectedCounties = 20
 
 
 ######################################################### split data to train, val, test
@@ -226,11 +226,11 @@ def plot_results(row, col, numberOfCovariates, methods, history, errors, mode):
 
 ########################################################### plot table for final results
 def plot_table(table_data, cols, name):
-    fig = plt.figure(dpi=100)
+    fig = plt.figure(dpi=150)
     ax = fig.add_subplot(1, 1, 1)
     table = ax.table(cellText=table_data, colLabels=cols, loc='center')
     table.set_fontsize(14)
-    table.scale(1, 3)
+    table.scale(1, 5)
     ax.axis('off')
     plt.savefig(test_address + name + '.png')
 
@@ -326,7 +326,7 @@ def main(maxHistory):
                 y_prediction[method][(h, c)] = parallel_outputs['non_mixed'][ind]['output']
                 ind += 1
         # save the entire session for each h and c
-        filename = str(argv[1]) + 'validation.pkl'
+        filename = env_address + 'validation.pkl'
         dill.dump_session(filename)
         # initiate loom for parallel processing
         loom = ProcessLoom(max_runner_cap=len(base_data.columns) * len(mixed_methods) + 5)
@@ -351,7 +351,7 @@ def main(maxHistory):
                 y_prediction[mixed_method][(h, c)] = np.array(parallel_outputs['mixed'][ind]['output']).ravel()
                 ind += 1
         # save the entire session for each h and c
-        filename = str(argv[1]) + 'validation.pkl'
+        filename = env_address + 'validation.pkl'
         dill.dump_session(filename)
         indx_c = 0
         for c in covariates_names:  # iterate through sorted covariates
@@ -378,10 +378,10 @@ def main(maxHistory):
                         historical_y_train[method] = y_train
                         historical_y_test[method] = y_test
         # save the entire session for each h and c
-        filename = str(argv[1]) + 'validation.pkl'
+        filename = env_address + 'validation.pkl'
         dill.dump_session(filename)
     # save the entire session for each h
-    filename = str(argv[1]) + 'validation.pkl'
+    filename = env_address + 'validation.pkl'
     dill.dump_session(filename)
     # plot the results of methods on validation set
     plot_results(3, 2, numberOfCovariates, methods, history, percentage_errors, 'Percentage Of Absolute Error')
@@ -403,8 +403,8 @@ def main(maxHistory):
     for method in none_mixed_methods:
         meanAbsoluteError, rootMeanSquaredError, percentageOfAbsoluteError, adj_r_squared = get_errors(best_h[method],
         best_c[method], method, y_prediction[method], historical_y_test[method])
-        table_data.append([method, best_h[method], best_c[method], rootMeanSquaredError, meanAbsoluteError,
-             percentageOfAbsoluteError, adj_r_squared])
+        table_data.append([method, best_h[method], best_c[method], round(rootMeanSquaredError, 2), round(meanAbsoluteError, 2),
+             round(percentageOfAbsoluteError, 2), round(adj_r_squared, 2)])
         result = pd.DataFrame(historical_y_test[method], columns=['y_test'])
         result['y_prediction'] = y_prediction[method]
         result['absolute_error'] = abs(historical_y_test[method] - y_prediction[method])
@@ -440,21 +440,21 @@ def main(maxHistory):
         y_train_MM_dict[mixed_method] = y_train_MM
         y_test_MM_dict[mixed_method] = y_test_MM
     # save the entire session
-    filename = str(argv[1]) + 'test.pkl'
+    filename = env_address + 'test.pkl'
     dill.dump_session(filename)
     # mixed model with linear regression and neural network
     y_prediction['MM_LR'], y_prediction['MM_NN'] = run_mixed_models(X_train_MM_dict, X_test_MM_dict, y_train_MM_dict, y_test_MM_dict)
     for mixed_method in mixed_methods:
         meanAbsoluteError, rootMeanSquaredError, percentageOfAbsoluteError, adj_r_squared = get_errors(best_h[mixed_method],
         best_c[mixed_method], mixed_method, y_prediction[mixed_method], y_test_MM_dict[mixed_method])
-        table_data.append([mixed_method, best_h[mixed_method], best_c[mixed_method], rootMeanSquaredError,
-             meanAbsoluteError, percentageOfAbsoluteError, adj_r_squared])
+        table_data.append([mixed_method, best_h[mixed_method], best_c[mixed_method], round(rootMeanSquaredError, 2),
+             round(meanAbsoluteError, 2), round(percentageOfAbsoluteError, 2), round(adj_r_squared, 2)])
         result = pd.DataFrame(y_test_MM_dict[mixed_method], columns=['y_test'])
         result['y_prediction'] = y_prediction[mixed_method]
         result['absolute_error'] = abs(y_test_MM_dict[mixed_method] - y_prediction[mixed_method])
         result.to_csv(test_address + mixed_method + '.csv')
     # save the entire session
-    filename = str(argv[1]) + 'test.pkl'
+    filename = env_address + 'test.pkl'
     dill.dump_session(filename)
     table_name = 'mixed methods best results'
     plot_table(table_data, columns_table, table_name)
@@ -464,7 +464,7 @@ def main(maxHistory):
 if __name__ == "__main__":
 
     begin = time.time()
-    maxHistory = 3
+    maxHistory = 1
     # make directories for saving the results
     validation_address = str(argv[1]) + '/results/counties=' + str(numberOfSelectedCounties) + ' max_history=' + str(maxHistory) + '/validation/'
     test_address = str(argv[1]) + '/results/counties=' + str(numberOfSelectedCounties) + ' max_history=' + str(maxHistory) + '/test/'
@@ -472,7 +472,7 @@ if __name__ == "__main__":
         os.makedirs(test_address)
     if not os.path.exists(validation_address):
         os.makedirs(validation_address)
-
+    env_address = str(argv[1]) + '/results/counties=' + str(numberOfSelectedCounties) + ' max_history=' + str(maxHistory) + '/'
     main(maxHistory)
     end = time.time()
 
