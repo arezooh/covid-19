@@ -17,7 +17,7 @@ import dill
 import subprocess as cmd
 
 r = 14  # the following day to predict
-numberOfSelectedCounties = 20
+numberOfSelectedCounties = 30
 
 
 ######################################################### split data to train, val, test
