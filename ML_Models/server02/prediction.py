@@ -17,7 +17,7 @@ import dill
 import subprocess as cmd
 
 r = 14  # the following day to predict
-numberOfSelectedCounties = 30
+numberOfSelectedCounties = 15
 
 
 ######################################################### split data to train, val, test
@@ -262,7 +262,7 @@ def push():
     print("everything has been pulled")
     cmd.run("git add .", check=True, shell=True)
     message = 'new results added'
-    cmd.run(f"git commit -m '{message}'", check=True, shell=True)
+    cmd.run("git commit -m '{message}'", check=True, shell=True)
     cmd.run("git push -u origin master -f", check=True, shell=True)
     print('pushed.')
 
