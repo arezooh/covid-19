@@ -258,6 +258,8 @@ def get_errors(h, c, method, y_prediction, y_test):
 
 ########################################################### push results to github
 def push():
+    cmd.run("git pull", check=True, shell=True)
+    print("everything has been pulled")
     cmd.run("git add .", check=True, shell=True)
     message = 'new results added'
     cmd.run(f"git commit -m '{message}'", check=True, shell=True)
