@@ -49,8 +49,11 @@ fixed-data.csv:
 				Percent of smokers in each county
 				Source: https://www.countyhealthrankings.org/app/alabama/2020/downloads
 		religious:
-				Percent of religious followers in each county
+				Percent of religion congregation members in each county
 				Source: http://www.thearda.com/Archive/Files/Downloads/RCMSCY10_DL.asp
+		party:
+				Party for each state (set to 0 for republican & 1 for democratic)
+				Source: https://en.wikipedia.org/wiki/List_of_United_States_governors
 		
 
 
