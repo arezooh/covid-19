@@ -21,7 +21,7 @@ import shelve
 
 
 r = 14  # the following day to predict
-numberOfSelectedCounties = 14
+numberOfSelectedCounties = 10
 
 
 ######################################################### split data to train, val, test
@@ -268,13 +268,14 @@ def get_errors(h, c, method, y_prediction, y_test):
 
 ########################################################### push results to github
 def push(message):
-    cmd.run("git pull", check=True, shell=True)
-    print("everything has been pulled")
-    cmd.run("git add .", check=True, shell=True)
-    #message = 'new results added'
-    cmd.run(f"git commit -m '{message}'", check=True, shell=True)
-    cmd.run("git push -u origin master -f", check=True, shell=True)
-    print('pushed.')
+    try:
+        cmd.run("git pull", check=True, shell=True)
+        print("everything has been pulled")
+        cmd.run("git add .", check=True, shell=True)
+        #message = 'new results added'
+        cmd.run(f"git commit -m '{message}'", check=True, shell=True)
+        cmd.run("git push -u origin master -f", check=True, shell=True)
+        print('pushed.')
 
 
 ########################################################### main
@@ -507,7 +508,7 @@ def main(maxHistory):
 if __name__ == "__main__":
 
     begin = time.time()
-    maxHistory = 2
+    maxHistory = 3
     # make directories for saving the results
     validation_address = str(argv[1]) + '/results/counties=' + str(numberOfSelectedCounties) + ' max_history=' + str(maxHistory) + '/validation/'
     test_address = str(argv[1]) + '/results/counties=' + str(numberOfSelectedCounties) + ' max_history=' + str(maxHistory) + '/test/'
