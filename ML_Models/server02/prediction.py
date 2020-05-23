@@ -276,6 +276,8 @@ def push(message):
         cmd.run(f"git commit -m '{message}'", check=True, shell=True)
         cmd.run("git push -u origin master -f", check=True, shell=True)
         print('pushed.')
+    except:
+        print('could not push')
 
 
 ########################################################### main
