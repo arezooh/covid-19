@@ -417,6 +417,7 @@ def main(maxHistory):
         for key in dir():
             my_shelf[key] = locals()[key]
 
+        # push the file of outputs
         push('logs of h=' + str(h) + ' added')
     # plot the results of methods on validation set
     plot_results(3, 2, numberOfCovariates, methods, history, percentage_errors, 'Percentage Of Absolute Error')
