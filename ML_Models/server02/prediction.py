@@ -245,7 +245,7 @@ def get_errors(h, c, method, y_prediction, y_test):
     # write outputs into a file
     orig_stdout = sys.stdout
     f = open(env_address+'out.txt', 'a')
-    # sys.stdout = f
+    sys.stdout = f
     meanAbsoluteError = mean_absolute_error(y_test, y_prediction)
     print("Mean Absolute Error of ", method, " for h =", h, "and #covariates =", c, ": %.4f" % meanAbsoluteError)
     sumOfAbsoluteError = sum(abs(y_test - y_prediction))
@@ -263,7 +263,7 @@ def get_errors(h, c, method, y_prediction, y_test):
 
     sys.stdout = orig_stdout
     f.close()
-    push('logs of h='+str(h)+',c='+str(c)+' added')
+    push('logs of h='+str(h)+',c='+str(c)+ ', method=' +str(method)+' added')
     return meanAbsoluteError, rootMeanSquaredError, percentageOfAbsoluteError, adj_r_squared
 
 
