@@ -1,4 +1,0 @@
-Mean Absolute Error of  GBM  for h = 1 and #covariates = 1 : 3.2759
-Percentage of Absolute Error of  GBM  for h = 1 and #covariates = 1 : 151.8622
-Root Mean Squared Error of  GBM  for h = 1 and #covariates = 1 : 4.7173
-Adjusted R Squared Error of  GBM  for h = 1 and #covariates = 1 : -0.6495
