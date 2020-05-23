@@ -4,6 +4,7 @@ import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib as mpl
+mpl.use('Agg')
 from sklearn.metrics import mean_squared_error, mean_absolute_error
 from sklearn.model_selection import train_test_split
 import seaborn as sns
@@ -11,13 +12,16 @@ from matplotlib import colors as mcolors
 from pexecute.process import ProcessLoom
 import time
 from sys import argv
+import sys
 from math import floor, sqrt
 import os
 import dill
 import subprocess as cmd
+import shelve
+
 
 r = 14  # the following day to predict
-numberOfSelectedCounties = 2997
+numberOfSelectedCounties = 14
 
 
 ######################################################### split data to train, val, test
@@ -224,6 +228,7 @@ def plot_results(row, col, numberOfCovariates, methods, history, errors, mode):
             ind += 1
     plt.savefig(validation_address + str(mode)+'.png')
 
+
 ########################################################### plot table for final results
 def plot_table(table_data, cols, name):
     fig = plt.figure(dpi=150)
@@ -237,7 +242,10 @@ def plot_table(table_data, cols, name):
 
 ########################################################### get errors for each model
 def get_errors(h, c, method, y_prediction, y_test):
-
+    # write outputs into a file
+    orig_stdout = sys.stdout
+    f = open(env_address+'out.txt', 'a')
+    # sys.stdout = f
     meanAbsoluteError = mean_absolute_error(y_test, y_prediction)
     print("Mean Absolute Error of ", method, " for h =", h, "and #covariates =", c, ": %.4f" % meanAbsoluteError)
     sumOfAbsoluteError = sum(abs(y_test - y_prediction))
@@ -253,18 +261,22 @@ def get_errors(h, c, method, y_prediction, y_test):
     adj_r_squared = 1 - (1 - r_squared) * (len(y_test) - 1) / (len(y_test) - c - 1)
     print("Adjusted R Squared Error of ", method, " for h =", h, "and #covariates =", c, ": %.4f" % adj_r_squared)
 
+    sys.stdout = orig_stdout
+    f.close()
+    push('logs of h='+str(h)+',c='+str(c)+' added')
     return meanAbsoluteError, rootMeanSquaredError, percentageOfAbsoluteError, adj_r_squared
 
 
 ########################################################### push results to github
-def push():
+def push(message):
     cmd.run("git pull", check=True, shell=True)
     print("everything has been pulled")
     cmd.run("git add .", check=True, shell=True)
-    message = 'new results added'
+    #message = 'new results added'
     cmd.run(f"git commit -m '{message}'", check=True, shell=True)
     cmd.run("git push -u origin master -f", check=True, shell=True)
     print('pushed.')
+
 
 ########################################################### main
 def main(maxHistory):
@@ -328,8 +340,11 @@ def main(maxHistory):
                 y_prediction[method][(h, c)] = parallel_outputs['non_mixed'][ind]['output']
                 ind += 1
         # save the entire session for each h and c
-        filename = env_address + 'validation.pkl'
-        dill.dump_session(filename)
+        filename = env_address + 'validation.out'
+        # dill.dump_session(filename)
+        my_shelf = shelve.open(filename, 'n')  # 'n' for new
+        for key in dir():
+            my_shelf[key] = locals()[key]
         # initiate loom for parallel processing
         loom = ProcessLoom(max_runner_cap=len(base_data.columns) * len(mixed_methods) + 5)
         for c in range(1, numberOfCovariates + 1):
@@ -353,8 +368,12 @@ def main(maxHistory):
                 y_prediction[mixed_method][(h, c)] = np.array(parallel_outputs['mixed'][ind]['output']).ravel()
                 ind += 1
         # save the entire session for each h and c
-        filename = env_address + 'validation.pkl'
-        dill.dump_session(filename)
+        filename = env_address + 'validation.out'
+        #dill.dump_session(filename)
+        my_shelf = shelve.open(filename, 'n')  # 'n' for new
+        for key in dir():
+            my_shelf[key] = locals()[key]
+
         indx_c = 0
         for c in covariates_names:  # iterate through sorted covariates
             indx_c += 1
@@ -365,6 +384,10 @@ def main(maxHistory):
             X_train_val_temp = X_train_val[covariates_list]
             X_test_temp = X_test[covariates_list]
             y_val = y_train_val
+            # write outputs into a file
+            # orig_stdout = sys.stdout
+            # f = open(env_address + 'out.txt', 'a')
+            # sys.stdout = f
             for method in methods:
                 if method == 'MM_LR' or method == 'MM_NN':
                     y_val = y_test_MM[method][(h, indx_c)]
@@ -379,18 +402,29 @@ def main(maxHistory):
                         historical_X_test[method] = X_test_temp
                         historical_y_train[method] = y_train
                         historical_y_test[method] = y_test
-        # save the entire session for each h and c
-        filename = env_address + 'validation.pkl'
-        dill.dump_session(filename)
-    # save the entire session for each h
-    filename = env_address + 'validation.pkl'
-    dill.dump_session(filename)
+            # # write outputs into a file
+            # sys.stdout = orig_stdout
+            # f.close()
+            # save the entire session for each h and c
+            filename = env_address + 'validation.out'
+            # dill.dump_session(filename)
+            my_shelf = shelve.open(filename, 'n')  # 'n' for new
+            for key in dir():
+                my_shelf[key] = locals()[key]
+        # save the entire session for each h
+        filename = env_address + 'validation.out'
+        # dill.dump_session(filename)
+        my_shelf = shelve.open(filename, 'n')  # 'n' for new
+        for key in dir():
+            my_shelf[key] = locals()[key]
+
+        push('logs of h=' + str(h) + ' added')
     # plot the results of methods on validation set
     plot_results(3, 2, numberOfCovariates, methods, history, percentage_errors, 'Percentage Of Absolute Error')
     plot_results(3, 2, numberOfCovariates, methods, history, mae_errors, 'Mean Absolute Error')
     plot_results(3, 2, numberOfCovariates, methods, history, rmse_errors, 'Root Mean Squared Error')
     plot_results(3, 2, numberOfCovariates, methods, history, adjR2_errors, 'Adjusted R Squared Error')
-    push()
+    push('plots added')
     #################################################################################################################
     columns_table = ['method', 'best_h', 'best_c', 'root mean squared error', 'mean absolute error',
                      'percentage of absolute error', 'adjusted R squared error']  # table columns names
@@ -402,6 +436,7 @@ def main(maxHistory):
         historical_X_train, historical_X_test, historical_y_train, historical_y_test)
 
     table_data = []
+
     for method in none_mixed_methods:
         meanAbsoluteError, rootMeanSquaredError, percentageOfAbsoluteError, adj_r_squared = get_errors(best_h[method],
         best_c[method], method, y_prediction[method], historical_y_test[method])
@@ -413,7 +448,7 @@ def main(maxHistory):
         result.to_csv(test_address + method + '.csv')
     table_name = 'non-mixed methods best results'
     plot_table(table_data, columns_table, table_name)
-
+    push('a new table added')
     # generate data for non-mixed methods with the best h and c of mixed models and fit mixed models on them
     # (with the whole training set)
     y_predictions = {'MM_LR': [], 'MM_NN': []}
@@ -442,8 +477,11 @@ def main(maxHistory):
         y_train_MM_dict[mixed_method] = y_train_MM
         y_test_MM_dict[mixed_method] = y_test_MM
     # save the entire session
-    filename = env_address + 'test.pkl'
-    dill.dump_session(filename)
+    filename = env_address + 'test.out'
+    # dill.dump_session(filename)
+    my_shelf = shelve.open(filename, 'n')  # 'n' for new
+    for key in dir():
+        my_shelf[key] = locals()[key]
     # mixed model with linear regression and neural network
     y_prediction['MM_LR'], y_prediction['MM_NN'] = run_mixed_models(X_train_MM_dict, X_test_MM_dict, y_train_MM_dict, y_test_MM_dict)
     for mixed_method in mixed_methods:
@@ -456,17 +494,20 @@ def main(maxHistory):
         result['absolute_error'] = abs(y_test_MM_dict[mixed_method] - y_prediction[mixed_method])
         result.to_csv(test_address + mixed_method + '.csv')
     # save the entire session
-    filename = env_address + 'test.pkl'
-    dill.dump_session(filename)
+    filename = env_address + 'test.out'
+    # dill.dump_session(filename)
+    my_shelf = shelve.open(filename, 'n')  # 'n' for new
+    for key in dir():
+        my_shelf[key] = locals()[key]
     table_name = 'mixed methods best results'
     plot_table(table_data, columns_table, table_name)
-    push()
+    push('a new table added')
 
 
 if __name__ == "__main__":
 
     begin = time.time()
-    maxHistory = 14
+    maxHistory = 2
     # make directories for saving the results
     validation_address = str(argv[1]) + '/results/counties=' + str(numberOfSelectedCounties) + ' max_history=' + str(maxHistory) + '/validation/'
     test_address = str(argv[1]) + '/results/counties=' + str(numberOfSelectedCounties) + ' max_history=' + str(maxHistory) + '/test/'
