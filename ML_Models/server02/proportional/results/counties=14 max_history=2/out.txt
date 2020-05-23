@@ -6,3 +6,7 @@ Mean Absolute Error of  GLM  for h = 1 and #covariates = 1 : 6.1503
 Percentage of Absolute Error of  GLM  for h = 1 and #covariates = 1 : 285.1126
 Root Mean Squared Error of  GLM  for h = 1 and #covariates = 1 : 15.6645
 Adjusted R Squared Error of  GLM  for h = 1 and #covariates = 1 : -17.1882
+Mean Absolute Error of  KNN  for h = 1 and #covariates = 1 : 2.0568
+Percentage of Absolute Error of  KNN  for h = 1 and #covariates = 1 : 95.3477
+Root Mean Squared Error of  KNN  for h = 1 and #covariates = 1 : 3.6417
+Adjusted R Squared Error of  KNN  for h = 1 and #covariates = 1 : 0.0170
