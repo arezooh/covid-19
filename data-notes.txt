@@ -54,13 +54,22 @@ fixed-data.csv:
 		party:
 				Party for each state (set to 0 for republican & 1 for democratic)
 				Source: https://en.wikipedia.org/wiki/List_of_United_States_governors
+		total_county_test:
+				total number of test performed in each county
+				Source: https://github.com/kristydahl/covid-19/blob/master/covid_tests_data_UCS.csv
+		airport_distance:
+				distance to nearest international airport with average daily passenger load more than 10
+				Source: https://catalog.data.gov/dataset/airports & https://openflights.org/data.html
+		passenger_load:
+				average daily passenger load of nearest international airport
+				Source: https://data.transportation.gov/Aviation/International_Report_Passengers/xgub-n9bw
 		
 
 
 
 temporal-data.csv:
 
-    	weather_data:
+    		weather_data:
 				source: https://www.ncdc.noaa.gov/cdo-web/datatools/selectlocation
 				We find stations once from source page, then we used them and API to gather weather data
 				API page: https://www.ncei.noaa.gov/support/access-data-service-api-user-documentation
@@ -86,4 +95,6 @@ temporal-data.csv:
 				source: https://www.flightradar24.com/31.11,-95.18/4 , 
 				api: https://data-live.flightradar24.com/zones/fcgi/feed.js?bounds=51.70,0.51,-139.20,-51.16&faa=1&satellite=1&mlat=1&flarm=1&adsb=1&gnd=1&air=1&vehicles=1&estimated=1&maxage=14400&gliders=1&stats=1
 
-			
+		daily-country-test-per-1000:
+				number of test performed in country per 1000 people in each day
+				Source: https://covidtracking.com/api
