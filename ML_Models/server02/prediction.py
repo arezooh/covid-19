@@ -263,7 +263,6 @@ def get_errors(h, c, method, y_prediction, y_test):
 
     sys.stdout = orig_stdout
     f.close()
-    push('logs of h='+str(h)+',c='+str(c)+ ', method=' +str(method)+' added')
     return meanAbsoluteError, rootMeanSquaredError, percentageOfAbsoluteError, adj_r_squared
 
 
