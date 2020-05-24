@@ -26,11 +26,19 @@ if __name__ == "__main__":
 
 
     #       |--Use these two lines to get all stations--|
-    mediumObject = medium.mediumClass()
-    mediumObject.downloadHandler.get_allStations('stations.csv')
+    # mediumObject = medium.mediumClass()
+    # mediumObject.downloadHandler.get_allStations('stations.csv')
     #       |--|
 
 
     #       |--Use this line to test merging two temporalDataFile: 'confirmAndDeath.csv' and 'socialDistancing.csv'--|
+    # mediumObject = medium.mediumClass()
     # mediumObject.csvHandler.merge_csvFiles_addColumns('confirmAndDeath.csv', 'socialDistancing.csv', 'temporal-data.csv', ['countyFIPS', 'date'], ['countyFips', 'date'], ['totalGrade', 'visitationGrade', 'encountersGrade', 'travelDistanceGrade'])
     #       |--|
+
+    # mediumObject = medium.mediumClass()
+    # mediumObject.downloadHandler.get_countyWeatherData('1001', 'USW00093228', '2020-05-02', '2020-05-04', 'test.csv')
+    # mediumObject.generate_allWeatherData('2020-05-04', '2020-05-04')
+
+    mediumObject = medium.mediumClass()
+    mediumObject.downloadHandler.get_airlines()
