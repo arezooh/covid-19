@@ -4,7 +4,7 @@ import numpy as np
 # h is the number of days before day (t)
 # r indicates how many days after day (t) --> target-day = day(t+r)
 # target could be number of deaths or number of confirmed 
-def makeHistoricalData(h, r, target,feature_selection):
+def makeHistoricalData(h, r, target, feature_selection):
         ''' in this code when h is 1, it means there is no history and we have just one column for each covariate
         so when h is 0, we put h equal to 1, because when h is 0 that means there no history (as when h is 1) '''
         if h == 0:
