@@ -328,9 +328,9 @@ def get_errors(h, c, method, y_prediction, y_test_date, mode):
     #percentageOfAbsoluteError = (sumOfAbsoluteError / sum(y_test)) * 100
     # we change zero targets into 1 and add 1 to their predictions
     y_test_temp = y_test
-    y_test_temp[y_test_temp == 0] = 1
+    y_test_temp[y_test == 0] = 1
     y_prediction_temp = y_prediction
-    y_prediction_temp[y_test_temp == 0] += 1
+    y_prediction_temp[y_test == 0] += 1
     meanPercentageOfAbsoluteError = sum((abs(y_prediction_temp - y_test_temp) / y_test_temp) * 100) / len(y_test)
     print("Mean Percentage of Absolute Error of ", method, " for h =", h, "and #covariates =", c,
           ": %.2f" % meanPercentageOfAbsoluteError)
@@ -364,9 +364,9 @@ def get_errors(h, c, method, y_prediction, y_test_date, mode):
         dataframe['error'] = y_prediction - y_test
         dataframe['absoulte_error'] = abs(y_prediction - y_test)
         y_test_temp = y_test
-        y_test_temp[y_test_temp == 0] = 1
+        y_test_temp[y_test == 0] = 1
         y_prediction_temp = y_prediction
-        y_prediction_temp[y_test_temp == 0] += 1
+        y_prediction_temp[y_test == 0] += 1
         dataframe['percentage_error'] = ((abs(y_prediction_temp - y_test_temp)) / y_test_temp) * 100
         second_error = (sum(dataframe['error']) / sum(y_test)) * 100
         dataframe.to_csv(all_errors_address + 'all_errors_' + str(method) + '.csv')
