@@ -316,7 +316,7 @@ def get_errors(h, c, method, y_prediction, y_test_date, mode):
     f = open(env_address+'out.txt', 'a')
     sys.stdout = f
 
-    # if mode == 'val': y_test_date would be an np.array with the target date
+    # if mode == 'val': y_test_date would be an np.array with the target 
     # if mode == 'test': y_test_date would be a dataframe with columns ['date of day t', 'county_name', 'Target']
     y_test = y_test_date
     if mode == 'test':  # use the 'Target' column for computing main errors
