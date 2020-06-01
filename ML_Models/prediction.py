@@ -316,7 +316,7 @@ def get_errors(h, c, method, y_prediction, y_test_date, mode):
     f = open(env_address+'out.txt', 'a')
     sys.stdout = f
 
-    # if mode == 'val': y_test_date would be an np.array with the target date
+    # if mode == 'val': y_test_date would be an np.array with the target 
     # if mode == 'test': y_test_date would be a dataframe with columns ['date of day t', 'county_name', 'Target']
     y_test = y_test_date
     if mode == 'test':  # use the 'Target' column for computing main errors
@@ -327,9 +327,9 @@ def get_errors(h, c, method, y_prediction, y_test_date, mode):
     #sumOfAbsoluteError = sum(abs(y_test - y_prediction))
     #percentageOfAbsoluteError = (sumOfAbsoluteError / sum(y_test)) * 100
     # we change zero targets into 1 and add 1 to their predictions
-    y_test_temp = y_test
+    y_test_temp = y_test.copy()
     y_test_temp[y_test == 0] = 1
-    y_prediction_temp = y_prediction
+    y_prediction_temp = y_prediction.copy()
     y_prediction_temp[y_test == 0] += 1
     meanPercentageOfAbsoluteError = sum((abs(y_prediction_temp - y_test_temp) / y_test_temp) * 100) / len(y_test)
     print("Mean Percentage of Absolute Error of ", method, " for h =", h, "and #covariates =", c,
@@ -363,9 +363,9 @@ def get_errors(h, c, method, y_prediction, y_test_date, mode):
         dataframe['prediction'] = y_prediction
         dataframe['error'] = y_prediction - y_test
         dataframe['absoulte_error'] = abs(y_prediction - y_test)
-        y_test_temp = y_test
+        y_test_temp = y_test.copy()
         y_test_temp[y_test == 0] = 1
-        y_prediction_temp = y_prediction
+        y_prediction_temp = y_prediction.copy()
         y_prediction_temp[y_test == 0] += 1
         dataframe['percentage_error'] = ((abs(y_prediction_temp - y_test_temp)) / y_test_temp) * 100
         second_error = (sum(dataframe['error']) / sum(y_test)) * 100
