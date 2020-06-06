@@ -726,7 +726,7 @@ def main(maxHistory):
         my_shelf.close()
 
         # push the file of outputs
-        #push('logs of h=' + str(h) + ' added')
+        push('logs of h=' + str(h) + ' added')
     # plot table for best results
     table_data = []
     for method in methods:
@@ -745,7 +745,7 @@ def main(maxHistory):
     zip_file_name = 'validation results for h =' + str(maxHistory) + ' #counties=' + str(numberOfSelectedCounties)
     make_zip(selected_for_email, zip_file_name)
     send_email(zip_file_name + '.zip')
-    #push('plots added')
+    push('plots added')
     #################################################################################################################
 
     y_prediction = {}
@@ -767,7 +767,7 @@ def main(maxHistory):
         table_data.append([best_h[method]['MAPE'], best_c[method]['MAPE'],  round(meanAbsoluteError, 2),
                            round(percentageOfAbsoluteError, 2), round(adj_r_squared, 2), round(second_error, 2), round(meanAbsoluteScaledError, 2)])
 
-    #push('a new table added')
+    push('a new table added')
     # generate data for non-mixed methods with the best h and c of mixed models and fit mixed models on them
     # (with the whole training set)
     y_predictions = {'MM_LR': [], 'MM_NN': []}
@@ -848,7 +848,7 @@ def main(maxHistory):
 
     table_name = 'table_of_best_test_results'
     plot_table(table_data, columns_table_t, methods, table_name, mode='test')
-    #push('a new table added')
+    push('a new table added')
     # mail the test results
     selected_for_email = [test_address + '/tables', test_address + '/all_errors/NN', test_address + '/all_errors/KNN']
     zip_file_name = 'test results for h =' + str(maxHistory) + ' #counties=' + str(numberOfSelectedCounties)
@@ -884,9 +884,9 @@ if __name__ == "__main__":
         os.makedirs(validation_address)
     if not os.path.exists(env_address):
         os.makedirs(env_address)
-    #push('new folders added')
+    push('new folders added')
     models_to_log = ['NN', 'GLM', 'GBM'] # models we want to make the features logarithmic for them, we remove KNN
     main(maxHistory)
     end = time.time()
-    #push('final results added')
+    push('final results added')
     print("The total time of execution in minutes: ", round((end - begin) / 60, 2))
