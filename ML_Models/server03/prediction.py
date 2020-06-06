@@ -30,7 +30,7 @@ import shelve
 
 
 r = 14  # the following day to predict
-numberOfSelectedCounties = 5
+numberOfSelectedCounties = 2338
 
 
 ######################################################### split data to train, val, test
@@ -477,8 +477,8 @@ def send_email(*attachments):
     subject = "Server results"
     body = " "
     sender_email = "covidserver1@gmail.com"
-    receiver_email = ["marmegh@gmail.com"]#"arezo.h1371@yahoo.com",
-    CC_email = []#"p.ramazi@gmail.com"
+    receiver_email = ["arezo.h1371@yahoo.com", "marmegh@gmail.com"]#
+    CC_email = ["p.ramazi@gmail.com"]#
     password = "S.123456.S"
     
     # Create a multipart message and set headers
@@ -869,7 +869,7 @@ def main(maxHistory):
 if __name__ == "__main__":
 
     begin = time.time()
-    maxHistory = 2
+    maxHistory = 14
     # make directories for saving the results
     validation_address = str(argv[1]) + 'results/counties=' + str(numberOfSelectedCounties) + ' max_history=' + str(maxHistory) + '/validation/'
     test_address = str(argv[1]) + 'results/counties=' + str(numberOfSelectedCounties) + ' max_history=' + str(maxHistory) + '/test/'
