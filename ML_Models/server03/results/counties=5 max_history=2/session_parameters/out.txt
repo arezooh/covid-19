@@ -2662,3 +2662,27 @@ Root Mean Squared Error of  MM_NN  for h = 2 and #covariates = 37 : 3.05
 Adjusted R Squared Error of  MM_NN  for h = 2 and #covariates = 37 : -1.25
 MASE Error of  MM_NN  for h = 2 and #covariates = 37 : 0.99
 -----------------------------------------------------------------------------------------
+Mean Absolute Error of  GBM  for h = 1 and #covariates = 36 : 1.44
+Percentage of Absolute Error of  GBM  for h = 1 and #covariates = 36 : 88.60
+Root Mean Squared Error of  GBM  for h = 1 and #covariates = 36 : 2.10
+Adjusted R Squared Error of  GBM  for h = 1 and #covariates = 36 : -1.06
+MASE Error of  GBM  for h = 1 and #covariates = 36 : 1.00
+-----------------------------------------------------------------------------------------
+Mean Absolute Error of  GLM  for h = 1 and #covariates = 2 : 1.90
+Percentage of Absolute Error of  GLM  for h = 1 and #covariates = 2 : 116.67
+Root Mean Squared Error of  GLM  for h = 1 and #covariates = 2 : 3.54
+Adjusted R Squared Error of  GLM  for h = 1 and #covariates = 2 : -1.88
+MASE Error of  GLM  for h = 1 and #covariates = 2 : 1.32
+-----------------------------------------------------------------------------------------
+Mean Absolute Error of  KNN  for h = 1 and #covariates = 12 : 1.29
+Percentage of Absolute Error of  KNN  for h = 1 and #covariates = 12 : 78.95
+Root Mean Squared Error of  KNN  for h = 1 and #covariates = 12 : 1.87
+Adjusted R Squared Error of  KNN  for h = 1 and #covariates = 12 : 0.05
+MASE Error of  KNN  for h = 1 and #covariates = 12 : 0.89
+-----------------------------------------------------------------------------------------
+Mean Absolute Error of  NN  for h = 1 and #covariates = 11 : 1.57
+Percentage of Absolute Error of  NN  for h = 1 and #covariates = 11 : 96.49
+Root Mean Squared Error of  NN  for h = 1 and #covariates = 11 : 2.52
+Adjusted R Squared Error of  NN  for h = 1 and #covariates = 11 : -0.69
+MASE Error of  NN  for h = 1 and #covariates = 11 : 1.09
+-----------------------------------------------------------------------------------------
