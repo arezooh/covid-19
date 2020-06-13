@@ -6,19 +6,18 @@ import datetime
 import time
 import pandas as pd
 
-import tensorflow as tf
-from tensorflow import keras
-from tensorflow.keras import layers
+# import tensorflow as tf
+# from tensorflow import keras
+# from tensorflow.keras import layers
 
 _CSV_Directory_ = ''
 _JSON_Directory_ = ''
 
-testDay = date.fromisoformat('2020-01-22')
-trainDay = date.fromisoformat('2020-05-03')
+startDay = date.fromisoformat('2020-01-22')
 endDay = date.fromisoformat('2020-05-04')
-dayLen = 108
-dtrain = []
-dtest = []
+dayLen = (endDay - startDay).days
+dataTrain = []
+dataTest = []
 
 input_shape = [0, 0, 0, 0]
 
@@ -90,42 +89,19 @@ def binary_search(countiesData, target_fips, target_date):
         if (r == l):
             return -1
 
+def calculateGridData(counties, countiesData):
+    gridCell = 0
+    for county in counties:
+        index = binary_search(countiesData, county['fips'], (startDay + timedelta(days=i)).isoformat())
+        if (index != -1):
+            gridCell += round(float(countiesData[index]['confirmed']) * county['percent'])     
+
+    return [gridCell]
+
+
 if __name__ == "__main__":
     gridIntersection = loadIntersection('map_intersection_1.json')
     countiesData = loadCounties('full-temporal-data.csv')
-
-    # ################################################################ creating image array(CNN input)
-
-    # # each row on imageArray include image data on day i
-    # imageArray = []
-
-    # start_time = time.time()
-    # for i in range(dayLen):
-    #     grid = []
-    #     for x in range(len(gridIntersection)):
-    #         gridRow = []
-    #         for y in range(len(gridIntersection[x])):
-    #             gridCell = 0
-    #             for county in gridIntersection[x][y]:
-    #                 countyConfirmed = 0
-    #                 for row in countiesData:
-    #                     if (county['fips'] == int(row['county_fips'], 10) and dayComp(testDay, i, row['date'])):
-    #                         countyConfirmed = round(float(row['confirmed']) * county['percent'])
-    #                         break
-    #                 gridCell += countyConfirmed
-    #             gridRow.append([gridCell])
-    #         grid.append(gridRow)
-    #     imageArray.append(grid)
-
-    # for i in range(len(imageArray)):
-    #     print("day " + str(i))
-    #     for x in range(len(imageArray[i])):
-    #         for y in range(len(imageArray[i][x])):
-    #             print(imageArray[i][x][y], end='')
-    #         print('')
-    #     print('')
-
-    # print('\t|Execution time: {0}'.format(time.time() - start_time))
 
     ################################################################ creating image array(CNN input) ### Binary Search
 
@@ -138,15 +114,12 @@ if __name__ == "__main__":
         for x in range(len(gridIntersection)):
             gridRow = []
             for y in range(len(gridIntersection[x])):
-                gridCell = 0
-                for county in gridIntersection[x][y]:
-                    index = binary_search(countiesData, county['fips'], (testDay + timedelta(days=i)).isoformat())
-                    if (index != -1):
-                        gridCell += round(float(countiesData[index]['confirmed']) * county['percent'])                        
-                gridRow.append([gridCell])
+                gridCell = calculateGridData(gridIntersection[x][y], countiesData)
+                gridRow.append(gridCell)
             grid.append(gridRow)
         imageArray.append(grid)
 
+    # Show data
     for i in range(len(imageArray)):
         print("day " + str(i))
         for x in range(len(imageArray[i])):
@@ -157,21 +130,28 @@ if __name__ == "__main__":
 
     print('\t|Execution time: {0}'.format(time.time() - start_time))
 
-    ################################################################ split imageArray into train Data(dtrain) and test Data(dtest)
+    ################################################################ split imageArray into train Data(dataTrain) and test Data(dataTest)
 
     input_shape = [dayLen - 14, len(gridIntersection), len(gridIntersection[0]), 1]
-    dtrain = imageArray[:-14]
-    dtest = imageArray[-14:]
+    dataTrain = imageArray[:-14]
+    dataTest = imageArray[-28:]
+
+    # x_dataTrain = dataTrain[:-14]
+    # y_dataTrain = dataTrain[14:]
+
+    # x_dataTest = dataTest[:-14]
+    # y_dataTest = dataTest[14:]
 
     # Clear memory
     gridIntersection.clear()
     countiesData.clear()
+    imageArray.clear()
 
-    # ################################################################ init model
-    model = keras.Sequential()
-    # # Conv2D parameters: filters, kernel_size, activation, input_shape
-    model.add(tf.keras.layers.Conv2D(16, (3, 3), activation='relu', input_shape=input_shape))
-    model.add(tf.keras.layers.MaxPooling2D(2,2))
-    # model.add(keras.input(shape=(len(imageArray), len(imageArray[0]), len(imageArray[0][0]), len(imageArray[0][0][0]))))
-    # model.add(layers.Dense(len(imageArray) * len(imageArray[0]) * len(imageArray[0][0]) * len(imageArray[0][0][0]))))
-    # model.add()
+    # # ################################################################ init model
+    # model = keras.Sequential()
+    # # # Conv2D parameters: filters, kernel_size, activation, input_shape
+    # model.add(tf.keras.layers.Conv2D(16, (3, 3), activation='relu', input_shape=input_shape))
+    # model.add(tf.keras.layers.MaxPooling2D(2,2))
+    # # model.add(keras.input(shape=(len(imageArray), len(imageArray[0]), len(imageArray[0][0]), len(imageArray[0][0][0]))))
+    # # model.add(layers.Dense(len(imageArray) * len(imageArray[0]) * len(imageArray[0][0]) * len(imageArray[0][0][0]))))
+    # # model.add()
