@@ -47,7 +47,7 @@ def fromIsotoDataFormat(day):
     return day.strftime('%m/%d/%y')
 
 def binary_search(countiesData, target_fips, target_date):
-    target = (target_fips, datetime.datetime.fromisoformat(target_date))
+    target = (target_fips, date.fromisoformat(target_date))
 
     l = 0
     r = len(countiesData)
@@ -70,6 +70,12 @@ def binary_search(countiesData, target_fips, target_date):
 
         if (r == l):
             return -1
+
+    target_daysFromStart = (target[1] - startDay).days
+    if (target_daysFromStart <= dayLen):
+        return l + target_daysFromStart
+    else:
+        return -1
 
     # Find target day
     while (1):
