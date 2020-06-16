@@ -14,10 +14,11 @@ _CSV_Directory_ = ''
 _JSON_Directory_ = ''
 
 startDay = date.fromisoformat('2020-01-22')
-endDay = date.fromisoformat('2020-05-04')
+endDay = date.fromisoformat('2020-05-08')
 dayLen = (endDay - startDay).days
 dataTrain = []
 dataTest = []
+hashCounties = [-1] * 78031     #78030 is biggest county fips
 
 input_shape = [0, 0, 0, 0]
 
@@ -45,6 +46,11 @@ def dayComp(baseDay, dayCounter, targetDay):
 
 def fromIsotoDataFormat(day):
     return day.strftime('%m/%d/%y')
+
+def init_hashCounties():
+    counties = loadCounties('full-data-county-fips.csv')
+    for i in range(len(counties)):
+        hashCounties[int(counties[i]['county_fips'], 10)] = i
 
 def binary_search(countiesData, target_fips, target_date):
     target = (target_fips, date.fromisoformat(target_date))
@@ -77,28 +83,23 @@ def binary_search(countiesData, target_fips, target_date):
     else:
         return -1
 
-    # Find target day
-    while (1):
-        mid = (r - l) // 2
-        fips = int(countiesData[l + mid]['county_fips'], 10)
-        dataDate = datetime.datetime.strptime(countiesData[l + mid]['date'], '%m/%d/%y')
+def calculateIndex(target_fips, target_date):
+    target = (target_fips, date.fromisoformat(target_date))
 
-        if (fips == target[0] and dataDate == target[1]):
-            return l + mid
+    target_daysFromStart = (target[1] - startDay).days
+    target_countiesFromStart = hashCounties[target[0]]
 
-        elif (fips > target[0] or (fips == target[0] and dataDate > target[1])):
-            r = l + mid
-
-        else:
-            l = l + mid + 1
-
-        if (r == l):
-            return -1
+    if (target_daysFromStart <= dayLen and target_countiesFromStart != -1):
+        index = target_countiesFromStart * (dayLen + 1) + target_daysFromStart
+        return index
+    else:
+        return -1
 
 def calculateGridData(counties, countiesData):
     gridCell = 0
     for county in counties:
-        index = binary_search(countiesData, county['fips'], (startDay + timedelta(days=i)).isoformat())
+        # index = binary_search(countiesData, county['fips'], (startDay + timedelta(days=i)).isoformat())
+        index = calculateIndex(county['fips'], (startDay + timedelta(days=i)).isoformat())
         if (index != -1):
             gridCell += round(float(countiesData[index]['confirmed']) * county['percent'])     
 
@@ -108,6 +109,8 @@ def calculateGridData(counties, countiesData):
 if __name__ == "__main__":
     gridIntersection = loadIntersection('map_intersection_1.json')
     countiesData = loadCounties('full-temporal-data.csv')
+
+    init_hashCounties()
 
     ################################################################ creating image array(CNN input) ### Binary Search
 
@@ -136,22 +139,22 @@ if __name__ == "__main__":
 
     print('\t|Execution time: {0}'.format(time.time() - start_time))
 
-    ################################################################ split imageArray into train Data(dataTrain) and test Data(dataTest)
+    # ################################################################ split imageArray into train Data(dataTrain) and test Data(dataTest)
 
-    input_shape = [dayLen - 14, len(gridIntersection), len(gridIntersection[0]), 1]
-    dataTrain = imageArray[:-14]
-    dataTest = imageArray[-28:]
+    # input_shape = [dayLen - 14, len(gridIntersection), len(gridIntersection[0]), 1]
+    # dataTrain = imageArray[:-14]
+    # dataTest = imageArray[-28:]
 
-    # x_dataTrain = dataTrain[:-14]
-    # y_dataTrain = dataTrain[14:]
+    # # x_dataTrain = dataTrain[:-14]
+    # # y_dataTrain = dataTrain[14:]
 
-    # x_dataTest = dataTest[:-14]
-    # y_dataTest = dataTest[14:]
+    # # x_dataTest = dataTest[:-14]
+    # # y_dataTest = dataTest[14:]
 
-    # Clear memory
-    gridIntersection.clear()
-    countiesData.clear()
-    imageArray.clear()
+    # # Clear memory
+    # gridIntersection.clear()
+    # countiesData.clear()
+    # imageArray.clear()
 
     # # ################################################################ init model
     # model = keras.Sequential()
