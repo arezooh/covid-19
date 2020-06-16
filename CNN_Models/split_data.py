@@ -91,20 +91,36 @@ def calculateIndex(target_fips, target_date):
 
     if (target_daysFromStart <= dayLen and target_countiesFromStart != -1):
         index = target_countiesFromStart * (dayLen + 1) + target_daysFromStart
-        return index
+        return (index, target_countiesFromStart)
     else:
-        return -1
+        return (-1, target_countiesFromStart)
 
 def calculateGridData(counties, countiesData):
-    gridCell = 0
+    confirmed = 0
+    array_virusPressure = []
     for county in counties:
         # index = binary_search(countiesData, county['fips'], (startDay + timedelta(days=i)).isoformat())
-        index = calculateIndex(county['fips'], (startDay + timedelta(days=i)).isoformat())
-        if (index != -1):
-            gridCell += round(float(countiesData[index]['confirmed']) * county['percent'])     
+        index_temporal, index_fix = calculateIndex(county['fips'], (startDay + timedelta(days=i)).isoformat())
+        if (index_temporal != -1):
+            confirmed += round(float(countiesData[index_temporal]['confirmed']) * county['percent'])     
+            array_virusPressure.append((float(countiesData[index_temporal]['virus-pressure']), county['percent']))
 
-    return [gridCell]
+    virusPressure = calculateWeightedAverage(array_virusPressure)
+    return [confirmed, virusPressure]
 
+def calculateWeightedAverage(array):
+    sum_value = 0
+    sum_weight = 0
+
+    for i in array:
+        sum_value += i[0] * i[1]
+        sum_weight += i[1]
+
+    try:
+        average = sum_value / sum_weight
+        return round(average, 2)
+    except:
+        return 0
 
 if __name__ == "__main__":
     gridIntersection = loadIntersection('map_intersection_1.json')
