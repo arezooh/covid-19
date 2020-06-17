@@ -20,6 +20,9 @@ dataTrain = []
 dataTest = []
 hashCounties = [-1] * 78031     #78030 is biggest county fips
 
+countiesData_temporal = {}
+countiesData_fix = {}
+
 input_shape = [0, 0, 0, 0]
 
 def loadIntersection(jsonFilename):
@@ -52,18 +55,19 @@ def init_hashCounties():
     for i in range(len(counties)):
         hashCounties[int(counties[i]['county_fips'], 10)] = i
 
-def binary_search(countiesData, target_fips, target_date):
+def binary_search(target_fips, target_date):
+    global countiesData_temporal
     target = (target_fips, date.fromisoformat(target_date))
 
     l = 0
-    r = len(countiesData)
+    r = len(countiesData_temporal)
 
     # Find first row of target county
     while (1):
         mid = (r - l) // 2
-        fips = int(countiesData[l + mid]['county_fips'], 10)
+        fips = int(countiesData_temporal[l + mid]['county_fips'], 10)
 
-        if (fips == target[0] and l + mid > 0 and int(countiesData[l + mid - 1]['county_fips'], 10) != target[0]):
+        if (fips == target[0] and l + mid > 0 and int(countiesData_temporal[l + mid - 1]['county_fips'], 10) != target[0]):
             l = l + mid
             r = l + 1000
             break
@@ -95,36 +99,38 @@ def calculateIndex(target_fips, target_date):
     else:
         return (-1, target_countiesFromStart)
 
-def calculateGridData(counties, countiesData):
+def calculateGridData(counties):
+    global countiesData_temporal, countiesData_fix
     confirmed = 0
-    array_virusPressure = []
+    death = 0
+    virusPressure = 0
+    virusPressure_weightSum = 0
+    meat_plants = 0
+    social_distancing_visitation_grade = 0
+    social_distancing_visitation_grade_weightSum = 0
     for county in counties:
-        # index = binary_search(countiesData, county['fips'], (startDay + timedelta(days=i)).isoformat())
+        # index = binary_search(countiesData_temporal, county['fips'], (startDay + timedelta(days=i)).isoformat())
         index_temporal, index_fix = calculateIndex(county['fips'], (startDay + timedelta(days=i)).isoformat())
         if (index_temporal != -1):
-            confirmed += round(float(countiesData[index_temporal]['confirmed']) * county['percent'])     
-            array_virusPressure.append((float(countiesData[index_temporal]['virus-pressure']), county['percent']))
+            confirmed += round(float(countiesData_temporal[index_temporal]['confirmed']) * county['percent'])
+            death += round(float(countiesData_temporal[index_temporal]['death']) * county['percent'])
+            meat_plants += round(int(countiesData_fix[index_fix]['meat_plants'], 10) * county['percent'])
+            virusPressure += float(countiesData_temporal[index_temporal]['virus-pressure']) * county['percent']
+            virusPressure_weightSum += county['percent']
+            social_distancing_visitation_grade += float(countiesData_temporal[index_temporal][ 'social-distancing-visitation-grade']) * county['percent']
+            social_distancing_visitation_grade_weightSum += county['percent']
 
-    virusPressure = calculateWeightedAverage(array_virusPressure)
-    return [confirmed, virusPressure]
+    if virusPressure_weightSum != 0:
+        virusPressure /= virusPressure_weightSum
+    if social_distancing_visitation_grade_weightSum != 0:
+        social_distancing_visitation_grade /= social_distancing_visitation_grade_weightSum
 
-def calculateWeightedAverage(array):
-    sum_value = 0
-    sum_weight = 0
-
-    for i in array:
-        sum_value += i[0] * i[1]
-        sum_weight += i[1]
-
-    try:
-        average = sum_value / sum_weight
-        return round(average, 2)
-    except:
-        return 0
+    return [confirmed, round(virusPressure, 2), meat_plants, death, round(social_distancing_visitation_grade, 1)]
 
 if __name__ == "__main__":
     gridIntersection = loadIntersection('map_intersection_1.json')
-    countiesData = loadCounties('full-temporal-data.csv')
+    countiesData_temporal = loadCounties('full-temporal-data.csv')
+    countiesData_fix = loadCounties('full-fixed-data.csv')
 
     init_hashCounties()
 
@@ -139,7 +145,7 @@ if __name__ == "__main__":
         for x in range(len(gridIntersection)):
             gridRow = []
             for y in range(len(gridIntersection[x])):
-                gridCell = calculateGridData(gridIntersection[x][y], countiesData)
+                gridCell = calculateGridData(gridIntersection[x][y])
                 gridRow.append(gridCell)
             grid.append(gridRow)
         imageArray.append(grid)
@@ -169,7 +175,7 @@ if __name__ == "__main__":
 
     # # Clear memory
     # gridIntersection.clear()
-    # countiesData.clear()
+    # countiesData_temporal.clear()
     # imageArray.clear()
 
     # # ################################################################ init model
