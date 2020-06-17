@@ -108,8 +108,16 @@ def calculateGridData(counties):
     meat_plants = 0
     social_distancing_visitation_grade = 0
     social_distancing_visitation_grade_weightSum = 0
+    population = 0
+    area = 0
+    population_density = 0
+    longitude = 0
+    longitude_sum = 0
+    social_distancing_travel_distance_grade = 0
+    social_distancing_travel_distance_grade_weightSum = 0
+    houses = 0
+    houses_density = 0
     for county in counties:
-        # index = binary_search(countiesData_temporal, county['fips'], (startDay + timedelta(days=i)).isoformat())
         index_temporal, index_fix = calculateIndex(county['fips'], (startDay + timedelta(days=i)).isoformat())
         if (index_temporal != -1):
             confirmed += round(float(countiesData_temporal[index_temporal]['confirmed']) * county['percent'])
@@ -119,13 +127,27 @@ def calculateGridData(counties):
             virusPressure_weightSum += county['percent']
             social_distancing_visitation_grade += float(countiesData_temporal[index_temporal][ 'social-distancing-visitation-grade']) * county['percent']
             social_distancing_visitation_grade_weightSum += county['percent']
+            population += round(int(countiesData_fix[index_fix]['total_population'], 10) * county['percent'])
+            area += float(countiesData_fix[index_fix]['area']) * county['percent']
+            longitude += float(countiesData_fix[index_fix]['longitude'])
+            longitude_sum += 1
+            social_distancing_travel_distance_grade += float(countiesData_temporal[index_temporal]['social-distancing-travel-distance-grade']) * county['percent']
+            social_distancing_travel_distance_grade_weightSum += county['percent']
+            houses += float(countiesData_fix[index_fix]['houses_density']) * float(countiesData_fix[index_fix]['area']) * county['percent']
 
     if virusPressure_weightSum != 0:
         virusPressure /= virusPressure_weightSum
     if social_distancing_visitation_grade_weightSum != 0:
         social_distancing_visitation_grade /= social_distancing_visitation_grade_weightSum
+    if area != 0:
+        population_density = round(population / area, 2)
+        houses_density = round(houses / area, 2)
+    if longitude_sum != 0:
+        longitude /= longitude_sum
+    if social_distancing_travel_distance_grade_weightSum != 0:
+        social_distancing_travel_distance_grade /= social_distancing_travel_distance_grade_weightSum
 
-    return [confirmed, round(virusPressure, 2), meat_plants, death, round(social_distancing_visitation_grade, 1)]
+    return [confirmed, round(virusPressure, 2), meat_plants, death, round(social_distancing_visitation_grade, 1), population_density, population, round(longitude, 3), round(social_distancing_travel_distance_grade, 1), houses_density]
 
 if __name__ == "__main__":
     gridIntersection = loadIntersection('map_intersection_1.json')
