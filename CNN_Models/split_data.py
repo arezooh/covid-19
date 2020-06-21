@@ -6,9 +6,12 @@ import datetime
 import time
 import pandas as pd
 
-# import tensorflow as tf
-# from tensorflow import keras
-# from tensorflow.keras import layers
+import tensorflow as tf
+from tensorflow import keras
+from tensorflow.keras import layers
+
+from sklearn.preprocessing import MinMaxScaler
+from numpy import array
 
 _CSV_Directory_ = ''
 _JSON_Directory_ = ''
@@ -149,19 +152,39 @@ def calculateGridData(counties):
 
     return [confirmed, round(virusPressure, 2), meat_plants, death, round(social_distancing_visitation_grade, 1), population_density, population, round(longitude, 3), round(social_distancing_travel_distance_grade, 1), houses_density]
 
+def init_days():
+    global startDay
+    global endDay
+    global dayLen
+    startDay = date.fromisoformat(datetime.datetime.strptime(countiesData_temporal[0]['date'], '%m/%d/%y').strftime('%Y-%m-%d'))
+    endDay = startDay
+    
+    for row in countiesData_temporal:
+        day = date.fromisoformat(datetime.datetime.strptime(row['date'], '%m/%d/%y').strftime('%Y-%m-%d'))
+        if day > endDay:
+            endDay = day
+            dayLen = (endDay - startDay).days
+
+        elif day == startDay and row != countiesData_temporal[0]:
+            break
+
 if __name__ == "__main__":
+    time_mainStart = time.time()
+
     gridIntersection = loadIntersection('map_intersection_1.json')
     countiesData_temporal = loadCounties('full-temporal-data.csv')
     countiesData_fix = loadCounties('full-fixed-data.csv')
 
     init_hashCounties()
+    init_days()
 
     ################################################################ creating image array(CNN input) ### Binary Search
 
+    time_imageCreation = time.time()
+    
     # each row on imageArray include image data on day i
     imageArray = []
 
-    start_time = time.time()
     for i in range(dayLen):
         grid = []
         for x in range(len(gridIntersection)):
@@ -172,16 +195,44 @@ if __name__ == "__main__":
             grid.append(gridRow)
         imageArray.append(grid)
 
+    # # Show data
+    # for i in range(len(imageArray)):
+    #     print("day " + str(i))
+    #     for x in range(len(imageArray[i])):
+    #         for y in range(len(imageArray[i][x])):
+    #             print(imageArray[i][x][y], end='')
+    #         print('')
+    #     print('')
+
+    ################################################################ normalize data
+
+    time_imageNormalization = time.time()
+
+    imageNormal = []
+    shape_imageArray = array(imageArray).shape
+    
+    normalizeObject = MinMaxScaler()
+    imageNormal = normalizeObject.fit_transform(array(imageArray).reshape(shape_imageArray[0] * shape_imageArray[1] * shape_imageArray[2], shape_imageArray[3]))
+    imageNormal = imageNormal.reshape(shape_imageArray[0], shape_imageArray[1], shape_imageArray[2], shape_imageArray[3])
+        
+    time_lap = time.time()
+
     # Show data
-    for i in range(len(imageArray)):
+    for i in range(len(imageNormal)):
         print("day " + str(i))
-        for x in range(len(imageArray[i])):
-            for y in range(len(imageArray[i][x])):
-                print(imageArray[i][x][y], end='')
+        for x in range(len(imageNormal[i])):
+            for y in range(len(imageNormal[i][x])):
+                print(imageNormal[i][x][y], end='')
             print('')
         print('')
 
-    print('\t|Execution time: {0}'.format(time.time() - start_time))
+    ################################################################ print execution time
+        
+    time_endTime = time.time()
+
+    print('\t|Image creation time: {0}'.format(time_imageNormalization - time_imageCreation))
+    print('\t|Image normalization time: {0}'.format(time_lap - time_imageNormalization))
+    print('\t|full execution time: {0}'.format(time_endTime - time_mainStart))
 
     # ################################################################ split imageArray into train Data(dataTrain) and test Data(dataTest)
 
@@ -198,6 +249,7 @@ if __name__ == "__main__":
     # # Clear memory
     # gridIntersection.clear()
     # countiesData_temporal.clear()
+    # countiesData_fix.clear()
     # imageArray.clear()
 
     # # ################################################################ init model
