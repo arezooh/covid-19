@@ -73,7 +73,9 @@ def KNN(X_train, X_test, y_train):
 
     KNeighborsRegressorObject = KNeighborsRegressor()
     # Grid search over different Ks to choose the best one
-    parameters = {'n_neighbors': [80, 90, 100]}#, 120, 130, 140, 150, 160, 170, 180, 190, 200
+    neighbors=np.array([10 ,20 ,40 ,60 ,80, 100, 120, 140, 160, 180, 200])
+    neighbors=neighbors[neighbors<len(X_train)*(4/5)] #4/5 of samples is used as train when cv=5
+    parameters = {'n_neighbors': neighbors}
     GridSearchOnKs = GridSearchCV(KNeighborsRegressorObject, parameters, cv=5)
     GridSearchOnKs.fit(X_train, y_train)
     best_K = GridSearchOnKs.best_params_
