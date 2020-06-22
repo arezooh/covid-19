@@ -655,17 +655,17 @@ def main(maxHistory):
                 negative_features=['temperature']
                 for covar in covariates_names:
                     if (' t' in covar) and (covar.split(' ')[0] not in negative_features):
-                        X_train_train_to_use[method][covar] = np.log(X_train_train_to_use[method][covar] + 1)
-                        X_train_val_to_use[method][covar] = np.log(X_train_val_to_use[method][covar] + 1)
-                        X_test_to_use[method][covar] = np.log(X_test_to_use[method][covar] + 1)
+                        X_train_train_to_use[method][covar] = np.log((X_train_train_to_use[method][covar] + 1).astype(float))
+                        X_train_val_to_use[method][covar] = np.log((X_train_val_to_use[method][covar] + 1).astype(float))
+                        X_test_to_use[method][covar] = np.log((X_test_to_use[method][covar] + 1).astype(float))
 
                 fix_log_list = ['total_population', 'population_density', 'area', 'median_household_income',
                                 'houses_density', 'airport_distance','deaths_per_100000']
                 for covar in fix_log_list:
                     if covar in covariates_names:
-                        X_train_train_to_use[method][covar] = np.log(X_train_train_to_use[method][covar] + 1)
-                        X_train_val_to_use[method][covar] = np.log(X_train_val_to_use[method][covar] + 1)
-                        X_test_to_use[method][covar] = np.log(X_test_to_use[method][covar] + 1)
+                        X_train_train_to_use[method][covar] = np.log((X_train_train_to_use[method][covar] + 1).astype(float))
+                        X_train_val_to_use[method][covar] = np.log((X_train_val_to_use[method][covar] + 1).astype(float))
+                        X_test_to_use[method][covar] = np.log((X_test_to_use[method][covar] + 1).astype(float))
 
         train_val_MASE_denominator, val_test_MASE_denominator[h], train_lag_MASE_denominator = \
             mase_denominator(y_train_train_date, y_train_val_date, y_test_date)
@@ -882,7 +882,7 @@ def main(maxHistory):
         y_test_date_temp = y_test_date[mixed_method]
         y_train[mixed_method] = np.array(y_train_date['Target']).reshape(-1)
         y_test[mixed_method] = np.array(y_test_date_temp['Target']).reshape(-1)
-        covariates_names = list(X_train.columns)
+        mixed_model_covariates_names = list(X_train.columns)
         X_train_to_use = {method: None for method in methods}
         X_test_to_use = {method: None for method in methods}
         for method in none_mixed_methods:
@@ -891,17 +891,17 @@ def main(maxHistory):
             if method in models_to_log:
                 # make temporal and some fixed covariates logarithmic
                 negative_features=['temperature']
-                for covar in covariates_names:
+                for covar in mixed_model_covariates_names:
                     if (' t' in covar) and (covar.split(' ')[0] not in negative_features):
-                        X_train_to_use[method][covar] = np.log(X_train_to_use[method][covar] + 1)
-                        X_test_to_use[method][covar] = np.log(X_test_to_use[method][covar] + 1)
+                        X_train_to_use[method][covar] = np.log((X_train_to_use[method][covar] + 1).astype(float))
+                        X_test_to_use[method][covar] = np.log((X_test_to_use[method][covar] + 1).astype(float))
 
                 fix_log_list = ['total_population', 'population_density', 'area', 'median_household_income',
                                 'houses_density', 'airport_distance','deaths_per_100000']
                 for covar in fix_log_list:
-                    if covar in covariates_names:
-                        X_train_to_use[method][covar] = np.log(X_train_to_use[method][covar] + 1)
-                        X_test_to_use[method][covar] = np.log(X_test_to_use[method][covar] + 1)
+                    if covar in mixed_model_covariates_names:
+                        X_train_to_use[method][covar] = np.log((X_train_to_use[method][covar] + 1).astype(float))
+                        X_test_to_use[method][covar] = np.log((X_test_to_use[method][covar] + 1).astype(float))
 
             X_train_dict[method] = X_train_to_use[method]
             X_test_dict[method] = X_test_to_use[method]
@@ -971,7 +971,7 @@ if __name__ == "__main__":
     begin = time.time()
     maxHistory = 1#######################################
     # make directories for saving the results
-    validation_address = str(argv[1]) +'results/counties=' + str(numberOfSelectedCounties) + ' max_history=' + str(maxHistory) + '/validation/'
+    validation_address = str(argv[1]) + 'results/counties=' + str(numberOfSelectedCounties) + ' max_history=' + str(maxHistory) + '/validation/'
     test_address = str(argv[1]) + 'results/counties=' + str(numberOfSelectedCounties) + ' max_history=' + str(maxHistory) + '/test/'
     env_address = str(argv[1]) + 'results/counties=' + str(numberOfSelectedCounties) + ' max_history=' + str(maxHistory) + '/session_parameters/'
     mail_address = './results/counties=' + str(numberOfSelectedCounties) + ' max_history=' + str(maxHistory) + '/email'

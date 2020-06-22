@@ -1,9 +1,10 @@
 import pandas as pd
 import numpy as np
+from sklearn.impute import SimpleImputer
 
 # h is the number of days before day (t)
 # r indicates how many days after day (t) --> target-day = day(t+r)
-# target could be number of deaths or number of confirmed 
+# target could be number of deaths or number of confirmed
 def makeHistoricalData(h, r, target, feature_selection, mode, address):
     ''' in this code when h is 1, it means there is no history and we have just one column for each covariate
     so when h is 0, we put h equal to 1, because when h is 0 that means there no history (as when h is 1) '''
@@ -16,7 +17,8 @@ def makeHistoricalData(h, r, target, feature_selection, mode, address):
     independantOfTimeData = pd.read_csv(address + 'fixed-data.csv')
     timeDeapandantData = pd.read_csv(address + 'temporal-data.csv')
 
-    timeDeapandantData.loc[timeDeapandantData['daily-state-test']<0,'daily-state-test']=np.NaN #set negative values of daily-state-test feature to impute
+    # impute missing values for tests in first days with min
+    timeDeapandantData.loc[timeDeapandantData['daily-state-test']<0,'daily-state-test']=abs(timeDeapandantData.loc[timeDeapandantData['daily-state-test']<0,'daily-state-test'])
 
     if mode=='country':
 
@@ -37,8 +39,9 @@ def makeHistoricalData(h, r, target, feature_selection, mode, address):
             timeDeapandantData.loc[timeDeapandantData['date']==i,'daily-state-test']=temp[i].tolist()
 
     else:
-        # for state and county mode we just remove days with null in test variable
+        # for state and county mode we just remove first days with null in test variable
         timeDeapandantData=timeDeapandantData[~(pd.isna(timeDeapandantData['daily-state-test']))]
+
 
 
     #Next 12 lines remove counties with all missing values for some features (counties with partly missing values have been imputed)
@@ -143,7 +146,34 @@ def makeHistoricalData(h, r, target, feature_selection, mode, address):
         if i.endswith('t-0'):
             result.rename(columns={i: i[:-2]}, inplace=True)
 
-    return result
+    result=result.sort_values(by=['county_fips','date of day t']).reset_index(drop=True)
+    totalNumberOfDays=len(result['date of day t'].unique())
+    overall_non_zero_index=list()
+    for j,i in enumerate (result['county_fips'].unique()):
+        county_data = result[result['county_fips']==i]#.reset_index(drop=True)
+
+        # we dont use counties with zero values for target variable in all history dates
+        if (county_data[target+' t'].sum()>0):
+            if h==1:
+                # find first row index with non_zero values for target variable in all history dates when history length<7
+                first_non_zero_date_index = county_data[target+' t'].ne(0).idxmax()
+            elif h<7:
+                # find first row index with non_zero values for target variable in all history dates when history length<7
+                first_non_zero_date_index = county_data[target+' t-'+str(h-1)].ne(0).idxmax()
+            else:
+                # find first row index with non_zero values for target variable in 7 last days of history when history length>7
+                first_non_zero_date_index = county_data[target+' t'].ne(0).idxmax()+7
+
+            zero_removed_county_index=[i for i in range(first_non_zero_date_index,totalNumberOfDays*(j+1))]
+            if (len(zero_removed_county_index) >= 3*r):
+                    overall_non_zero_index = overall_non_zero_index+zero_removed_county_index
+
+
+        #     # we choose r days for test and r days for validation so at least we must have r d
+    zero_removed_data=result.loc[overall_non_zero_index,:]
+
+
+    return zero_removed_data
 
 
 def main():
@@ -151,10 +181,11 @@ def main():
     r = 14
     target = 'confirmed'
     feature_selection='mrmr'
+    spatial_mode='country'
     address = './'
-    result = makeHistoricalData(h, r, target, feature_selection, address)
+#     result = makeHistoricalData(h, r, target, feature_selection, spatial_mode, address)
     # Storing the result in a csv file
-    result.to_csv('dataset_h=' + str(h) + '.csv', mode='w', index=False)
+    # result.to_csv('dataset_h=' + str(h) + '.csv', mode='w', index=False)
 
 
 if __name__ == "__main__":
