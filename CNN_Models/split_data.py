@@ -217,14 +217,34 @@ if __name__ == "__main__":
         
     time_lap = time.time()
 
-    # Show data
-    for i in range(len(imageNormal)):
-        print("day " + str(i))
-        for x in range(len(imageNormal[i])):
-            for y in range(len(imageNormal[i][x])):
-                print(imageNormal[i][x][y], end='')
-            print('')
-        print('')
+    # # Show data
+    # for i in range(len(imageNormal)):
+    #     print("day " + str(i))
+    #     for x in range(len(imageNormal[i])):
+    #         for y in range(len(imageNormal[i][x])):
+    #             print(imageNormal[i][x][y], end='')
+    #         print('')
+    #     print('')
+
+    ################################################################ split imageArray into train Data(dataTrain) and test Data(dataTest)
+
+    # dataTrain = imageNormal[:-14]
+    # dataTest = imageNormal[-28:]
+
+    data_shape = (shape_imageArray[1], shape_imageArray[2], shape_imageArray[3])
+
+    x_dataTrain = imageNormal[:-14][:-14]
+    y_dataTrain = imageNormal[:-14][14:]
+
+    x_dataTest = imageNormal[-28:][:-14]
+    y_dataTest = imageNormal[-28:][14:]
+
+    # Clear memory
+    gridIntersection.clear()
+    countiesData_temporal.clear()
+    countiesData_fix.clear()
+    imageArray.clear()
+    # imageNormal.clear()
 
     ################################################################ print execution time
         
@@ -234,29 +254,35 @@ if __name__ == "__main__":
     print('\t|Image normalization time: {0}'.format(time_lap - time_imageNormalization))
     print('\t|full execution time: {0}'.format(time_endTime - time_mainStart))
 
-    # ################################################################ split imageArray into train Data(dataTrain) and test Data(dataTest)
-
-    # input_shape = [dayLen - 14, len(gridIntersection), len(gridIntersection[0]), 1]
-    # dataTrain = imageArray[:-14]
-    # dataTest = imageArray[-28:]
-
-    # # x_dataTrain = dataTrain[:-14]
-    # # y_dataTrain = dataTrain[14:]
-
-    # # x_dataTest = dataTest[:-14]
-    # # y_dataTest = dataTest[14:]
-
-    # # Clear memory
-    # gridIntersection.clear()
-    # countiesData_temporal.clear()
-    # countiesData_fix.clear()
-    # imageArray.clear()
-
-    # # ################################################################ init model
-    # model = keras.Sequential()
-    # # # Conv2D parameters: filters, kernel_size, activation, input_shape
-    # model.add(tf.keras.layers.Conv2D(16, (3, 3), activation='relu', input_shape=input_shape))
+    ################################################################ init model
+    model = keras.Sequential()
+    # Conv2D parameters: filters, kernel_size, activation, input_shape
+    model.add(tf.keras.layers.Conv2D(64, (3, 3), padding='same', activation='relu', input_shape=data_shape))
+    model.add(tf.keras.layers.Conv2D(64, (3, 3), padding='same', activation='relu', input_shape=data_shape))
     # model.add(tf.keras.layers.MaxPooling2D(2,2))
-    # # model.add(keras.input(shape=(len(imageArray), len(imageArray[0]), len(imageArray[0][0]), len(imageArray[0][0][0]))))
-    # # model.add(layers.Dense(len(imageArray) * len(imageArray[0]) * len(imageArray[0][0]) * len(imageArray[0][0][0]))))
-    # # model.add()
+    # model.add(tf.keras.layers.BatchNormalization())
+    # model.add(tf.keras.layers.Dropout(0.25))
+    model.add(tf.keras.layers.Conv2D(128, (3, 3), padding='same', activation='relu', input_shape=data_shape))
+    model.add(tf.keras.layers.Conv2D(128, (3, 3), padding='same', activation='relu', input_shape=data_shape))
+    # model.add(tf.keras.layers.MaxPooling2D(2,2))
+    # model.add(tf.keras.layers.BatchNormalization())
+    # model.add(tf.keras.layers.Dropout(0.25))
+    model.add(tf.keras.layers.Dense(10, activation='softmax'))
+
+    # model.add(tf.keras.layers.Conv2D(32, kernel_size=(3, 3), activation='relu', input_shape=data_shape))
+    # model.add(tf.keras.layers.Conv2D(64, (3, 3), activation='relu'))
+    # model.add(tf.keras.layers.MaxPooling2D(pool_size=(2, 2)))
+    # model.add(tf.keras.layers.Dropout(0.25))
+    # model.add(tf.keras.layers.Dense(128, activation='relu'))
+    # model.add(tf.keras.layers.Dropout(0.5))
+    # model.add(tf.keras.layers.Dense(10, activation='softmax'))
+
+    # model.compile('adam', 'mean_squared_error')
+    model.compile(loss=keras.losses.mean_squared_error,
+              optimizer=keras.optimizers.Adadelta(),
+              metrics=['accuracy'])
+
+    model.fit(x_dataTrain, y_dataTrain, batch_size=32, epochs=10, verbose=1)
+    score = model.evaluate(x_dataTest, y_dataTest, verbose=0)
+    print('Test loss:', score[0])
+    print('Test accuracy:', score[1])
