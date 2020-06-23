@@ -27,7 +27,10 @@ from email.mime.text import MIMEText
 import mimetypes
 import subprocess as cmd
 import shelve
-
+import matplotlib.pyplot as plt
+import random
+import datetime
+plt.rcParams.update({'figure.max_open_warning': 0})
 
 r = 14  # the following day to predict
 numberOfSelectedCounties = 2
@@ -202,7 +205,7 @@ def run_algorithms(X_train_dict, X_val_dict, y_train_dict, y_val_dict, best_loss
 
 ########################################################### run mixed models in parallel
 def run_mixed_models(X_train_MM, X_test_MM, y_train_MM, y_test_MM, best_loss):
-
+  
     from models import GBM, GLM, KNN, NN, MM_GLM
     t1 = time.time()
     loom = ProcessLoom(max_runner_cap=2)
@@ -347,7 +350,43 @@ def box_violin_plot(X, Y, figsizes, fontsizes, name, address):
     sns.violinplot(x=X, y=Y)
     plt.savefig(address + str(name) + 'violinplot.png')
     plt.close()
+########################################################### plot prediction and real values
 
+
+def real_prediction_plot(df,r):
+    
+    address = test_address + 'plots_of_real_prediction_values/'
+    if not os.path.exists(address):
+        os.makedirs(address)
+
+    data=makeHistoricalData(0, r, target_name, 'mrmr', spatial_mode, str(argv[1]))
+    data = data.sort_values(by=['county_fips', 'date of day t'])
+    data = data[(data['county_fips'] <= data['county_fips'].unique()[numberOfSelectedCounties - 1])]
+    data = data.reset_index(drop=True)
+    data = data[['county_name','county_fips','date of day t','Target']]
+    df = pd.concat([data.reset_index(drop=True),df.reset_index(drop=True)],axis=1)
+
+    df['date'] = df['date of day t'].apply(lambda x:datetime.datetime.strptime(x,'%m/%d/%y')+datetime.timedelta(days=r))
+    df['date'] = df['date'].apply(lambda x:datetime.datetime.strftime(x,'%m/%d/%y'))
+
+    counties = [36061]+random.sample(df['county_fips'].unique().tolist(),2) # newyork + two random county
+
+    for method in methods:
+        fig, ax = plt.subplots(figsize=(75,77))
+        for index,county in enumerate(counties):
+
+            plt.subplot(311+index)
+            plt.plot(df.loc[df['county_fips']==county,'date'],df.loc[df['county_fips']==county,method],label='Prediction')
+            plt.plot(df.loc[df['county_fips']==county,'date'],df.loc[df['county_fips']==county,'Target'],label='Real values')
+            plt.xticks(rotation=65)
+            plt.ylabel('Number of confirmed')
+            countyname = df.loc[df['county_fips']==county,'county_name'].unique()
+            if len(countyname)>0 : # it is False when newyork is not in selected counties and make error
+              plt.title(df.loc[df['county_fips']==county,'county_name'].unique()[0])
+            plt.legend()
+        plt.xlabel('Date')
+        plt.savefig(address + str(method) + ' real_prediction_values.jpg')
+        plt.close()
 
 ########################################################### get errors for each model in each h and c
 def get_errors(h, c, method, y_prediction, y_prediction_train, y_test_date, MASE_denominator, mode):
@@ -387,12 +426,12 @@ def get_errors(h, c, method, y_prediction, y_prediction_train, y_test_date, MASE
     r_squared = 1 - (float(SS_Residual)) / SS_Total
     adj_r_squared = 1 - (1 - r_squared) * (len(y_test) - 1) / (len(y_test) - c - 1)
     print("Adjusted R Squared Error of ", method, " for h =", h, "and #covariates =", c, ": %.2f" % adj_r_squared)
-
+    
 
     #################################################################################################### MASE
-
+    
     if cumulative:
-
+        
         # for cumulative data form we need to change MASE error and we need new case data to calclate this error so in next lines we build new case
         # data from cumulative data form
         data_new_case = makeHistoricalData(h, r, target_name, 'mrmr', spatial_mode, str(argv[1]))
@@ -400,12 +439,12 @@ def get_errors(h, c, method, y_prediction, y_prediction_train, y_test_date, MASE
         reverse_dates=data_new_case['date of day t'].unique()[::-1]
         for i,j in enumerate(reverse_dates[1:]):
             data_new_case.loc[data_new_case['date of day t']==reverse_dates[i],target_name+' t']=list(np.array(data_new_case.loc[data_new_case['date of day t']==reverse_dates[i],target_name+' t'])-np.array(data_new_case.loc[data_new_case['date of day t']==j,target_name+' t']))
-
+        
         if mode == 'val':
-
+            
             y_test_val = y_test_date
             X_train_train_new_case, X_train_val_new_case, X_test_new_case, y_train_train_date_new_case, y_train_val_date_new_case, y_test_date_new_case = preprocess(data_new_case, 1)
-
+            
             train_train_new_case=pd.concat([y_train_train_date_new_case.copy().reset_index(drop=True),X_train_train_new_case.copy().reset_index(drop=True)],axis=1)
             train_train_template=train_train_new_case[['date of day t','county_fips']]
             cumul_train_train_predict = train_train_template
@@ -413,12 +452,12 @@ def get_errors(h, c, method, y_prediction, y_prediction_train, y_test_date, MASE
             cumul_train_train_predict.sort_values(by=['date of day t','county_fips'],inplace=True)
             cumul_train_train_predict=cumul_train_train_predict.tail(numberOfSelectedCounties*r)
             cumul_train_train_predict.sort_values(by=['county_fips','date of day t'],inplace=True)
-            for i in range(r):
+            for i in range(r):     
                 X_train_train_new_case_temp = train_train_new_case.copy().sort_values(by=['date of day t','county_fips'])
                 if i==0:
                   X_train_train_new_case_temp = X_train_train_new_case_temp.tail(numberOfSelectedCounties*r)
                 else:
-                  X_train_train_new_case_temp = X_train_train_new_case_temp.iloc[:-(numberOfSelectedCounties*(i)), :].tail(numberOfSelectedCounties*r)
+                  X_train_train_new_case_temp = X_train_train_new_case_temp.iloc[:-(numberOfSelectedCounties*(i)), :].tail(numberOfSelectedCounties*r)   
                 X_train_train_new_case_temp.sort_values(by=['county_fips','date of day t'])
                 cumul_train_train_predict['cumul_train_naive_predict']=list(np.array(cumul_train_train_predict['cumul_train_naive_predict'])+np.array(X_train_train_new_case_temp[target_name+' t']))
             train_val_mase_denom = pd.DataFrame(y_test_date.copy(),columns=['Target'])
@@ -429,9 +468,9 @@ def get_errors(h, c, method, y_prediction, y_prediction_train, y_test_date, MASE
             MASE = MASE_numerator/train_val_MASE_denominator
 
         if mode == 'test':
-
+            
             X_train_new_case, X_test_new_case, y_train_date_new_case, y_test_date_new_case = preprocess(data_new_case, 0)
-
+            
             train_new_case=pd.concat([y_train_date_new_case.copy().reset_index(drop=True),X_train_new_case.copy().reset_index(drop=True)],axis=1)
             train_template=train_new_case[['date of day t','county_fips']]
             cumul_train_predict = train_template
@@ -439,7 +478,7 @@ def get_errors(h, c, method, y_prediction, y_prediction_train, y_test_date, MASE
             cumul_train_predict.sort_values(by=['date of day t','county_fips'],inplace=True)
             cumul_train_predict=cumul_train_predict.tail(numberOfSelectedCounties*r)
             cumul_train_predict.sort_values(by=['county_fips','date of day t'],inplace=True)
-            for i in range(r):
+            for i in range(r):     
                 X_train_new_case_temp = train_new_case.copy().sort_values(by=['date of day t','county_fips'])
                 if i==0:
                   X_train_new_case_temp = X_train_new_case_temp.tail(numberOfSelectedCounties*repr)
@@ -551,7 +590,7 @@ def send_email(*attachments):
     receiver_email = ["arezo.h1371@yahoo.com"]#, "marmegh@gmail.com"
     CC_email = []#"p.ramazi@gmail.com"
     password = "S.123456.S"
-
+    
     # Create a multipart message and set headers
     message = MIMEMultipart()
     message["From"] = sender_email
@@ -621,6 +660,7 @@ def main(maxHistory):
 
     # best_loss = {method: None for method in ['GBM', 'NN', 'MM_NN']}
     best_loss = {'GBM': 'least_squares', 'NN': 'MeanSquaredLogarithmicError', 'MM_NN': 'MeanSquaredLogarithmicError'}
+    df_for_prediction_plot = pd.DataFrame(columns = methods)
 
     columns_table_t = ['best_h', 'best_c', 'mean absolute error', 'percentage of absolute error', 'adjusted R squared error',
                       'second error', 'mean absolute scaled error']  # table columns names
@@ -677,25 +717,25 @@ def main(maxHistory):
         y_train = np.array((pd.DataFrame(y_train_train).append(pd.DataFrame(y_train_val))).reset_index(drop=True)).reshape(-1)
 
 
+        
 
-
-        # find best loss
+        # find best loss    
         # if (h==1):
-        #   best_loss['GBM'] = GBM_grid_search(X_train_train_to_use['GBM'][data.columns.drop(['Target','date of day t','county_fips'])],
+        #   best_loss['GBM'] = GBM_grid_search(X_train_train_to_use['GBM'][data.columns.drop(['Target','date of day t','county_fips'])], 
         #                                      y_train_train , X_train_val_to_use['GBM'][data.columns.drop(['Target','date of day t','county_fips'])],
         #                                      y_train_val)
-        #   best_loss['NN'] = NN_grid_search(X_train_train_to_use['NN'][data.columns.drop(['Target','date of day t','county_fips'])],
+        #   best_loss['NN'] = NN_grid_search(X_train_train_to_use['NN'][data.columns.drop(['Target','date of day t','county_fips'])], 
         #                                      y_train_train , X_train_val_to_use['NN'][data.columns.drop(['Target','date of day t','county_fips'])],
         #                                      y_train_val)
 
-
+        
         covariates_list = []
         # covariates are sorted by their correlation with Target. We start from the first important covariate and
         # in each loop we add the next important one
         # the first covariate is Target, we start from the second one
         # initiate loom for parallel processing
 
-
+        
 
         loom = ProcessLoom(max_runner_cap=len(base_data.columns) * len(none_mixed_methods) + 5)
         indx_c = 0
@@ -705,7 +745,7 @@ def main(maxHistory):
             for covariate in data.columns:  # add all historical covariates of this covariate and create a feature
                 if c.split(' ')[0] in covariate:
                     covariates_list.append(covariate)
-
+            
             for method in none_mixed_methods:
                 X_train_train_temp = X_train_train_to_use[method][covariates_list]
                 X_train_val_temp = X_train_val_to_use[method][covariates_list]
@@ -745,9 +785,9 @@ def main(maxHistory):
                 y_prediction_train_np = np.array(y_predictions_train).reshape(len(y_predictions_train), -1)
                 X_train_mixedModel = pd.DataFrame(y_prediction_train_np.transpose())
 
-
+                
                 # if h==1:
-                #   best_loss['MM_NN'] = NN_grid_search(X_train_mixedModel,
+                #   best_loss['MM_NN'] = NN_grid_search(X_train_mixedModel, 
                 #                             y_train_train , X_test_mixedModel,
                 #                             y_train_val)
 
@@ -867,6 +907,11 @@ def main(maxHistory):
                             round(percentageOfAbsoluteError, 2), round(adj_r_squared, 2), round(second_error, 2), round(meanAbsoluteScaledError, 2)])
 
     push('a new table added')
+
+    for method in none_mixed_methods:
+      prediction=list(y_prediction_train[method])+list(y_prediction[method])
+      df_for_prediction_plot[method]=prediction
+
     # generate data for non-mixed methods with the best h and c of mixed models and fit mixed models on them
     # (with the whole training set)
     y_predictions = {'MM_GLM': [], 'MM_NN': []}
@@ -949,8 +994,16 @@ def main(maxHistory):
     table_name = 'table_of_best_test_results'
     plot_table(table_data, columns_table_t, methods, table_name, mode='test')
     push('a new table added')
+
+    for method in mixed_methods:
+      prediction=list(y_prediction_train[method])+list(y_prediction[method])
+      df_for_prediction_plot[method]=prediction
+
+
+    real_prediction_plot(df_for_prediction_plot,r)
+
     # mail the test results
-    selected_for_email = [test_address + '/tables', test_address + '/all_errors/NN', test_address + '/all_errors/KNN']
+    selected_for_email = [test_address + '/tables', test_address + '/all_errors/NN', test_address + '/all_errors/KNN' , test_address + '/plots_of_real_prediction_values']
     zip_file_name = 'test results for h =' + str(maxHistory) + ' #counties=' + str(numberOfSelectedCounties)
     make_zip(selected_for_email, zip_file_name)
     send_email(zip_file_name + '.zip')
@@ -971,7 +1024,7 @@ if __name__ == "__main__":
     begin = time.time()
     maxHistory = 1#######################################
     # make directories for saving the results
-    validation_address = str(argv[1]) + 'results/counties=' + str(numberOfSelectedCounties) + ' max_history=' + str(maxHistory) + '/validation/'
+    validation_address = str(argv[1])+'results/counties=' + str(numberOfSelectedCounties) + ' max_history=' + str(maxHistory) + '/validation/'
     test_address = str(argv[1]) + 'results/counties=' + str(numberOfSelectedCounties) + ' max_history=' + str(maxHistory) + '/test/'
     env_address = str(argv[1]) + 'results/counties=' + str(numberOfSelectedCounties) + ' max_history=' + str(maxHistory) + '/session_parameters/'
     mail_address = './results/counties=' + str(numberOfSelectedCounties) + ' max_history=' + str(maxHistory) + '/email'
@@ -986,7 +1039,7 @@ if __name__ == "__main__":
         os.makedirs(env_address)
     push('new folders added')
     models_to_log = ['NN', 'GLM', 'GBM'] # models we want to make the features logarithmic for them, we remove KNN
-    main(maxHistory)
+    #main(maxHistory)
     end = time.time()
     push('final results added')
     print("The total time of execution in minutes: ", round((end - begin) / 60, 2))
