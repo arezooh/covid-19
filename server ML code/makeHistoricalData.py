@@ -4,7 +4,7 @@ from sklearn.impute import SimpleImputer
 
 # h is the number of days before day (t)
 # r indicates how many days after day (t) --> target-day = day(t+r)
-# target could be number of deaths or number of confirmed
+# target could be number of deaths or number of confirmed 
 def makeHistoricalData(h, r, target, feature_selection, mode, address):
     ''' in this code when h is 1, it means there is no history and we have just one column for each covariate
     so when h is 0, we put h equal to 1, because when h is 0 that means there no history (as when h is 1) '''
@@ -15,32 +15,32 @@ def makeHistoricalData(h, r, target, feature_selection, mode, address):
     ##################################################################### imputation
 
     independantOfTimeData = pd.read_csv(address + 'fixed-data.csv')
-    timeDeapandantData = pd.read_csv(address + 'temporal-data.csv')
+    timeDeapandantData = pd.read_csv(address + 'newly-temporal-data.csv')
 
     # impute missing values for tests in first days with min
     timeDeapandantData.loc[timeDeapandantData['daily-state-test']<0,'daily-state-test']=abs(timeDeapandantData.loc[timeDeapandantData['daily-state-test']<0,'daily-state-test'])
 
-    if mode=='country':
+#     if mode=='country':
 
-        # Next 3 lines create dataframe contains only daily-state-test to impute this feature
-        temp=pd.DataFrame(index=timeDeapandantData['county_fips'].unique().tolist(),columns=timeDeapandantData['date'].unique().tolist())
-        for i in timeDeapandantData['date'].unique():
-            temp[i]=timeDeapandantData.loc[timeDeapandantData['date']==i,'daily-state-test'].tolist()
+    # Next 3 lines create dataframe contains only daily-state-test to impute this feature
+    temp=pd.DataFrame(index=timeDeapandantData['county_fips'].unique().tolist(),columns=timeDeapandantData['date'].unique().tolist())
+    for i in timeDeapandantData['date'].unique():
+        temp[i]=timeDeapandantData.loc[timeDeapandantData['date']==i,'daily-state-test'].tolist()
 
-        # Next line find min daily-state-test performed in each county for impute first days missing values with min
-        county_min_test=temp.replace(0,np.NaN).T.min()
+    # Next line find min daily-state-test performed in each county for impute first days missing values with min
+    county_min_test=temp.replace(0,np.NaN).T.min()
 
-        # impute missing tests for first days with min test performed in each county
-        for i in temp.columns:
-            temp.loc[pd.isna(temp[i]),i]=county_min_test[pd.isna(temp[i])]
+    # impute missing tests for first days with min test performed in each county
+    for i in temp.columns:
+        temp.loc[pd.isna(temp[i]),i]=county_min_test[pd.isna(temp[i])]
 
-        #replace imputed values in timeDeapandantData
-        for i in timeDeapandantData['date'].unique():
-            timeDeapandantData.loc[timeDeapandantData['date']==i,'daily-state-test']=temp[i].tolist()
+    #replace imputed values in timeDeapandantData
+    for i in timeDeapandantData['date'].unique():
+        timeDeapandantData.loc[timeDeapandantData['date']==i,'daily-state-test']=temp[i].tolist()
 
-    else:
-        # for state and county mode we just remove first days with null in test variable
-        timeDeapandantData=timeDeapandantData[~(pd.isna(timeDeapandantData['daily-state-test']))]
+#     else:
+#         # for state and county mode we just remove first days with null in test variable
+#         timeDeapandantData=timeDeapandantData[~(pd.isna(timeDeapandantData['daily-state-test']))]
 
 
 
@@ -155,19 +155,19 @@ def makeHistoricalData(h, r, target, feature_selection, mode, address):
         # we dont use counties with zero values for target variable in all history dates
         if (county_data[target+' t'].sum()>0):
             if h==1:
-                # find first row index with non_zero values for target variable in all history dates when history length<7
+                # find first row index with non_zero values for target variable in all history dates when history length<7 
                 first_non_zero_date_index = county_data[target+' t'].ne(0).idxmax()
             elif h<7:
-                # find first row index with non_zero values for target variable in all history dates when history length<7
+                # find first row index with non_zero values for target variable in all history dates when history length<7 
                 first_non_zero_date_index = county_data[target+' t-'+str(h-1)].ne(0).idxmax()
             else:
-                # find first row index with non_zero values for target variable in 7 last days of history when history length>7
+                # find first row index with non_zero values for target variable in 7 last days of history when history length>7 
                 first_non_zero_date_index = county_data[target+' t'].ne(0).idxmax()+7
-
+            
             zero_removed_county_index=[i for i in range(first_non_zero_date_index,totalNumberOfDays*(j+1))]
             if (len(zero_removed_county_index) >= 3*r):
                     overall_non_zero_index = overall_non_zero_index+zero_removed_county_index
-
+                    
 
         #     # we choose r days for test and r days for validation so at least we must have r d
     zero_removed_data=result.loc[overall_non_zero_index,:]
