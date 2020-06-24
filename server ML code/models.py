@@ -54,8 +54,8 @@ def GBM(X_train, X_test, y_train, loss):
 
 def GLM(X_train, X_test, y_train):
 
-    Xtrain = sm.add_constant(X_train.values)
-    Xtest = sm.add_constant(X_test.values)
+    Xtrain = sm.add_constant(X_train.values, has_constant='add')
+    Xtest = sm.add_constant(X_test.values, has_constant='add')
     poisson_training_results = sm.ZeroInflatedPoisson(endog=y_train, exog=Xtrain,
                                                       exog_infl=Xtrain, inflation='logit').fit(maxiter=1000)
     y_prediction_train = np.array(np.round(poisson_training_results.predict(Xtrain, exog_infl=Xtrain)))
