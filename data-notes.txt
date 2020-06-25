@@ -63,13 +63,6 @@ fixed-data.csv:
 		passenger_load:
 				average daily passenger load of nearest international airport
 				Source: https://data.transportation.gov/Aviation/International_Report_Passengers/xgub-n9bw
-				
-		confirmed:
-				number of confirmed covid-19 cases
-				Source: https://usafacts.org/visualizations/coronavirus-covid-19-spread-map/
-		death:
-				number of covid-19 deaths
-				Source: https://usafacts.org/visualizations/coronavirus-covid-19-spread-map/
 		
 
 
@@ -105,3 +98,12 @@ temporal-data.csv:
 		daily-country-test-per-1000:
 				number of test performed in country per 1000 people in each day
 				Source: https://covidtracking.com/api
+		daily-state-test:
+				Nummber of tests performed in each state at day t
+				Source:https://covidtracking.com
+		confirmed:
+				number of confirmed covid-19 cases
+				Source: https://usafacts.org/visualizations/coronavirus-covid-19-spread-map/
+		death:
+				number of covid-19 deaths
+				Source: https://usafacts.org/visualizations/coronavirus-covid-19-spread-map/
