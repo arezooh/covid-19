@@ -4,7 +4,7 @@ from sklearn.impute import SimpleImputer
 
 # h is the number of days before day (t)
 # r indicates how many days after day (t) --> target-day = day(t+r)
-# target could be number of deaths or number of confirmed
+# target could be number of deaths or number of confirmed 
 def makeHistoricalData(h, r, target, feature_selection, mode, address):
     ''' in this code when h is 1, it means there is no history and we have just one column for each covariate
     so when h is 0, we put h equal to 1, because when h is 0 that means there no history (as when h is 1) '''
@@ -22,6 +22,7 @@ def makeHistoricalData(h, r, target, feature_selection, mode, address):
 
     if mode=='country':
 
+        # for country mode we impute test variable
         # Next 3 lines create dataframe contains only daily-state-test to impute this feature
         temp=pd.DataFrame(index=timeDeapandantData['county_fips'].unique().tolist(),columns=timeDeapandantData['date'].unique().tolist())
         for i in timeDeapandantData['date'].unique():
@@ -38,9 +39,6 @@ def makeHistoricalData(h, r, target, feature_selection, mode, address):
         for i in timeDeapandantData['date'].unique():
             timeDeapandantData.loc[timeDeapandantData['date']==i,'daily-state-test']=temp[i].tolist()
 
-    else:
-        # for state and county mode we just remove first days with null in test variable
-        timeDeapandantData=timeDeapandantData[~(pd.isna(timeDeapandantData['daily-state-test']))]
 
 
 
@@ -52,7 +50,7 @@ def makeHistoricalData(h, r, target, feature_selection, mode, address):
         timeDeapandantData=timeDeapandantData[~timeDeapandantData['county_fips'].isin(nullind)]
         independantOfTimeData=independantOfTimeData[~independantOfTimeData['county_fips'].isin(nullind)]
 
-    timeDeapandant_features_with_nulls=['social-distancing-travel-distance-grade','social-distancing-visitation-grade',
+    timeDeapandant_features_with_nulls=['social-distancing-travel-distance-grade','social-distancing-total-grade',
                                                 'temperature','precipitation']
 
     for i in timeDeapandant_features_with_nulls:
@@ -146,32 +144,37 @@ def makeHistoricalData(h, r, target, feature_selection, mode, address):
         if i.endswith('t-0'):
             result.rename(columns={i: i[:-2]}, inplace=True)
 
+    result.dropna(inplace=True)
+
     result=result.sort_values(by=['county_fips','date of day t']).reset_index(drop=True)
     totalNumberOfDays=len(result['date of day t'].unique())
+    county_end_index=0
     overall_non_zero_index=list()
-    for j,i in enumerate (result['county_fips'].unique()):
+    for i in result['county_fips'].unique():
         county_data = result[result['county_fips']==i]#.reset_index(drop=True)
+        county_end_index = county_end_index+len(result[result['county_fips']==i])
 
         # we dont use counties with zero values for target variable in all history dates
         if (county_data[target+' t'].sum()>0):
             if h==1:
-                # find first row index with non_zero values for target variable in all history dates when history length<7
+                # find first row index with non_zero values for target variable in all history dates when history length<7 
                 first_non_zero_date_index = county_data[target+' t'].ne(0).idxmax()
             elif h<7:
-                # find first row index with non_zero values for target variable in all history dates when history length<7
+                # find first row index with non_zero values for target variable in all history dates when history length<7 
                 first_non_zero_date_index = county_data[target+' t-'+str(h-1)].ne(0).idxmax()
             else:
-                # find first row index with non_zero values for target variable in 7 last days of history when history length>7
+                # find first row index with non_zero values for target variable in 7 last days of history when history length>7 
                 first_non_zero_date_index = county_data[target+' t'].ne(0).idxmax()+7
 
-            zero_removed_county_index=[i for i in range(first_non_zero_date_index,totalNumberOfDays*(j+1))]
+            zero_removed_county_index=[i for i in range(first_non_zero_date_index,county_end_index)]
+            
+            # we choose r days for test and r days for validation so at least we must have r days for train -> 3*r
             if (len(zero_removed_county_index) >= 3*r):
                     overall_non_zero_index = overall_non_zero_index+zero_removed_county_index
+   
 
-
-        #     # we choose r days for test and r days for validation so at least we must have r d
+    
     zero_removed_data=result.loc[overall_non_zero_index,:]
-
 
     return zero_removed_data
 
