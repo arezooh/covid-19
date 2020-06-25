@@ -89,7 +89,7 @@ temporal-data.csv:
 				Calculated as Sum(0.5 * "confirmed") over neighboring counties at day t
 		severe_cases:
 				number of severe cases in each county at day t
-        sourse: https://public.tableau.com/profile/todd.bellemare#!/vizhome/DefinitiveHCCOVID-19CapacityPredictor/DefinitiveHealthcareCOVID-19CapacityPredictor	
+        			sourse: https://public.tableau.com/profile/todd.bellemare#!/vizhome/DefinitiveHCCOVID-19CapacityPredictor/DefinitiveHealthcareCOVID-19CapacityPredictor	
 
 		airlines-data:
 				source: https://www.flightradar24.com/31.11,-95.18/4 , 
