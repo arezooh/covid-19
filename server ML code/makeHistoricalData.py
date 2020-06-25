@@ -50,7 +50,7 @@ def makeHistoricalData(h, r, target, feature_selection, mode, address):
         timeDeapandantData=timeDeapandantData[~timeDeapandantData['county_fips'].isin(nullind)]
         independantOfTimeData=independantOfTimeData[~independantOfTimeData['county_fips'].isin(nullind)]
 
-    timeDeapandant_features_with_nulls=['social-distancing-travel-distance-grade','social-distancing-visitation-grade',
+    timeDeapandant_features_with_nulls=['social-distancing-travel-distance-grade','social-distancing-total-grade',
                                                 'temperature','precipitation']
 
     for i in timeDeapandant_features_with_nulls:
