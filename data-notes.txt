@@ -63,6 +63,13 @@ fixed-data.csv:
 		passenger_load:
 				average daily passenger load of nearest international airport
 				Source: https://data.transportation.gov/Aviation/International_Report_Passengers/xgub-n9bw
+				
+		confirmed:
+				number of confirmed covid-19 cases
+				Source: https://usafacts.org/visualizations/coronavirus-covid-19-spread-map/
+		death:
+				number of covid-19 deaths
+				Source: https://usafacts.org/visualizations/coronavirus-covid-19-spread-map/
 		
 
 
