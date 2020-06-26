@@ -39,16 +39,37 @@ spatial_mode = 'country'
 
 
 ######################################################### split data to train, val, test
-def splitData(numberOfCounties, main_data, target, offset, j_offset):
+def splitData(numberOfCounties, main_data, target, mode):
 
-    X = pd.DataFrame()
-    y = pd.DataFrame()
-    for i in range(numberOfCounties + 1):
-        j = i * numberOfDays + j_offset
-        X = X.append(main_data.loc[j:j + offset - 1])
-        y = y.append(target.loc[j:j + offset - 1])
+    if mode == 'val':
+      main_data = main_data.sort_values(by=['date of day t' , 'county_fips'])
 
-    return X, y
+      X_train_train = main_data.iloc[:-2*(r*numberOfCounties),:].sort_values(by=['county_fips' , 'date of day t'])
+      X_train_train = X_train_train.drop(['date of day t', 'county_fips'], axis=1)
+      X_train_val = main_data.iloc[-2*(r*numberOfCounties):-(r*numberOfCounties),:].sort_values(by=['county_fips' , 'date of day t'])
+      X_train_val = X_train_val.drop(['date of day t', 'county_fips'], axis=1)
+      X_test = main_data.tail(r*numberOfCounties).sort_values(by=['county_fips' , 'date of day t'])
+      X_test = X_test.drop(['date of day t', 'county_fips'], axis=1)
+
+      y_train_train = target.iloc[:-2*(r*numberOfCounties),:].sort_values(by=['county_fips' , 'date of day t'])
+      y_train_val = target.iloc[-2*(r*numberOfCounties):-(r*numberOfCounties),:].sort_values(by=['county_fips' , 'date of day t'])
+      y_test = target.tail(r*numberOfCounties).sort_values(by=['county_fips' , 'date of day t'])
+
+      return X_train_train , X_train_val , X_test , y_train_train , y_train_val , y_test
+
+    if mode == 'test':
+      main_data = main_data.sort_values(by=['date of day t' , 'county_fips'])
+
+      X_train = main_data.iloc[:-(r*numberOfCounties),:].sort_values(by=['county_fips' , 'date of day t'])
+      X_train = X_train.drop(['date of day t', 'county_fips'], axis=1)
+      X_test = main_data.tail(r*numberOfCounties).sort_values(by=['county_fips' , 'date of day t'])
+      X_test = X_test.drop(['date of day t', 'county_fips'], axis=1)
+
+      y_train = target.iloc[:-(r*numberOfCounties),:].sort_values(by=['county_fips' , 'date of day t'])
+      y_test = target.tail(r*numberOfCounties).sort_values(by=['county_fips' , 'date of day t'])
+
+      return X_train , X_test , y_train , y_test
+
 
 
 ########################################################### clean data
@@ -76,49 +97,20 @@ def clean_data(data, numberOfSelectedCounties):
 def preprocess(main_data, validationFlag):
 
     target = pd.DataFrame(main_data[['date of day t', 'county_fips', 'Target']])
-    main_data = main_data.drop(['Target', 'date of day t', 'county_fips'], axis=1)
+    main_data = main_data.drop(['Target'], axis=1)
     # specify the size of train, validation and test sets
-    test_offset = r
-    val_offset = r
-    train_offset = numberOfDays - (val_offset + test_offset)
     t1 = time.time()
     # produce train, validation and test data in parallel
-    loom = ProcessLoom(max_runner_cap=4)
 
     if validationFlag:     # validationFlag is 1 if we want to have a validation set and 0 otherwise
         # add the functions to the multiprocessing object, loom
-        loom.add_function(splitData, [numberOfSelectedCounties, main_data, target, train_offset, 0], {})
-        loom.add_function(splitData, [numberOfSelectedCounties, main_data, target, val_offset, train_offset], {})
-        loom.add_function(splitData, [numberOfSelectedCounties, main_data, target, test_offset, train_offset + val_offset], {})
-        # run the processes in parallel
-        output = loom.execute()
-        t2 = time.time()
-        #print('total time of data splitting: ', t2 - t1)
 
-        X_train_train = (output[0]['output'][0]).reset_index(drop=True)
-        X_train_val = (output[1]['output'][0]).reset_index(drop=True)
-        X_test = (output[2]['output'][0]).reset_index(drop=True)
-
-        y_train_train = output[0]['output'][1]
-        y_train_val = output[1]['output'][1]
-        y_test = output[2]['output'][1]
-
+        X_train_train , X_train_val , X_test , y_train_train , y_train_val , y_test = splitData(numberOfSelectedCounties, main_data, target,'val')
         return X_train_train, X_train_val, X_test, y_train_train, y_train_val, y_test
 
     else:
-        loom.add_function(splitData, [numberOfSelectedCounties, main_data, target, train_offset + val_offset, 0], {})
-        loom.add_function(splitData, [numberOfSelectedCounties, main_data, target, test_offset, train_offset + val_offset], {})
-        # run the processes in parallel
-        output = loom.execute()
-        t2 = time.time()
-        #print('total time of data splitting: ', t2 - t1)
 
-        X_train = (output[0]['output'][0]).reset_index(drop=True)
-        X_test = (output[1]['output'][0]).reset_index(drop=True)
-
-        y_train = output[0]['output'][1]
-        y_test = output[1]['output'][1]
-
+        X_train , X_test , y_train , y_test = splitData(numberOfSelectedCounties, main_data, target,'test')
         return X_train, X_test, y_train, y_test
 
 
@@ -352,37 +344,44 @@ def box_violin_plot(X, Y, figsizes, fontsizes, name, address):
     plt.close()
 ########################################################### plot prediction and real values
 
-
-def real_prediction_plot(df,r,target_name,methods):
+def real_prediction_plot(df,r,target_name,best_h,methods):
     
     address = test_address + 'plots_of_real_prediction_values/'
     if not os.path.exists(address):
         os.makedirs(address)
 
-    data=makeHistoricalData(0, r, target_name, 'mrmr', spatial_mode, './')
-    data = data.sort_values(by=['county_fips', 'date of day t'])
-    data = data[(data['county_fips'] <= data['county_fips'].unique()[numberOfSelectedCounties - 1])]
-    data = data.reset_index(drop=True)
-    data = data[['county_name','county_fips','date of day t','Target']]
-    df = pd.concat([data.reset_index(drop=True),df.reset_index(drop=True)],axis=1)
-
-    df['date'] = df['date of day t'].apply(lambda x:datetime.datetime.strptime(x,'%m/%d/%y')+datetime.timedelta(days=r))
-    df['date'] = df['date'].apply(lambda x:datetime.datetime.strftime(x,'%m/%d/%y'))
-
-    counties = [36061]+random.sample(df['county_fips'].unique().tolist(),2) # newyork + two random county
-
     for method in methods:
+
+        data=makeHistoricalData(best_h[method]['MAPE'], r, target_name, 'mrmr', spatial_mode, './')
+        data = data.sort_values(by=['county_fips', 'date of day t'])
+        data = data[(data['county_fips'] <= data['county_fips'].unique()[numberOfSelectedCounties - 1])]
+        data = data.reset_index(drop=True)
+        data = data[['county_name','county_fips','date of day t','Target']]
+        data=data.sort_values(by=['date of day t','county_fips'])
+        data_train=data.iloc[:-r*numberOfSelectedCounties,:]
+        data_test=data.tail(r*numberOfSelectedCounties)
+        data_train.sort_values(by=['county_fips','date of day t'],inplace=True)
+        data_test.sort_values(by=['county_fips','date of day t'],inplace=True)
+        data=data_train.append(data_test)
+        df_for_plot = pd.concat([data.reset_index(drop=True),df.reset_index(drop=True)],axis=1)
+
+        df_for_plot['date'] = df_for_plot['date of day t'].apply(lambda x:datetime.datetime.strptime(x,'%m/%d/%y')+datetime.timedelta(days=r))
+        df_for_plot['date'] = df_for_plot['date'].apply(lambda x:datetime.datetime.strftime(x,'%m/%d/%y'))
+
+        counties = [36061]+random.sample(df_for_plot['county_fips'].unique().tolist(),2) # newyork + two random county
+
+
         fig, ax = plt.subplots(figsize=(75,77))
         for index,county in enumerate(counties):
 
             plt.subplot(311+index)
-            plt.plot(df.loc[df['county_fips']==county,'date'],df.loc[df['county_fips']==county,method],label='Prediction')
-            plt.plot(df.loc[df['county_fips']==county,'date'],df.loc[df['county_fips']==county,'Target'],label='Real values')
+            plt.plot(df_for_plot.loc[df_for_plot['county_fips']==county,'date'],df_for_plot.loc[df_for_plot['county_fips']==county,method],label='Prediction')
+            plt.plot(df_for_plot.loc[df_for_plot['county_fips']==county,'date'],df_for_plot.loc[df_for_plot['county_fips']==county,'Target'],label='Real values')
             plt.xticks(rotation=65)
             plt.ylabel('Number of confirmed')
-            countyname = df.loc[df['county_fips']==county,'county_name'].unique()
+            countyname = df_for_plot.loc[df_for_plot['county_fips']==county,'county_name'].unique()
             if len(countyname)>0 : # it is False when newyork is not in selected counties and make error
-              plt.title(df.loc[df['county_fips']==county,'county_name'].unique()[0])
+              plt.title(df_for_plot.loc[df_for_plot['county_fips']==county,'county_name'].unique()[0])
             plt.legend()
         plt.xlabel('Date')
         plt.savefig(address + str(method) + ' real_prediction_values.jpg')
@@ -659,7 +658,7 @@ def main(maxHistory):
     best_c = {method: {error: 0 for error in error_names} for method in methods}
 
     # best_loss = {method: None for method in ['GBM', 'NN', 'MM_NN']}
-    best_loss = {'GBM': 'poisson', 'NN': 'MeanAbsoluteError', 'MM_NN': 'poisson'}
+    best_loss = {'GBM': 'poisson', 'MM_NN': 'poisson', 'NN': 'MeanAbsoluteError'}
     df_for_prediction_plot = pd.DataFrame(columns = methods)
 
     columns_table_t = ['best_h', 'best_c', 'mean absolute error', 'percentage of absolute error', 'adjusted R squared error',
@@ -792,7 +791,7 @@ def main(maxHistory):
           prediction=list(y_prediction_train[method])+list(y_prediction[method])
           df_for_prediction_plot[method]=prediction
 
-        real_prediction_plot(df_for_prediction_plot,r,target_name,methods)
+        real_prediction_plot(df_for_prediction_plot,r,target_name,best_h,methods)
 
         # mail the test results
         selected_for_email = [test_address + '/tables', test_address + '/all_errors/NN', test_address + '/all_errors/KNN' , test_address + '/plots_of_real_prediction_values']
@@ -860,11 +859,11 @@ def main(maxHistory):
         # find best loss    
         # if (h==1):
         #   best_loss['GBM'] = GBM_grid_search(X_train_train_to_use['GBM'][data.columns.drop(['Target','date of day t','county_fips'])], 
-        #                                      y_train_train , X_train_val_to_use['GBM'][data.columns.drop(['Target','date of day t','county_fips'])],
-        #                                      y_train_val)
+        #                                       y_train_train , X_train_val_to_use['GBM'][data.columns.drop(['Target','date of day t','county_fips'])],
+        #                                       y_train_val)
         #   best_loss['NN'] = NN_grid_search(X_train_train_to_use['NN'][data.columns.drop(['Target','date of day t','county_fips'])], 
-        #                                      y_train_train , X_train_val_to_use['NN'][data.columns.drop(['Target','date of day t','county_fips'])],
-        #                                      y_train_val)
+        #                                       y_train_train , X_train_val_to_use['NN'][data.columns.drop(['Target','date of day t','county_fips'])],
+        #                                       y_train_val)
 
         
         covariates_list = []
@@ -890,6 +889,7 @@ def main(maxHistory):
 
                 loom.add_function(parallel_run, [method, X_train_train_temp, X_train_val_temp, y_train_train, y_train_val, best_loss, indx_c])
         # run the processes in parallel
+
         parallel_outputs['non_mixed'] = loom.execute()
         ind = 0
         for c in range(1, numberOfCovariates + 1):
