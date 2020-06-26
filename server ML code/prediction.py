@@ -659,7 +659,7 @@ def main(maxHistory):
     best_c = {method: {error: 0 for error in error_names} for method in methods}
 
     # best_loss = {method: None for method in ['GBM', 'NN', 'MM_NN']}
-    best_loss = {'GBM': 'least_squares', 'NN': 'MeanSquaredLogarithmicError', 'MM_NN': 'MeanSquaredLogarithmicError'}
+    best_loss = {'GBM': 'poisson', 'NN': 'MeanAbsoluteError', 'MM_NN': 'poisson'}
     df_for_prediction_plot = pd.DataFrame(columns = methods)
 
     columns_table_t = ['best_h', 'best_c', 'mean absolute error', 'percentage of absolute error', 'adjusted R squared error',
