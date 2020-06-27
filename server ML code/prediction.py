@@ -810,7 +810,7 @@ def main(maxHistory):
           prediction=list(y_prediction_train[method])+list(y_prediction[method])
           df_for_prediction_plot[method]=prediction
 
-        real_prediction_plot(df_for_prediction_plot,r,target_name,best_h,methods)
+        real_prediction_plot(df_for_prediction_plot,r,target_name,best_h,spatial_mode,methods)
 
         # mail the test results
         selected_for_email = [test_address + '/tables', test_address + '/all_errors/NN', test_address + '/all_errors/KNN' , test_address + '/plots_of_real_prediction_values']
