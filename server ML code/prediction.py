@@ -350,7 +350,7 @@ def box_violin_plot(X, Y, figsizes, fontsizes, name, address):
     plt.close()
 ########################################################### plot prediction and real values
 
-def real_prediction_plot(df,r,target_name,best_h,methods):
+def real_prediction_plot(df,r,target_name,best_h,spatial_mode,methods):
     
     address = test_address + 'plots_of_real_prediction_values/'
     if not os.path.exists(address):
@@ -364,26 +364,39 @@ def real_prediction_plot(df,r,target_name,best_h,methods):
         data = data.reset_index(drop=True)
         data = data[['county_name','county_fips','date of day t','Target']]
         data=data.sort_values(by=['date of day t','county_fips'])
-        data_train=data.iloc[:-r*numberOfSelectedCounties,:]
+        data_train_train=data.iloc[:-2*(r*numberOfSelectedCounties),:]
+        data_train_val=data.iloc[-2*(r*numberOfSelectedCounties):-(r*numberOfSelectedCounties),:]
         data_test=data.tail(r*numberOfSelectedCounties)
-        data_train.sort_values(by=['county_fips','date of day t'],inplace=True)
-        data_test.sort_values(by=['county_fips','date of day t'],inplace=True)
-        data=data_train.append(data_test)
+        if spatial_mode == 'country' :
+            data_train_train=data_train_train.sort_values(by=['county_fips','date of day t'])
+            data_train_val=data_train_val.sort_values(by=['county_fips','date of day t'])
+            data_test=data_test.sort_values(by=['county_fips','date of day t'])
+            data=data_train_train.append(data_train_val)
+            data=data.append(data_test)
+        if spatial_mode == 'county' : 
+            data_train = data_train_train.append(data_train_val)
+            data_train = data_train.sort_values(by=['county_fips','date of day t'])
+            data_test = data_test.sort_values(by=['county_fips','date of day t'])
+            data = data.append(data_test)
         df_for_plot = pd.concat([data.reset_index(drop=True),df.reset_index(drop=True)],axis=1)
 
         df_for_plot['date'] = df_for_plot['date of day t'].apply(lambda x:datetime.datetime.strptime(x,'%m/%d/%y')+datetime.timedelta(days=r))
         df_for_plot['date'] = df_for_plot['date'].apply(lambda x:datetime.datetime.strftime(x,'%m/%d/%y'))
 
-        counties = [36061]+random.sample(df_for_plot['county_fips'].unique().tolist(),2) # newyork + two random county
+        counties = [36061]+random.sample(df_for_plot['county_fips'].unique().tolist(),2) # newyork + two random counties
 
 
-        fig, ax = plt.subplots(figsize=(75,77))
+        fig, ax = plt.subplots(figsize=(75,75))
+        mpl.style.use('default')
+
         for index,county in enumerate(counties):
 
             plt.subplot(311+index)
-            plt.plot(df_for_plot.loc[df_for_plot['county_fips']==county,'date'],df_for_plot.loc[df_for_plot['county_fips']==county,method],label='Prediction')
-            plt.plot(df_for_plot.loc[df_for_plot['county_fips']==county,'date'],df_for_plot.loc[df_for_plot['county_fips']==county,'Target'],label='Real values')
+            plt.rc('font', size=45)
+            plt.plot(df_for_plot.loc[df_for_plot['county_fips']==county,'date'],df_for_plot.loc[df_for_plot['county_fips']==county,method],label='Prediction',linewidth=2.0)
+            plt.plot(df_for_plot.loc[df_for_plot['county_fips']==county,'date'],df_for_plot.loc[df_for_plot['county_fips']==county,'Target'],label='Real values',linewidth=2.0)
             plt.xticks(rotation=65)
+            fig.subplots_adjust(wspace=4)
             plt.ylabel('Number of confirmed')
             countyname = df_for_plot.loc[df_for_plot['county_fips']==county,'county_name'].unique()
             if len(countyname)>0 : # it is False when newyork is not in selected counties and make error
