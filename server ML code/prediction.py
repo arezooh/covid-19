@@ -39,12 +39,14 @@ spatial_mode = 'country'
 
 
 ######################################################### split data to train, val, test
-def splitData(numberOfCounties, main_data, target, mode):
+def splitData(numberOfCounties, main_data, target, spatial_mode, mode ):
+
+    if spatial_mode == 'county':
+      numberOfCounties = 1
 
     if mode == 'val':
       main_data = main_data.sort_values(by=['date of day t' , 'county_fips'])
       target = target.sort_values(by=['date of day t' , 'county_fips'])
-
       X_train_train = main_data.iloc[:-2*(r*numberOfCounties),:].sort_values(by=['county_fips' , 'date of day t'])
       X_train_train = X_train_train.drop(['date of day t', 'county_fips'], axis=1)
       X_train_val = main_data.iloc[-2*(r*numberOfCounties):-(r*numberOfCounties),:].sort_values(by=['county_fips' , 'date of day t'])
@@ -60,7 +62,8 @@ def splitData(numberOfCounties, main_data, target, mode):
 
     if mode == 'test':
       main_data = main_data.sort_values(by=['date of day t' , 'county_fips'])
-
+      target = target.sort_values(by=['date of day t' , 'county_fips'])
+      
       X_train = main_data.iloc[:-(r*numberOfCounties),:].sort_values(by=['county_fips' , 'date of day t'])
       X_train = X_train.drop(['date of day t', 'county_fips'], axis=1)
       X_test = main_data.tail(r*numberOfCounties).sort_values(by=['county_fips' , 'date of day t'])
@@ -95,7 +98,7 @@ def clean_data(data, numberOfSelectedCounties):
 
 
 ########################################################### preprocess
-def preprocess(main_data, validationFlag):
+def preprocess(main_data, spatial_mode, validationFlag):
 
     target = pd.DataFrame(main_data[['date of day t', 'county_fips', 'Target']])
     main_data = main_data.drop(['Target'], axis=1)
@@ -106,13 +109,15 @@ def preprocess(main_data, validationFlag):
     if validationFlag:     # validationFlag is 1 if we want to have a validation set and 0 otherwise
         # add the functions to the multiprocessing object, loom
 
-        X_train_train , X_train_val , X_test , y_train_train , y_train_val , y_test = splitData(numberOfSelectedCounties, main_data, target,'val')
+        X_train_train , X_train_val , X_test , y_train_train , y_train_val , y_test = splitData(numberOfSelectedCounties, main_data, target, spatial_mode,'val')
         return X_train_train, X_train_val, X_test, y_train_train, y_train_val, y_test
 
     else:
 
-        X_train , X_test , y_train , y_test = splitData(numberOfSelectedCounties, main_data, target,'test')
+        X_train , X_test , y_train , y_test = splitData(numberOfSelectedCounties, main_data, target, spatial_mode,'test')
         return X_train, X_test, y_train, y_test
+
+
 
 
 ################################ MASE_denominator
