@@ -43,6 +43,7 @@ def splitData(numberOfCounties, main_data, target, mode):
 
     if mode == 'val':
       main_data = main_data.sort_values(by=['date of day t' , 'county_fips'])
+      target = target.sort_values(by=['date of day t' , 'county_fips'])
 
       X_train_train = main_data.iloc[:-2*(r*numberOfCounties),:].sort_values(by=['county_fips' , 'date of day t'])
       X_train_train = X_train_train.drop(['date of day t', 'county_fips'], axis=1)
