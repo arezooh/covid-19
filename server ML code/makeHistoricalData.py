@@ -245,7 +245,7 @@ def makeHistoricalData(h, r, target, feature_selection, spatial_mode, target_mod
    
 
     
-    zero_removed_data=result.loc[overall_non_zero_index,:]
+    # zero_removed_data=result.loc[overall_non_zero_index,:]
     result=result.reset_index()
     zero_removed_data=result.loc[result['index'].isin(overall_non_zero_index),:]
     zero_removed_data=zero_removed_data.drop(['index'],axis=1)
