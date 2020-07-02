@@ -30,6 +30,8 @@ import shelve
 import matplotlib.pyplot as plt
 import random
 import datetime
+import statistics
+
 plt.rcParams.update({'figure.max_open_warning': 0})
 
 r = 14  # the following day to predict
@@ -298,6 +300,22 @@ def update_best_loss(model_type ,spatial_mode ,county_fips,best_loss,X_train_tra
           best_loss['GBM'],best_loss['NN'] = best_loss_output[0]['output'],best_loss_output[1]['output']
     return best_loss
 
+########################################################### 
+
+def get_best_loss_mode(counties_best_loss_list):
+
+  methods_with_loss=['GBM', 'NN', 'MM_NN']
+  best_loss = {method: None for method in methods_with_loss}
+  for method in methods_with_loss:
+
+    counties_best_loss_array=np.array(counties_best_loss_list[method])
+    # when we choose number_of_selected_counties smaller than number of different losses
+    # some times its not possibel to find mode
+    if len(np.unique(counties_best_loss_array))==len(counties_best_loss_array):
+      best_loss[method] = random.choice(counties_best_loss_list[method])
+    else:
+      best_loss[method] = statistics.mode(counties_best_loss_list[method])
+  return(best_loss)
 
 ########################################################### generate data for best h and c
 def generate_data(h, numberOfCovariates, covariates_names):
@@ -461,7 +479,7 @@ def real_prediction_plot(df,r,target_name,best_h,spatial_mode,methods):
             data_train = data_train_train.append(data_train_val)
             data_train = data_train.sort_values(by=['county_fips','date of day t'])
             data_test = data_test.sort_values(by=['county_fips','date of day t'])
-            data = data.append(data_test)
+            data = data_train.append(data_test)
         df_for_plot = pd.concat([data.reset_index(drop=True),df.reset_index(drop=True)],axis=1)
 
         df_for_plot['date'] = df_for_plot['date of day t'].apply(lambda x:datetime.datetime.strptime(x,'%m/%d/%y')+datetime.timedelta(days=r))
@@ -990,8 +1008,9 @@ def main(maxHistory, maxC):
     minError = {method: {error: int(1e10) for error in error_names} for method in methods}
     best_h = {method: {error: 0 for error in error_names} for method in methods}
     best_c = {method: {error: 0 for error in error_names} for method in methods}
-    best_loss = {'GBM': 'poisson', 'MM_NN': 'poisson', 'NN': 'MeanAbsoluteError'}
-    # best_loss = {method: None for method in ['GBM', 'NN', 'MM_NN']}
+    # best_loss = {'GBM': 'poisson', 'MM_NN': 'poisson', 'NN': 'MeanAbsoluteError'}
+    best_loss = {method: None for method in ['GBM', 'NN', 'MM_NN']}
+    counties_best_loss_list = {method: list() for method in ['GBM', 'NN', 'MM_NN']}
     df_for_prediction_plot = pd.DataFrame(columns = methods)
     columns_table_t = ['best_h', 'best_c', 'mean absolute error', 'percentage of absolute error', 'adjusted R squared error',
                       'second error', 'mean absolute scaled error']
@@ -1056,11 +1075,14 @@ def main(maxHistory, maxC):
             y_test[county_fips] = np.array(y_test_date[county_fips]['Target']).reshape(-1)
             y_train[county_fips] = np.array((pd.DataFrame(y_train_train).append(pd.DataFrame(y_train_val))).reset_index(drop=True)).reshape(-1)
 
-#             find best loss
+            # find best loss
             if (h==1):
               best_loss = update_best_loss('none_mixed_model', spatial_mode ,county_fips,best_loss,X_train_train_to_use,X_train_val_to_use,\
                                           y_train_train,y_train_val,None,None,data.columns.drop(['Target','date of day t','county_fips']),\
                                             numberOfCovariates,maxC)
+              # update list of county losses (mode of this list will be used as best loss)
+              for method in ['GBM', 'NN']:
+                counties_best_loss_list[method].append(best_loss[method])
 
 
             covariates_list = []
@@ -1085,20 +1107,22 @@ def main(maxHistory, maxC):
                     ind += 1
                 if c == maxC:
                     break
-            # filename = env_address + 'validation.out'
-            # my_shelf = shelve.open(filename, 'n')
-            # for key in dir():
-            #     try:
-            #         my_shelf[key] = locals()[key]
-            #     except:
-            #         print('ERROR shelving: {0}'.format(key))
-            # my_shelf.close()
+            filename = env_address + 'validation.out'
+            my_shelf = shelve.open(filename, 'n')
+            for key in dir():
+                try:
+                    my_shelf[key] = locals()[key]
+                except:
+                    print('ERROR shelving: {0}'.format(key))
+            my_shelf.close()
 
-#             find best loss
+            # find best loss
             if h == 1 :
               best_loss = update_best_loss('mixed_model', spatial_mode, county_fips,best_loss,None,None,y_train_train,\
                         y_train_val,y_prediction_train,y_prediction,None,\
                         numberOfCovariates,maxC)
+              # update list of county losses (mode of this list will be used as best loss)
+              counties_best_loss_list['MM_NN'].append(best_loss['MM_NN'])
 
             loom = ProcessLoom(max_runner_cap=len(base_data.columns) * len(mixed_methods) + 5)
             indx_c = 0
@@ -1127,14 +1151,14 @@ def main(maxHistory, maxC):
                     ind += 1
                 if c == maxC:
                     break
-            # filename = env_address + 'validation.out'
-            # my_shelf = shelve.open(filename, 'n')
-            # for key in dir():
-            #     try:
-            #         my_shelf[key] = locals()[key]
-            #     except:
-            #         print('ERROR shelving: {0}'.format(key))
-            # my_shelf.close()
+            filename = env_address + 'validation.out'
+            my_shelf = shelve.open(filename, 'n')
+            for key in dir():
+                try:
+                    my_shelf[key] = locals()[key]
+                except:
+                    print('ERROR shelving: {0}'.format(key))
+            my_shelf.close()
         print("########################################################################################################")
         number_of_improved_methods = 0
         indx_c = 0
@@ -1168,28 +1192,30 @@ def main(maxHistory, maxC):
                             historical_y_test[method] = flatten(data=y_test, state=5)
                             historical_y_train_date[method] = flatten(data=y_train_date, state=4)
                             historical_y_test_date[method] = flatten(data=y_test_date, state=4)
-        # #     # filename = env_address + 'validation.out'
-        # #     # my_shelf = shelve.open(filename, 'n')
-        # #     # for key in dir():
-        # #     #     try:
-        # #     #         my_shelf[key] = locals()[key]
-        # #     #     except:
-        # #     #         print('ERROR shelving: {0}'.format(key))
-        # #     # my_shelf.close()
+            filename = env_address + 'validation.out'
+            my_shelf = shelve.open(filename, 'n')
+            for key in dir():
+                try:
+                    my_shelf[key] = locals()[key]
+                except:
+                    print('ERROR shelving: {0}'.format(key))
+            my_shelf.close()
             if indx_c == maxC:
                 break
-        # # # filename = env_address + 'validation.out'
-        # # # my_shelf = shelve.open(filename, 'n')  # 'n' for new
-        # # # for key in dir():
-        # # #     try:
-        # # #         my_shelf[key] = locals()[key]
-        # # #     except:
-        # # #         print('ERROR shelving: {0}'.format(key))
-        # # # my_shelf.close()
-        # # # push('logs of h=' + str(h) + ' added')
+        if h == 1:
+          best_loss = get_best_loss_mode(counties_best_loss_list)
+        
+        filename = env_address + 'validation.out'
+        my_shelf = shelve.open(filename, 'n')  # 'n' for new
+        for key in dir():
+            try:
+                my_shelf[key] = locals()[key]
+            except:
+                print('ERROR shelving: {0}'.format(key))
+        my_shelf.close()
+        push('logs of h=' + str(h) + ' added')
         if (number_of_improved_methods == 0) or (h == maxHistory//2) :
           print('jump to test process')
-          # for ...
           test_process(h, r, target_name,spatial_mode, target_mode,best_h,best_c,historical_X_train,\
                  historical_X_test, historical_y_train_date, historical_y_test_date, best_loss,\
                  numberOfSelectedCounties, covariates_names, maxHistory, test_address, env_address, mail_address)
