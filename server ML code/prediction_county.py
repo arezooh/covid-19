@@ -737,7 +737,22 @@ def send_email(*attachments):
 
 
 ############################################################ test process
-def test_process():
+def test_process(h, r, target_name,spatial_mode, target_mode,best_h,best_c,historical_X_train,\
+                 historical_X_test, historical_y_train_date, historical_y_test_date, best_loss,\
+                 numberOfSelectedCounties, covariates_names, maxHistory, test_address, env_address, mail_address):
+
+    
+    columns_table_t = ['best_h', 'best_c', 'mean absolute error', 'percentage of absolute error', 'adjusted R squared error',
+                      'second error', 'mean absolute scaled error']
+    columns_table = ['best_h', 'best_c', 'mean absolute error', 'percentage of absolute error',
+                      'adjusted R squared error',
+                      'sum of absolute error', 'mean absolute scaled error']
+    methods = ['GBM', 'GLM', 'KNN', 'NN', 'MM_GLM', 'MM_NN']
+    none_mixed_methods = ['GBM', 'GLM', 'KNN', 'NN']
+    mixed_methods = ['MM_GLM', 'MM_NN']
+
+    train_val_MASE_denominator, val_test_MASE_denominator, train_lag_MASE_denominator = mase_denominator(r, target_name, target_mode)
+    df_for_prediction_plot = pd.DataFrame(columns = methods)
 
     all_data = makeHistoricalData(h, r, target_name, 'mrmr', spatial_mode, target_mode, './')
     all_data = clean_data(all_data, numberOfSelectedCounties)
@@ -753,7 +768,6 @@ def test_process():
 
     for county_fips in all_counties:
 
-
         GBM, GLM, KNN, NN = run_algorithms(historical_X_train, historical_X_test, historical_y_train_date, historical_y_test_date, best_loss, 0, spatial_mode, county_fips)
 
         y_prediction[county_fips]['GBM'], y_prediction_train[county_fips]['GBM'] = GBM
@@ -766,7 +780,7 @@ def test_process():
 
     for method in none_mixed_methods:
         meanAbsoluteError, percentageOfAbsoluteError, adj_r_squared, second_error, meanAbsoluteScaledError = get_errors(best_h[method]['MAPE'],
-        best_c[method]['MAPE'], method, flatten(data=y_prediction, h=h, c=indx_c, method=method, state=6), flatten(data=y_prediction_train, h=h, c=indx_c, method=method, state=6), historical_y_test_date[method], val_test_MASE_denominator,
+        best_c[method]['MAPE'], method, flatten(data=y_prediction, h=h, c=None, method=method, state=6), flatten(data=y_prediction_train, h=h, c=None, method=method, state=6), historical_y_test_date[method], val_test_MASE_denominator,
                                                                                                                         mode='test')
         table_data.append([best_h[method]['MAPE'], best_c[method]['MAPE'],  round(meanAbsoluteError, 2),
                             round(percentageOfAbsoluteError, 2), round(adj_r_squared, 2), round(second_error, 2), round(meanAbsoluteScaledError, 2)])
@@ -774,7 +788,7 @@ def test_process():
     # push('a new table added')
 
     for method in none_mixed_methods:
-      prediction=list(flatten(data=y_prediction_train, h=h, c=indx_c, method=method, state=6))+list(flatten(data=y_prediction, h=h, c=indx_c, method=method, state=6))
+      prediction=list(flatten(data=y_prediction_train, h=h, c=None, method=method, state=6))+list(flatten(data=y_prediction, h=h, c=None, method=method, state=6))
       df_for_prediction_plot[method]=prediction
 
     # generate data for non-mixed methods with the best h and c of mixed models and fit mixed models on them
@@ -882,7 +896,7 @@ def test_process():
     ############################################################################################
     for mixed_method in mixed_methods:
         meanAbsoluteError, percentageOfAbsoluteError, adj_r_squared, second_error, meanAbsoluteScaledError = get_errors(best_h[mixed_method]['MAPE'],
-        best_c[mixed_method]['MAPE'], mixed_method, flatten(data=y_prediction, h=h, c=indx_c, method=mixed_method, state=6), flatten(data=y_prediction_train, h=h, c=indx_c, method=mixed_method, state=6), y_test_date[mixed_method],
+        best_c[mixed_method]['MAPE'], mixed_method, flatten(data=y_prediction, h=h, c=None, method=mixed_method, state=6), flatten(data=y_prediction_train, h=h, c=None, method=mixed_method, state=6), y_test_date[mixed_method],
                                     val_test_MASE_denominator, mode='test')
         table_data.append([best_h[mixed_method]['MAPE'], best_c[mixed_method]['MAPE'], round(meanAbsoluteError, 2), round(percentageOfAbsoluteError, 2),
                             round(adj_r_squared, 2), round(second_error, 2), round(meanAbsoluteScaledError, 2)])
@@ -892,7 +906,7 @@ def test_process():
     # push('a new table added')
 
     for method in mixed_methods:
-      prediction=list(flatten(data=y_prediction_train, h=h, c=indx_c, method=method, state=6))+list(flatten(data=y_prediction, h=h, c=indx_c, method=method, state=6))
+      prediction=list(flatten(data=y_prediction_train, h=h, c=None, method=method, state=6))+list(flatten(data=y_prediction, h=h, c=None, method=method, state=6))
       df_for_prediction_plot[method]=prediction
 
     real_prediction_plot(df_for_prediction_plot,r,target_name,best_h,spatial_mode,methods)
@@ -976,8 +990,8 @@ def main(maxHistory, maxC):
     minError = {method: {error: int(1e10) for error in error_names} for method in methods}
     best_h = {method: {error: 0 for error in error_names} for method in methods}
     best_c = {method: {error: 0 for error in error_names} for method in methods}
-    # best_loss = {'GBM': 'poisson', 'MM_NN': 'poisson', 'NN': 'MeanAbsoluteError'}
-    best_loss = {method: None for method in ['GBM', 'NN', 'MM_NN']}
+    best_loss = {'GBM': 'poisson', 'MM_NN': 'poisson', 'NN': 'MeanAbsoluteError'}
+    # best_loss = {method: None for method in ['GBM', 'NN', 'MM_NN']}
     df_for_prediction_plot = pd.DataFrame(columns = methods)
     columns_table_t = ['best_h', 'best_c', 'mean absolute error', 'percentage of absolute error', 'adjusted R squared error',
                       'second error', 'mean absolute scaled error']
@@ -994,7 +1008,7 @@ def main(maxHistory, maxC):
     X_train_val_to_use = {county_fips: {h: {method: None for method in methods} for h in history} for county_fips in base_data['county_fips'].unique()}
     X_test_to_use = {county_fips: {h: {method: None for method in methods} for h in history} for county_fips in base_data['county_fips'].unique()}
     train_val_MASE_denominator, val_test_MASE_denominator, train_lag_MASE_denominator = mase_denominator(r, target_name, target_mode)
-
+    
     for h in history:
         print("h = ", h)
         all_data = makeHistoricalData(h, r, target_name, 'mrmr', spatial_mode, target_mode, './')
@@ -1042,7 +1056,7 @@ def main(maxHistory, maxC):
             y_test[county_fips] = np.array(y_test_date[county_fips]['Target']).reshape(-1)
             y_train[county_fips] = np.array((pd.DataFrame(y_train_train).append(pd.DataFrame(y_train_val))).reset_index(drop=True)).reshape(-1)
 
-            # find best loss
+            find best loss
             if (h==1):
               best_loss = update_best_loss('none_mixed_model', spatial_mode ,county_fips,best_loss,X_train_train_to_use,X_train_val_to_use,\
                                           y_train_train,y_train_val,None,None,data.columns.drop(['Target','date of day t','county_fips']),\
@@ -1080,7 +1094,7 @@ def main(maxHistory, maxC):
             #         print('ERROR shelving: {0}'.format(key))
             # my_shelf.close()
 
-            # find best loss
+            find best loss
             if h == 1 :
               best_loss = update_best_loss('mixed_model', spatial_mode, county_fips,best_loss,None,None,y_train_train,\
                         y_train_val,y_prediction_train,y_prediction,None,\
@@ -1176,7 +1190,9 @@ def main(maxHistory, maxC):
         if (number_of_improved_methods == 0) or (h == maxHistory//2) :
           print('jump to test process')
           # for ...
-          test_process()
+          test_process(h, r, target_name,spatial_mode, target_mode,best_h,best_c,historical_X_train,\
+                 historical_X_test, historical_y_train_date, historical_y_test_date, best_loss,\
+                 numberOfSelectedCounties, covariates_names, maxHistory, test_address, env_address, mail_address)
 
 
 
@@ -1199,7 +1215,9 @@ def main(maxHistory, maxC):
     make_zip(selected_for_email, zip_file_name)
     send_email(zip_file_name + '.zip')
     push('plots added')
-    test_process()
+    test_process(h, r, target_name,spatial_mode, target_mode,best_h,best_c,historical_X_train,\
+                 historical_X_test, historical_y_train_date, historical_y_test_date, best_loss,\
+                 numberOfSelectedCounties, covariates_names, maxHistory, test_address, env_address, mail_address)
 
     print("y_prediction", y_prediction)
     print("y_val", y_val)
