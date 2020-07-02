@@ -1056,7 +1056,7 @@ def main(maxHistory, maxC):
             y_test[county_fips] = np.array(y_test_date[county_fips]['Target']).reshape(-1)
             y_train[county_fips] = np.array((pd.DataFrame(y_train_train).append(pd.DataFrame(y_train_val))).reset_index(drop=True)).reshape(-1)
 
-            find best loss
+#             find best loss
             if (h==1):
               best_loss = update_best_loss('none_mixed_model', spatial_mode ,county_fips,best_loss,X_train_train_to_use,X_train_val_to_use,\
                                           y_train_train,y_train_val,None,None,data.columns.drop(['Target','date of day t','county_fips']),\
@@ -1094,7 +1094,7 @@ def main(maxHistory, maxC):
             #         print('ERROR shelving: {0}'.format(key))
             # my_shelf.close()
 
-            find best loss
+#             find best loss
             if h == 1 :
               best_loss = update_best_loss('mixed_model', spatial_mode, county_fips,best_loss,None,None,y_train_train,\
                         y_train_val,y_prediction_train,y_prediction,None,\
