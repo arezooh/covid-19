@@ -40,7 +40,7 @@ def makeHistoricalData(h, r, target, feature_selection, spatial_mode, target_mod
             timeDeapandantData.loc[timeDeapandantData['date']==i,'daily-state-test']=temp[i].tolist()
 
     else:
-        # for state and county mode we just remove first days with null in test variable
+        # for state and county mode we dont impute daily-state-test
         timeDeapandantData=timeDeapandantData#[~(pd.isna(timeDeapandantData['daily-state-test']))]
 
 
@@ -192,9 +192,12 @@ def makeHistoricalData(h, r, target, feature_selection, spatial_mode, target_mod
                 threshold += 1
         # if covariate is independant of time
         elif name not in nameOfTimeDependantCovariates and name not in ['date', 'county_fips']:
-            temporalDataFrame = allData[[name]]
-            temp = temporalDataFrame.head((totalNumberOfDays-h-r+1)*totalNumberOfCounties).copy().reset_index(drop=True)
-            result = pd.concat([result, temp], axis=1)
+            # we dont need covariates that is fixed for each county in county mode
+            # but also we need county and state name in all modes
+            if (spatial_mode != 'county') or (name in ['county_name', 'state_name', 'state_fips']):
+              temporalDataFrame = allData[[name]]
+              temp = temporalDataFrame.head((totalNumberOfDays-h-r+1)*totalNumberOfCounties).copy().reset_index(drop=True)
+              result = pd.concat([result, temp], axis=1)
 
     # next 3 lines is for adding FIPS code to final dataframe
     temporalDataFrame = allData[['county_fips']]
@@ -245,7 +248,7 @@ def makeHistoricalData(h, r, target, feature_selection, spatial_mode, target_mod
    
 
     
-    # zero_removed_data=result.loc[overall_non_zero_index,:]
+    zero_removed_data=result.loc[overall_non_zero_index,:]
     result=result.reset_index()
     zero_removed_data=result.loc[result['index'].isin(overall_non_zero_index),:]
     zero_removed_data=zero_removed_data.drop(['index'],axis=1)
