@@ -34,7 +34,7 @@ import statistics
 
 plt.rcParams.update({'figure.max_open_warning': 0})
 
-r = 21  # the following day to predict
+r = 14  # the following day to predict
 numberOfSelectedCounties = 1535
 target_mode = 'regular'
 spatial_mode = 'county'
@@ -125,6 +125,7 @@ def preprocess(main_data, spatial_mode, validationFlag):
 def mase_denominator(r, target_name, target_mode):
 
     data = makeHistoricalData(0, r, target_name, 'mrmr', 'country', target_mode, './')
+    numberOfSelectedCounties= len(data['county_fips'].unique())
     data = clean_data(data, numberOfSelectedCounties)
     X_train_train, X_train_val, X_test, y_train_train_date, y_train_val_date, y_test_date = preprocess(data, 'country', 1)
 
@@ -321,6 +322,7 @@ def get_best_loss_mode(counties_best_loss_list):
 def generate_data(h, numberOfCovariates, covariates_names):
 
     data = makeHistoricalData(h, r, 'confirmed', 'mrmr', spatial_mode, target_mode, './')
+    numberOfSelectedCounties= len(data['county_fips'].unique())
     data = clean_data(data, numberOfSelectedCounties)
 
     X_train, X_test, y_train, y_test = preprocess(data, spatial_mode, 0)
@@ -461,6 +463,7 @@ def real_prediction_plot(df,r,target_name,best_h,spatial_mode,methods):
     for method in methods:
 
         data=makeHistoricalData(best_h[method]['MAPE'], r, target_name, 'mrmr', spatial_mode, target_mode, './')
+        numberOfSelectedCounties= len(data['county_fips'].unique())
         data = data.sort_values(by=['county_fips', 'date of day t'])
         data = data[(data['county_fips'] <= data['county_fips'].unique()[numberOfSelectedCounties - 1])]
         data = data.reset_index(drop=True)
@@ -667,6 +670,7 @@ def get_errors(h, c, method, y_prediction, y_prediction_train, y_test_date, MASE
                         fontsizes={'box': 15, 'violin': 30}, name=str(method) + '_pure_errors_in_each_day_',
                         address=all_errors_address)
         dataframe['county_fips']=dataframe['county_fips'].astype(float)
+        numberOfSelectedCounties= len(dataframe['county_fips'].unique())
         first_error = pd.DataFrame((dataframe.groupby(['date of day t']).sum() / numberOfSelectedCounties))
         first_error.columns = ['fips','average of targets', 'average of predictions', 'average of errors',
                                'average of absoulte_errors', 'average of percentage_errors']
@@ -713,8 +717,8 @@ def send_email(*attachments):
     subject = "Server results"
     body = " "
     sender_email = "covidserver1@gmail.com"
-    receiver_email = ["arezo.h1371@yahoo.com", "arashmarioriyad@gmail.com"]#
-    CC_email = ["p.ramazi@gmail.com"]#
+    receiver_email = ["arezo.h1371@yahoo.com"]#, "marmegh@gmail.com"
+    CC_email = []#"p.ramazi@gmail.com"
     password = "S.123456.S"
 
     # Create a multipart message and set headers
@@ -773,6 +777,7 @@ def test_process(h, r, target_name,spatial_mode, target_mode,best_h,best_c,histo
     df_for_prediction_plot = pd.DataFrame(columns = methods)
 
     all_data = makeHistoricalData(h, r, target_name, 'mrmr', spatial_mode, target_mode, './')
+    numberOfSelectedCounties = len(all_data['county_fips'].unique())
     all_data = clean_data(all_data, numberOfSelectedCounties)
     print(all_data.shape)
     all_counties = all_data['county_fips'].unique()
@@ -988,6 +993,7 @@ def main(maxHistory, maxC):
     mixed_methods = ['MM_GLM', 'MM_NN']
     target_name = 'confirmed'
     base_data = makeHistoricalData(0, r, target_name, 'mrmr', spatial_mode, target_mode, './')
+    numberOfSelectedCounties = len(base_data['county_fips'].unique())
     base_data = clean_data(base_data, numberOfSelectedCounties)
     covariates_names = list(base_data.columns)
     covariates_names.remove('Target')
@@ -1031,6 +1037,7 @@ def main(maxHistory, maxC):
     for h in history:
         print("h = ", h)
         all_data = makeHistoricalData(h, r, target_name, 'mrmr', spatial_mode, target_mode, './')
+        numberOfSelectedCounties = len(all_data['county_fips'].unique())
         all_data = clean_data(all_data, numberOfSelectedCounties)
         print(all_data.shape)
         all_counties = all_data['county_fips'].unique()
@@ -1257,8 +1264,8 @@ def main(maxHistory, maxC):
 
 if __name__ == "__main__":
     begin = time.time()
-    maxHistory = 14
-    maxC = 100
+    maxHistory = 1
+    maxC = 2
     validation_address = './'+'results/counties=' + str(numberOfSelectedCounties) + ' max_history=' + str(maxHistory) + '/validation/'
     test_address = './' + 'results/counties=' + str(numberOfSelectedCounties) + ' max_history=' + str(maxHistory) + '/test/'
     env_address = './' + 'results/counties=' + str(numberOfSelectedCounties) + ' max_history=' + str(maxHistory) + '/session_parameters/'
