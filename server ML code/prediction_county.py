@@ -34,7 +34,7 @@ import statistics
 
 plt.rcParams.update({'figure.max_open_warning': 0})
 
-r = 14  # the following day to predict
+r = 21  # the following day to predict
 numberOfSelectedCounties = 1535
 target_mode = 'regular'
 spatial_mode = 'county'
@@ -1264,8 +1264,8 @@ def main(maxHistory, maxC):
 
 if __name__ == "__main__":
     begin = time.time()
-    maxHistory = 1
-    maxC = 2
+    maxHistory = 14
+    maxC = 100
     validation_address = './'+'results/counties=' + str(numberOfSelectedCounties) + ' max_history=' + str(maxHistory) + '/validation/'
     test_address = './' + 'results/counties=' + str(numberOfSelectedCounties) + ' max_history=' + str(maxHistory) + '/test/'
     env_address = './' + 'results/counties=' + str(numberOfSelectedCounties) + ' max_history=' + str(maxHistory) + '/session_parameters/'
