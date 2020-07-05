@@ -34,8 +34,8 @@ import statistics
 
 plt.rcParams.update({'figure.max_open_warning': 0})
 
-r = 14  # the following day to predict
-numberOfSelectedCounties = 2
+r = 21  # the following day to predict
+numberOfSelectedCounties = 1535
 target_mode = 'regular'
 spatial_mode = 'county'
 
@@ -520,9 +520,9 @@ def get_errors(h, c, method, y_prediction, y_prediction_train, y_test_date, MASE
     y_prediction = np.round(y_prediction)
     y_prediction[y_prediction < 0] = 0
     # write outputs into a file
-    # orig_stdout = sys.stdout
-    # f = open(env_address+'out.txt', 'a')
-    # sys.stdout = f
+    orig_stdout = sys.stdout
+    f = open(env_address+'out.txt', 'a')
+    sys.stdout = f
     # if mode == 'val': y_test_date would be an np.array with the target
     # if mode == 'test': y_test_date would be a dataframe with columns ['date of day t', 'county_fips', 'Target']
     y_test = y_test_date
@@ -627,8 +627,8 @@ def get_errors(h, c, method, y_prediction, y_prediction_train, y_test_date, MASE
     print("-----------------------------------------------------------------------------------------")
 
     # save outputs in 'out.txt'
-    # sys.stdout = orig_stdout
-    # f.close()
+    sys.stdout = orig_stdout
+    f.close()
     # for the test mode we compute some additional errors, we need 'date of day t' column so we use the main dataframe
     # we add our prediction, the difference between prediction and target ('error' column),
     # the absolute difference between prediction and target ('absolute_error' column),
@@ -639,9 +639,9 @@ def get_errors(h, c, method, y_prediction, y_prediction_train, y_test_date, MASE
 
     if mode == 'test':
         # write outputs into a file
-        # orig_stdout = sys.stdout
-        # f = open(env_address + 'out.txt', 'a')
-        # sys.stdout = f
+        orig_stdout = sys.stdout
+        f = open(env_address + 'out.txt', 'a')
+        sys.stdout = f
 
         first_error_address = test_address + 'averages_of_errors_in_each_day/'
         all_errors_address = test_address + 'all_errors/' + str(method) + '/'
@@ -675,8 +675,8 @@ def get_errors(h, c, method, y_prediction, y_prediction_train, y_test_date, MASE
         plot_targets(method, first_error.index, first_error, first_error_address)
 
         # save outputs in 'out.txt'
-        # sys.stdout = orig_stdout
-        # f.close()
+        sys.stdout = orig_stdout
+        f.close()
     return meanAbsoluteError, percentageOfAbsoluteError, adj_r_squared, second_error, MASE
 
 
@@ -1257,8 +1257,8 @@ def main(maxHistory, maxC):
 
 if __name__ == "__main__":
     begin = time.time()
-    maxHistory = 1
-    maxC = 2
+    maxHistory = 14
+    maxC = 100
     validation_address = './'+'results/counties=' + str(numberOfSelectedCounties) + ' max_history=' + str(maxHistory) + '/validation/'
     test_address = './' + 'results/counties=' + str(numberOfSelectedCounties) + ' max_history=' + str(maxHistory) + '/test/'
     env_address = './' + 'results/counties=' + str(numberOfSelectedCounties) + ' max_history=' + str(maxHistory) + '/session_parameters/'
@@ -1271,9 +1271,9 @@ if __name__ == "__main__":
         os.makedirs(validation_address)
     if not os.path.exists(env_address):
         os.makedirs(env_address)
-    # push('new folders added')
+    push('new folders added')
     models_to_log = ['NN', 'GLM', 'GBM']
     main(maxHistory, maxC)
     end = time.time()
-    # push('final results added')
+    push('final results added')
     print("The total time of execution in minutes: ", round((end - begin) / 60, 2))
