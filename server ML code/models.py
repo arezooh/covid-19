@@ -282,8 +282,8 @@ def NN_grid_search(X_train, y_train , X_test, y_test):
         layers.Dense(1,activation=tf.exp)
     ])
 
-    param_grid = ['poisson', 'MeanSquaredError','MeanAbsoluteError']#,
-                           #'MeanSquaredLogarithmicError'
+    param_grid = ['poisson', 'MeanSquaredError','MeanAbsoluteError','MeanSquaredLogarithmicError']
+                       
 
 
 
