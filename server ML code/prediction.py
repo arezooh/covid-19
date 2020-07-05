@@ -125,6 +125,7 @@ def preprocess(main_data, spatial_mode, validationFlag):
 def mase_denominator(r, target_name, target_mode):
 
     data = makeHistoricalData(0, r, target_name, 'mrmr', 'country', target_mode, './')
+    numberOfSelectedCounties = len(data['county_fips'].unique())
     data = clean_data(data, numberOfSelectedCounties)
     X_train_train, X_train_val, X_test, y_train_train_date, y_train_val_date, y_test_date = preprocess(data, 'country', 1)
 
@@ -327,6 +328,7 @@ def get_best_loss_mode(counties_best_loss_list):
 def generate_data(h, numberOfCovariates, covariates_names):
 
     data = makeHistoricalData(h, r, 'confirmed', 'mrmr', spatial_mode, target_mode, './')
+    numberOfSelectedCounties = len(data['county_fips'].unique())
     data = clean_data(data, numberOfSelectedCounties)
 
     X_train, X_test, y_train, y_test = preprocess(data, spatial_mode, 0)
@@ -467,6 +469,7 @@ def real_prediction_plot(df,r,target_name,best_h,spatial_mode,methods):
     for method in methods:
 
         data=makeHistoricalData(best_h[method]['MAPE'], r, target_name, 'mrmr', spatial_mode, target_mode, './')
+        numberOfSelectedCounties = len(data['county_fips'].unique())
         data = data.sort_values(by=['county_fips', 'date of day t'])
         data = data[(data['county_fips'] <= data['county_fips'].unique()[numberOfSelectedCounties - 1])]
         data = data.reset_index(drop=True)
@@ -566,6 +569,7 @@ def get_errors(h, c, method, y_prediction, y_prediction_train, y_test_date, MASE
         # for cumulative data form we need to change MASE error and we need new case data to calclate this error so in next lines we build new case
         # data from cumulative data form
         data_new_case = makeHistoricalData(h, r, target_name, 'mrmr', spatial_mode, 'regular', './')
+        numberOfSelectedCounties = len(data_new_case['county_fips'].unique())
         data_new_case = clean_data(data_new_case, numberOfSelectedCounties)
         reverse_dates=data_new_case['date of day t'].unique()[::-1]
         for i,j in enumerate(reverse_dates[1:]):
@@ -673,6 +677,7 @@ def get_errors(h, c, method, y_prediction, y_prediction_train, y_test_date, MASE
                         fontsizes={'box': 15, 'violin': 30}, name=str(method) + '_pure_errors_in_each_day_',
                         address=all_errors_address)
         dataframe['county_fips']=dataframe['county_fips'].astype(float)
+        numberOfSelectedCounties = len(dataframe['county_fips'].unique())
         first_error = pd.DataFrame((dataframe.groupby(['date of day t']).sum() / numberOfSelectedCounties))
         first_error.columns = ['fips','average of targets', 'average of predictions', 'average of errors',
                                'average of absoulte_errors', 'average of percentage_errors']
@@ -802,6 +807,7 @@ def main(maxHistory):
     mixed_methods = ['MM_GLM', 'MM_NN']
     target_name = 'confirmed'
     base_data = makeHistoricalData(0, r, target_name, 'mrmr', spatial_mode, target_mode,'./')
+    numberOfSelectedCounties = len(base_data['county_fips'].unique())
     base_data = clean_data(base_data, numberOfSelectedCounties)
     covariates_names = list(base_data.columns)
     covariates_names.remove('Target')
@@ -984,6 +990,7 @@ def main(maxHistory):
 
     for h in history:
         data = makeHistoricalData(h, r, target_name, 'mrmr', spatial_mode, target_mode, './')
+        numberOfSelectedCounties = len(data['county_fips'].unique())
         data = clean_data(data, numberOfSelectedCounties)
 
         # pre-process and split the data, 'date's have dates info
