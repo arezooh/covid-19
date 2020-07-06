@@ -327,7 +327,7 @@ def get_best_loss_mode(counties_best_loss_list):
 
 ########################################################### generate data for best h and c
 
-def generate_data(h, numberOfCovariates, covariates_names):
+def generate_data(h, numberOfCovariates, covariates_names, numberOfSelectedCounties):
 
     data = makeHistoricalData(h, r, 'confirmed', 'mrmr', spatial_mode, target_mode, './')
     data = clean_data(data, numberOfSelectedCounties)
@@ -890,7 +890,7 @@ def main(maxHistory):
 
         for mixed_method in mixed_methods:
             X_train, X_test, y_train_date, y_test_date[mixed_method] = generate_data(best_h[mixed_method]['MAPE'], best_c[mixed_method]['MAPE'],
-                                                                                      covariates_names)
+                                                                                      covariates_names, numberOfSelectedCounties)
             y_test_date_temp = y_test_date[mixed_method]
             y_train[mixed_method] = y_train_date
             y_test[mixed_method] = y_test_date_temp
