@@ -242,9 +242,8 @@ def makeHistoricalData(h, r, target, feature_selection, spatial_mode, target_mod
 
             zero_removed_county_index=[i for i in range(first_non_zero_date_index,county_end_index)]
             
-            # in county mode we use only one county data to learn models and we choose r days for test 
-            # and r days for validation so at least we must have r days for train -> 3*r
-            if (spatial_mode != 'county') or (len(zero_removed_county_index) >= 3*r):
+            # we choose r days for test and r days for validation so at least we must have r days for train -> 3*r
+            if len(zero_removed_county_index) >= 3*r:
                     overall_non_zero_index = overall_non_zero_index + zero_removed_county_index
    
 
@@ -255,12 +254,6 @@ def makeHistoricalData(h, r, target, feature_selection, spatial_mode, target_mod
     zero_removed_data=result.loc[result['index'].isin(overall_non_zero_index),:]
     zero_removed_data=zero_removed_data.drop(['index'],axis=1)
     result = zero_removed_data
-    
-    # same as county mode we drop states with less than 3*r rows
-    if spatial_mode == 'state':
-        for state_fips in result['state_fips'].unique():
-            if len(result[result['state_fips']==state_fips]) < 3*r :
-                result=result[result['state_fips']!=state_fips]
 
 
 
