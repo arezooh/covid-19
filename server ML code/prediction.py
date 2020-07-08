@@ -304,8 +304,11 @@ def update_best_loss(model_type ,spatial_mode ,county_fips,best_loss,X_train_tra
             loom.add_function(NN_grid_search, [X_train_train_to_use[county_fips][h]['NN'][covariates],
                                                     y_train_train , X_train_val_to_use[county_fips][h]['NN'][covariates],
                                                     y_train_val])
+          print('check1')
           best_loss_output=loom.execute()
+          print('check2')
           best_loss['GBM'],best_loss['NN'] = best_loss_output[0]['output'],best_loss_output[1]['output']
+          print('check3')
     return best_loss
 
 ########################################################### 
