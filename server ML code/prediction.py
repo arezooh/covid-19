@@ -1048,6 +1048,7 @@ def main(maxHistory):
         
 
         loom = ProcessLoom(max_runner_cap=len(base_data.columns) * len(none_mixed_methods) + 5)
+        print('loom initiated')
         indx_c = 0
         for c in covariates_names:  # iterate through sorted covariates
             indx_c += 1
