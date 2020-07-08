@@ -305,9 +305,9 @@ def NN_grid_search(X_train, y_train , X_test, y_test):
         print(g)
         # save if best
         if NeuralNetworkObject.evaluate(testX, testy)[1] < best_score:
-            print('check')
+            print('check3008 models')
             best_score = NeuralNetworkObject.evaluate(testX, testy)[1]
             best_grid = g
-            print('check')
+            print('check311 models')
 
     return(best_grid)
