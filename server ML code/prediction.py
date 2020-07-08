@@ -1061,11 +1061,14 @@ def main(maxHistory):
                 X_train_val_temp = X_train_val_to_use[method][covariates_list]
                 
                 loom.add_function(parallel_run, [method, X_train_train_temp, X_train_val_temp, y_train_train, y_train_val, best_loss, indx_c])
+                print('function added to loom')
+             
             if indx_c == maxC:
                             break  
         # run the processes in parallel
 
         parallel_outputs['non_mixed'] = loom.execute()
+        print('loom executed')
         ind = 0
         for c in range(1, numberOfCovariates + 1):
             for method in none_mixed_methods:
