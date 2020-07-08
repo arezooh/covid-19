@@ -289,14 +289,14 @@ def update_best_loss(model_type ,spatial_mode ,county_fips,best_loss,X_train_tra
           best_loss['MM_NN'] = best_loss_output[0]['output']
           
     if model_type == 'none_mixed_model':   
-          print('check')
+          print('check 292')
         
           loom = ProcessLoom(max_runner_cap= 2)
           if spatial_mode == 'country':
             loom.add_function(GBM_grid_search, [X_train_train_to_use['GBM'][covariates],
                                                     y_train_train , X_train_val_to_use['GBM'][covariates],
                                                     y_train_val])
-            print('check0')
+            print('check 299')
             loom.add_function(NN_grid_search, [X_train_train_to_use['NN'][covariates],
                                                     y_train_train , X_train_val_to_use['NN'][covariates],
                                                     y_train_val])
@@ -307,11 +307,11 @@ def update_best_loss(model_type ,spatial_mode ,county_fips,best_loss,X_train_tra
             loom.add_function(NN_grid_search, [X_train_train_to_use[county_fips][h]['NN'][covariates],
                                                     y_train_train , X_train_val_to_use[county_fips][h]['NN'][covariates],
                                                     y_train_val])
-          print('check1')
+          print('check 310')
           best_loss_output=loom.execute()
-          print('check2')
+          print('check 312')
           best_loss['GBM'],best_loss['NN'] = best_loss_output[0]['output'],best_loss_output[1]['output']
-          print('check3')
+          print('check 314')
     return best_loss
 
 ########################################################### 
