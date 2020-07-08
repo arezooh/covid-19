@@ -309,6 +309,7 @@ def update_best_loss(model_type ,spatial_mode ,county_fips,best_loss,X_train_tra
                                                     y_train_val])
           print('check 310')
           best_loss_output=loom.execute()
+          print(best_loss_output)
           print('check 312')
           best_loss['GBM'],best_loss['NN'] = best_loss_output[0]['output'],best_loss_output[1]['output']
           print('check 314')
