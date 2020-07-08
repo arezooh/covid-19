@@ -289,7 +289,7 @@ def update_best_loss(model_type ,spatial_mode ,county_fips,best_loss,X_train_tra
           best_loss['MM_NN'] = best_loss_output[0]['output']
           
     if model_type == 'none_mixed_model':   
-            print('check')
+          print('check')
         
           loom = ProcessLoom(max_runner_cap= 2)
           if spatial_mode == 'country':
