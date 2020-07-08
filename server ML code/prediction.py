@@ -35,7 +35,7 @@ import statistics
 plt.rcParams.update({'figure.max_open_warning': 0})
 
 r = 21  # the following day to predict
-numberOfSelectedCounties = -1
+numberOfSelectedCounties = 2
 target_mode = 'regular'
 spatial_mode = 'country'
 numberOfSelectedCountiesname = 1535
@@ -1235,8 +1235,8 @@ def main(maxHistory):
 if __name__ == "__main__":
 
     begin = time.time()
-    maxHistory = 14
-    maxC = 100
+    maxHistory = 2
+    maxC = 2
     
     # make directories for saving the results
     validation_address = './'+'results/counties=' + str(numberOfSelectedCountiesname) + ' max_history=' + str(maxHistory) + '/validation/'
