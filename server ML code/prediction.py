@@ -1046,7 +1046,7 @@ def main(maxHistory):
         # initiate loom for parallel processing
 
         
-
+        print('check point')
         loom = ProcessLoom(max_runner_cap=len(base_data.columns) * len(none_mixed_methods) + 5)
         print('loom initiated')
         indx_c = 0
