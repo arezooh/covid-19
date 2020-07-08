@@ -35,7 +35,7 @@ import statistics
 plt.rcParams.update({'figure.max_open_warning': 0})
 
 r = 21  # the following day to predict
-numberOfSelectedCounties = 2
+numberOfSelectedCounties = -1
 target_mode = 'regular'
 spatial_mode = 'country'
 numberOfSelectedCountiesname = 1535
@@ -741,8 +741,8 @@ def send_email(*attachments):
     subject = "Server results"
     body = " "
     sender_email = "covidserver1@gmail.com"
-    receiver_email = ["arezo.h1371@yahoo.com"]#,"arashmarioriyad@gmail.com"
-    CC_email = []#"p.ramazi@gmail.com"
+    receiver_email = ["arezo.h1371@yahoo.com","arashmarioriyad@gmail.com"]#
+    CC_email = ["p.ramazi@gmail.com"]#
     password = "S.123456.S"
 
     # Create a multipart message and set headers
@@ -1046,10 +1046,10 @@ def main(maxHistory):
         
 
         # find best loss
-        if (h==1):
-          best_loss = update_best_loss('none_mixed_model',spatial_mode,None,best_loss,X_train_train_to_use,X_train_val_to_use,\
-                                      y_train_train,y_train_val,None,None,data.columns.drop(['Target','date of day t','county_fips']),\
-                                        numberOfCovariates,maxC)
+#         if (h==1):
+#           best_loss = update_best_loss('none_mixed_model',spatial_mode,None,best_loss,X_train_train_to_use,X_train_val_to_use,\
+#                                       y_train_train,y_train_val,None,None,data.columns.drop(['Target','date of day t','county_fips']),\
+#                                         numberOfCovariates,maxC)
 
         
         covariates_list = []
@@ -1103,10 +1103,10 @@ def main(maxHistory):
         
 
         # find best loss
-        if h == 1 :
-          best_loss = update_best_loss('mixed_model',spatial_mode,None,best_loss,None,None,y_train_train,\
-                    y_train_val,y_prediction_train,y_prediction,None,\
-                    numberOfCovariates,maxC)
+#         if h == 1 :
+#           best_loss = update_best_loss('mixed_model',spatial_mode,None,best_loss,None,None,y_train_train,\
+#                     y_train_val,y_prediction_train,y_prediction,None,\
+#                     numberOfCovariates,maxC)
         # initiate loom for parallel processing        
         loom = ProcessLoom(max_runner_cap=len(base_data.columns) * len(mixed_methods) + 5)
         indx_c = 0
@@ -1248,8 +1248,8 @@ def main(maxHistory):
 if __name__ == "__main__":
 
     begin = time.time()
-    maxHistory = 2
-    maxC = 2
+    maxHistory = 14
+    maxC = 100
     
     # make directories for saving the results
     validation_address = './'+'results/counties=' + str(numberOfSelectedCountiesname) + ' max_history=' + str(maxHistory) + '/validation/'
