@@ -284,7 +284,7 @@ def update_best_loss(model_type ,spatial_mode ,county_fips,best_loss,X_train_tra
                                         y_prediction_train['KNN'][(h, c)], y_prediction_train['NN'][(h, c)]])
           y_prediction_train_np = np.array(y_predictions_train).reshape(len(y_predictions_train), -1)
           X_train_mixedModel = pd.DataFrame(y_prediction_train_np.transpose())
-          loom.add_function(NN_grid_search, [X_train_mixedModel,y_train_train , X_test_mixedModel,y_train_val])
+          loom.add_function(NN_grid_search, [X_train_mixedModel,y_train_train , X_test_mixedModel,y_train_val],{})
           best_loss_output = loom.execute()
           best_loss['MM_NN'] = best_loss_output[0]['output']
           
@@ -295,20 +295,19 @@ def update_best_loss(model_type ,spatial_mode ,county_fips,best_loss,X_train_tra
           if spatial_mode == 'country':
             loom.add_function(GBM_grid_search, [X_train_train_to_use['GBM'][covariates],
                                                     y_train_train , X_train_val_to_use['GBM'][covariates],
-                                                    y_train_val])
+                                                    y_train_val],{})
             print('check 299')
             loom.add_function(NN_grid_search, [X_train_train_to_use['NN'][covariates],
                                                     y_train_train , X_train_val_to_use['NN'][covariates],
-                                                    y_train_val])
+                                                    y_train_val],{})
           if spatial_mode == 'county':
             loom.add_function(GBM_grid_search, [X_train_train_to_use[county_fips][h]['GBM'][covariates],
                                                     y_train_train , X_train_val_to_use[county_fips][h]['GBM'][covariates],
-                                                    y_train_val])
+                                                    y_train_val],{})
             loom.add_function(NN_grid_search, [X_train_train_to_use[county_fips][h]['NN'][covariates],
                                                     y_train_train , X_train_val_to_use[county_fips][h]['NN'][covariates],
-                                                    y_train_val])
+                                                    y_train_val],{})
           print('check 310')
-          print(loom.execute())
           best_loss_output=loom.execute()
           print(best_loss_output)
           print('check 312')
@@ -470,7 +469,7 @@ def box_violin_plot(X, Y, figsizes, fontsizes, name, address):
 ########################################################### plot prediction and real values
 
 def real_prediction_plot(df,r,target_name,best_h,spatial_mode,methods,numberOfSelectedCounties):
-    
+
     address = test_address + 'plots_of_real_prediction_values/'
     if not os.path.exists(address):
         os.makedirs(address)
@@ -483,7 +482,7 @@ def real_prediction_plot(df,r,target_name,best_h,spatial_mode,methods,numberOfSe
         data = data.sort_values(by=['county_fips', 'date of day t'])
         data = data[(data['county_fips'] <= data['county_fips'].unique()[numberOfSelectedCounties - 1])]
         data = data.reset_index(drop=True)
-        data = data[['county_name','county_fips','date of day t','Target']]
+        data = data[['state_fips','county_name','county_fips','date of day t','Target']]
         data=data.sort_values(by=['date of day t','county_fips'])
         data_train_train=data.iloc[:-2*(r*numberOfSelectedCounties),:]
         data_train_val=data.iloc[-2*(r*numberOfSelectedCounties):-(r*numberOfSelectedCounties),:]
@@ -494,12 +493,18 @@ def real_prediction_plot(df,r,target_name,best_h,spatial_mode,methods,numberOfSe
             data_test=data_test.sort_values(by=['county_fips','date of day t'])
             data=data_train_train.append(data_train_val)
             data=data.append(data_test)
-        if spatial_mode == 'county' : 
+        if spatial_mode == 'county' :
             data_train = data_train_train.append(data_train_val)
             data_train = data_train.sort_values(by=['county_fips','date of day t'])
             data_test = data_test.sort_values(by=['county_fips','date of day t'])
             data = data_train.append(data_test)
-        df_for_plot = pd.concat([data.reset_index(drop=True),df.reset_index(drop=True)],axis=1)
+        if spatial_mode == 'state' :
+            data_train = data_train_train.append(data_train_val)
+            data_train = data_train.sort_values(by=['state_fips','date of day t'])
+            data_test = data_test.sort_values(by=['state_fips','date of day t'])
+            data = data_train.append(data_test)
+        method_prediction_df = pd.DataFrame(df[method],columns=[method])
+        df_for_plot = pd.concat([data.reset_index(drop=True),method_prediction_df.reset_index(drop=True)],axis=1)
 
         df_for_plot['date'] = df_for_plot['date of day t'].apply(lambda x:datetime.datetime.strptime(x,'%m/%d/%y')+datetime.timedelta(days=r))
         df_for_plot['date'] = df_for_plot['date'].apply(lambda x:datetime.datetime.strftime(x,'%m/%d/%y'))
@@ -842,7 +847,7 @@ def main(maxHistory):
 
     # best_loss = {method: None for method in ['GBM', 'NN', 'MM_NN']}
     best_loss = {'GBM': 'poisson', 'MM_NN': 'poisson', 'NN': 'MeanAbsoluteError'}
-    df_for_prediction_plot = pd.DataFrame(columns = methods)
+    df_for_prediction_plot = {method : None for method in methods}
 
     columns_table_t = ['best_h', 'best_c', 'mean absolute error', 'percentage of absolute error', 'adjusted R squared error',
                       'second error', 'mean absolute scaled error']  # table columns names
@@ -1054,9 +1059,9 @@ def main(maxHistory):
         # initiate loom for parallel processing
 
         
-        print('check point')
+        
         loom = ProcessLoom(max_runner_cap=len(base_data.columns) * len(none_mixed_methods) + 5)
-        print('loom initiated')
+        
         indx_c = 0
         for c in covariates_names:  # iterate through sorted covariates
             indx_c += 1
@@ -1077,7 +1082,7 @@ def main(maxHistory):
         # run the processes in parallel
 
         parallel_outputs['non_mixed'] = loom.execute()
-        print('loom executed')
+        
         ind = 0
         for c in range(1, numberOfCovariates + 1):
             for method in none_mixed_methods:
