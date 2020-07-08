@@ -308,6 +308,6 @@ def NN_grid_search(X_train, y_train , X_test, y_test):
             print('check3008 models')
             best_score = NeuralNetworkObject.evaluate(testX, testy)[1]
             best_grid = g
-            print('check311 models')
+    print('check311 models')
 
     return(best_grid)
