@@ -288,12 +288,15 @@ def update_best_loss(model_type ,spatial_mode ,county_fips,best_loss,X_train_tra
           best_loss_output = loom.execute()
           best_loss['MM_NN'] = best_loss_output[0]['output']
           
-    if model_type == 'none_mixed_model':
+    if model_type == 'none_mixed_model':   
+            print('check')
+        
           loom = ProcessLoom(max_runner_cap= 2)
           if spatial_mode == 'country':
             loom.add_function(GBM_grid_search, [X_train_train_to_use['GBM'][covariates],
                                                     y_train_train , X_train_val_to_use['GBM'][covariates],
                                                     y_train_val])
+            print('check0')
             loom.add_function(NN_grid_search, [X_train_train_to_use['NN'][covariates],
                                                     y_train_train , X_train_val_to_use['NN'][covariates],
                                                     y_train_val])
