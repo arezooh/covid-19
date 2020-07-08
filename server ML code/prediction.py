@@ -35,7 +35,7 @@ import statistics
 plt.rcParams.update({'figure.max_open_warning': 0})
 
 r = 21  # the following day to predict
-numberOfSelectedCounties = -1
+numberOfSelectedCounties = 2
 target_mode = 'regular'
 spatial_mode = 'country'
 numberOfSelectedCountiesname = 1535
@@ -741,8 +741,8 @@ def send_email(*attachments):
     subject = "Server results"
     body = " "
     sender_email = "covidserver1@gmail.com"
-    receiver_email = ["arezo.h1371@yahoo.com","arashmarioriyad@gmail.com"]#
-    CC_email = ["p.ramazi@gmail.com"]#
+    receiver_email = ["arezo.h1371@yahoo.com"]#,"arashmarioriyad@gmail.com"
+    CC_email = []#"p.ramazi@gmail.com"
     password = "S.123456.S"
 
     # Create a multipart message and set headers
@@ -847,7 +847,7 @@ def main(maxHistory):
 
     # best_loss = {method: None for method in ['GBM', 'NN', 'MM_NN']}
     best_loss = {'GBM': 'poisson', 'MM_NN': 'poisson', 'NN': 'MeanAbsoluteError'}
-    df_for_prediction_plot = {method : None for method in methods}
+
 
     columns_table_t = ['best_h', 'best_c', 'mean absolute error', 'percentage of absolute error', 'adjusted R squared error',
                       'second error', 'mean absolute scaled error']  # table columns names
@@ -865,9 +865,23 @@ def main(maxHistory):
 
     ############################################################
     # we define test as function to call it when h equal to half the maxHistory or when none of the models have improved in current h
-    def test_process():
-        
+    def test_process(h, r, target_name,spatial_mode, target_mode,best_h,best_c,historical_X_train,\
+                    historical_X_test, historical_y_train_date, historical_y_test_date, best_loss,\
+                    numberOfSelectedCounties, covariates_names, maxHistory, test_address, env_address, mail_address):
+      
+        columns_table_t = ['best_h', 'best_c', 'mean absolute error', 'percentage of absolute error', 'adjusted R squared error',
+                          'second error', 'mean absolute scaled error']
+        columns_table = ['best_h', 'best_c', 'mean absolute error', 'percentage of absolute error',
+                          'adjusted R squared error',
+                          'sum of absolute error', 'mean absolute scaled error']
+        methods = ['GBM', 'GLM', 'KNN', 'NN', 'MM_GLM', 'MM_NN']
+        none_mixed_methods = ['GBM', 'GLM', 'KNN', 'NN']
+        mixed_methods = ['MM_GLM', 'MM_NN']
+
+        train_val_MASE_denominator, val_test_MASE_denominator, train_lag_MASE_denominator = mase_denominator(r, target_name, target_mode, numberOfSelectedCounties)
+        df_for_prediction_plot = {method : None for method in methods}
         y_prediction = {}
+        y_prediction_train = {}
         # run non-mixed methods on the whole training set with their best h and c
         X_train_dict, X_test_dict, y_train_dict, y_test_dict = {}, {}, {}, {}
 
@@ -955,14 +969,14 @@ def main(maxHistory):
             y_test_MM_dict[mixed_method] = np.array(y_test_MM_dict[mixed_method]['Target']).reshape(-1)
             y_train_MM_dict[mixed_method] = np.array(y_train_MM_dict[mixed_method]['Target']).reshape(-1)
         # save the entire session
-        filename = env_address + 'test.out'
-        my_shelf = shelve.open(filename, 'n')  # 'n' for new
-        for key in dir():
-            try:
-                my_shelf[key] = locals()[key]
-            except:
-                print('ERROR shelving: {0}'.format(key))
-        my_shelf.close()
+        # filename = env_address + 'test.out'
+        # my_shelf = shelve.open(filename, 'n')  # 'n' for new
+        # for key in dir():
+        #     try:
+        #         my_shelf[key] = locals()[key]
+        #     except:
+        #         print('ERROR shelving: {0}'.format(key))
+        # my_shelf.close()
         # mixed model with linear regression and neural network
         MM_GLM, MM_NN = run_mixed_models(X_train_MM_dict, X_test_MM_dict, y_train_MM_dict, y_test_MM_dict ,best_loss)
         y_prediction['MM_GLM'], y_prediction_train['MM_GLM'] = MM_GLM
@@ -985,20 +999,20 @@ def main(maxHistory):
         real_prediction_plot(df_for_prediction_plot,r,target_name,best_h, spatial_mode, methods, numberOfSelectedCounties)
 
         # mail the test results
-        selected_for_email = [test_address + '/tables', test_address + '/all_errors/NN', test_address + '/all_errors/KNN' , test_address + '/plots_of_real_prediction_values']
-        zip_file_name = 'test results for h =' + str(maxHistory) + ' #counties=' + str(numberOfSelectedCountiesname)
-        make_zip(selected_for_email, zip_file_name)
-        send_email(zip_file_name + '.zip')
+        # selected_for_email = [test_address + '/tables', test_address + '/all_errors/NN', test_address + '/all_errors/KNN' , test_address + '/plots_of_real_prediction_values']
+        # zip_file_name = 'test results for h =' + str(maxHistory) + ' #counties=' + str(numberOfSelectedCountiesname)
+        # make_zip(selected_for_email, zip_file_name)
+        # send_email(zip_file_name + '.zip')
 
         # save the entire session
-        filename = env_address + 'test.out'
-        my_shelf = shelve.open(filename, 'n')  # 'n' for new
-        for key in dir():
-            try:
-                my_shelf[key] = locals()[key]
-            except:
-                print('ERROR shelving: {0}'.format(key))
-        my_shelf.close()
+        # filename = env_address + 'test.out'
+        # my_shelf = shelve.open(filename, 'n')  # 'n' for new
+        # for key in dir():
+        #     try:
+        #         my_shelf[key] = locals()[key]
+        #     except:
+        #         print('ERROR shelving: {0}'.format(key))
+        # my_shelf.close()
 
 
 
@@ -1046,10 +1060,10 @@ def main(maxHistory):
         
 
         # find best loss
-#         if (h==1):
-#           best_loss = update_best_loss('none_mixed_model',spatial_mode,None,best_loss,X_train_train_to_use,X_train_val_to_use,\
-#                                       y_train_train,y_train_val,None,None,data.columns.drop(['Target','date of day t','county_fips']),\
-#                                         numberOfCovariates,maxC)
+        if (h==1):
+          best_loss = update_best_loss('none_mixed_model',spatial_mode,None,best_loss,X_train_train_to_use,X_train_val_to_use,\
+                                      y_train_train,y_train_val,None,None,data.columns.drop(['Target','date of day t','county_fips']),\
+                                        numberOfCovariates,maxC)
 
         
         covariates_list = []
@@ -1076,7 +1090,7 @@ def main(maxHistory):
                 
                 loom.add_function(parallel_run, [method, X_train_train_temp, X_train_val_temp, y_train_train, y_train_val, best_loss, indx_c])
                 print('function added to loom')
-             
+              
             if indx_c == maxC:
                             break  
         # run the processes in parallel
@@ -1103,10 +1117,10 @@ def main(maxHistory):
         
 
         # find best loss
-#         if h == 1 :
-#           best_loss = update_best_loss('mixed_model',spatial_mode,None,best_loss,None,None,y_train_train,\
-#                     y_train_val,y_prediction_train,y_prediction,None,\
-#                     numberOfCovariates,maxC)
+        if h == 1 :
+          best_loss = update_best_loss('mixed_model',spatial_mode,None,best_loss,None,None,y_train_train,\
+                    y_train_val,y_prediction_train,y_prediction,None,\
+                    numberOfCovariates,maxC)
         # initiate loom for parallel processing        
         loom = ProcessLoom(max_runner_cap=len(base_data.columns) * len(mixed_methods) + 5)
         indx_c = 0
@@ -1143,14 +1157,14 @@ def main(maxHistory):
                     break
 
         # save the entire session for each h and c
-        filename = env_address + 'validation.out'
-        my_shelf = shelve.open(filename, 'n')  # 'n' for new
-        for key in dir():
-            try:
-                my_shelf[key] = locals()[key]
-            except:
-                print('ERROR shelving: {0}'.format(key))
-        my_shelf.close()
+        # filename = env_address + 'validation.out'
+        # my_shelf = shelve.open(filename, 'n')  # 'n' for new
+        # for key in dir():
+        #     try:
+        #         my_shelf[key] = locals()[key]
+        #     except:
+        #         print('ERROR shelving: {0}'.format(key))
+        # my_shelf.close()
 
         number_of_improved_methods = 0 # we count number_of_improved_methods to run test if no method have improved in current h
 
@@ -1172,7 +1186,7 @@ def main(maxHistory):
                 validation_errors['adj-R2'][method][(h, indx_c)], validation_errors['sec'][method][(h, indx_c)], \
                 validation_errors['MASE'][method][(h, indx_c)] = \
                     get_errors(h, indx_c, method, y_prediction[method][(h, indx_c)], y_prediction_train[method][(h, indx_c)], y_val, train_val_MASE_denominator,
-                               numberOfSelectedCounties, mode='val')
+                                numberOfSelectedCounties, mode='val')
 
                 # find best errors
                 for error in error_names:
@@ -1195,31 +1209,33 @@ def main(maxHistory):
             if indx_c == maxC:
                         break
             # save the entire session for each h and c
-            filename = env_address + 'validation.out'
-            my_shelf = shelve.open(filename, 'n')  # 'n' for new
-            for key in dir():
-                try:
-                    my_shelf[key] = locals()[key]
-                except:
-                    print('ERROR shelving: {0}'.format(key))
-            my_shelf.close()
-        # save the entire session for each h
-        filename = env_address + 'validation.out'
-        my_shelf = shelve.open(filename, 'n')  # 'n' for new
-        for key in dir():
-            try:
-                my_shelf[key] = locals()[key]
-            except:
-                print('ERROR shelving: {0}'.format(key))
-        my_shelf.close()
+        #     filename = env_address + 'validation.out'
+        #     my_shelf = shelve.open(filename, 'n')  # 'n' for new
+        #     for key in dir():
+        #         try:
+        #             my_shelf[key] = locals()[key]
+        #         except:
+        #             print('ERROR shelving: {0}'.format(key))
+        #     my_shelf.close()
+        # # save the entire session for each h
+        # filename = env_address + 'validation.out'
+        # my_shelf = shelve.open(filename, 'n')  # 'n' for new
+        # for key in dir():
+        #     try:
+        #         my_shelf[key] = locals()[key]
+        #     except:
+        #         print('ERROR shelving: {0}'.format(key))
+        # my_shelf.close()
 
         # push the file of outputs
-        push('logs of h=' + str(h) + ' added')
+        # push('logs of h=' + str(h) + ' added')
 
         # we run test if none of models have improved in curent h or if we passed half of maxhistory 
-        if (number_of_improved_methods > 0) or (h == maxHistory//2) :###########################
+        if (number_of_improved_methods == 0) or (h == maxHistory//2) :###########################
           print('jump to test process')
-          test_process()
+          test_process(h, r, target_name,spatial_mode, target_mode,best_h,best_c,historical_X_train,\
+                    historical_X_test, historical_y_train_date, historical_y_test_date, best_loss,\
+                    numberOfSelectedCounties, covariates_names, maxHistory, test_address, env_address, mail_address)
         
 
     # plot table for best results
@@ -1236,20 +1252,22 @@ def main(maxHistory):
         plot_results(3, 2, numberOfCovariates, methods, history, validation_errors[error], complete_error_names[error])
 
     # mail the validation results
-    selected_for_email = [validation_address]
-    zip_file_name = 'validation results for h =' + str(maxHistory) + ' #counties=' + str(numberOfSelectedCountiesname)
-    make_zip(selected_for_email, zip_file_name)
-    send_email(zip_file_name + '.zip')
-    push('plots added')
+    # selected_for_email = [validation_address]
+    # zip_file_name = 'validation results for h =' + str(maxHistory) + ' #counties=' + str(numberOfSelectedCountiesname)
+    # make_zip(selected_for_email, zip_file_name)
+    # send_email(zip_file_name + '.zip')
+    # push('plots added')
     ################################################################################################################# test zone
-    test_process()
+    test_process(h, r, target_name,spatial_mode, target_mode,best_h,best_c,historical_X_train,\
+                    historical_X_test, historical_y_train_date, historical_y_test_date, best_loss,\
+                    numberOfSelectedCounties, covariates_names, maxHistory, test_address, env_address, mail_address)
 
 
 if __name__ == "__main__":
 
     begin = time.time()
-    maxHistory = 14
-    maxC = 100
+    maxHistory = 2
+    maxC = 2
     
     # make directories for saving the results
     validation_address = './'+'results/counties=' + str(numberOfSelectedCountiesname) + ' max_history=' + str(maxHistory) + '/validation/'
