@@ -215,6 +215,7 @@ def run_algorithms(X_train_dict, X_val_dict, y_train_dict, y_val_dict, best_loss
       for method in methods:
         X_train[method] = X_train_dict[method]
         X_train[method] = X_train[method][X_train[method]['county_fips']==county_fips].drop(['county_fips','date of day t'],axis=1)
+        print('run_alg X_train[method].shape',X_train[method].shape)
         X_val[method] = X_val_dict[method]
         X_val[method] = X_val[method][X_val[method]['county_fips']==county_fips].drop(['county_fips','date of day t'],axis=1)
         y_train[method] = y_train_dict[method]
@@ -824,7 +825,7 @@ def test_process(h, r, target_name,spatial_mode, target_mode,best_h,best_c,histo
         table_data.append([best_h[method]['MAPE'], best_c[method]['MAPE'],  round(meanAbsoluteError, 2),
                             round(percentageOfAbsoluteError, 2), round(adj_r_squared, 2), round(second_error, 2), round(meanAbsoluteScaledError, 2)])
 
-    # push('a new table added')
+    push('a new table added')
 
     for method in none_mixed_methods:
       prediction=list(flatten(data=y_prediction_train, h=h, c=None, method=method, state=6))+list(flatten(data=y_prediction, h=h, c=None, method=method, state=6))
@@ -849,7 +850,7 @@ def test_process(h, r, target_name,spatial_mode, target_mode,best_h,best_c,histo
     y_train, y_test = {}, {}
     y_test_date = {}
 
-    # we make mixed_model train_data in this loop
+
 
     for mixed_method in mixed_methods:
         X_train, X_test, y_train_date, y_test_date[mixed_method] = generate_data(best_h[mixed_method]['MAPE'], best_c[mixed_method]['MAPE'],
@@ -884,11 +885,9 @@ def test_process(h, r, target_name,spatial_mode, target_mode,best_h,best_c,histo
             y_test_dict[method] = y_test[mixed_method]
 
 
-    #########################################################################################
+        #########################################################################################
 
-    # we run mixed model for each county in this loop
-
-    for mixed_method in mixed_methods:
+        # we run mixed model for each county in this loop
 
         for county_fips in all_counties:
           
@@ -1206,6 +1205,7 @@ def main(maxHistory, maxC):
                         best_c[method][error] = indx_c
                         if error == 'MAPE':
                             number_of_improved_methods += 1
+                            print(method+' improved')
                         if error == 'MAPE' and method != 'MM_GLM' and method != 'MM_NN':
                             historical_X_train[method] = (X_train_train_temp.append(X_train_val_temp)).reset_index(
                                 drop=True)
@@ -1237,6 +1237,7 @@ def main(maxHistory, maxC):
         my_shelf.close()
         push('logs of h=' + str(h) + ' added')
         if (number_of_improved_methods == 0) or (h == maxHistory//2) :
+          print('number of improved methods for h=',h,':',number_of_improved_methods)
           print('jump to test process')
           test_process(h, r, target_name,spatial_mode, target_mode,best_h,best_c,historical_X_train,\
                  historical_X_test, historical_y_train_date, historical_y_test_date, best_loss,\
