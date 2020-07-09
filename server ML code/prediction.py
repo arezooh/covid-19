@@ -969,14 +969,14 @@ def main(maxHistory):
             y_test_MM_dict[mixed_method] = np.array(y_test_MM_dict[mixed_method]['Target']).reshape(-1)
             y_train_MM_dict[mixed_method] = np.array(y_train_MM_dict[mixed_method]['Target']).reshape(-1)
         # save the entire session
-        # filename = env_address + 'test.out'
-        # my_shelf = shelve.open(filename, 'n')  # 'n' for new
-        # for key in dir():
-        #     try:
-        #         my_shelf[key] = locals()[key]
-        #     except:
-        #         print('ERROR shelving: {0}'.format(key))
-        # my_shelf.close()
+        filename = env_address + 'test.out'
+        my_shelf = shelve.open(filename, 'n')  # 'n' for new
+        for key in dir():
+            try:
+                my_shelf[key] = locals()[key]
+            except:
+                print('ERROR shelving: {0}'.format(key))
+        my_shelf.close()
         # mixed model with linear regression and neural network
         MM_GLM, MM_NN = run_mixed_models(X_train_MM_dict, X_test_MM_dict, y_train_MM_dict, y_test_MM_dict ,best_loss)
         y_prediction['MM_GLM'], y_prediction_train['MM_GLM'] = MM_GLM
@@ -999,20 +999,20 @@ def main(maxHistory):
         real_prediction_plot(df_for_prediction_plot,r,target_name,best_h, spatial_mode, methods, numberOfSelectedCounties)
 
         # mail the test results
-        # selected_for_email = [test_address + '/tables', test_address + '/all_errors/NN', test_address + '/all_errors/KNN' , test_address + '/plots_of_real_prediction_values']
-        # zip_file_name = 'test results for h =' + str(maxHistory) + ' #counties=' + str(numberOfSelectedCountiesname)
-        # make_zip(selected_for_email, zip_file_name)
-        # send_email(zip_file_name + '.zip')
+        selected_for_email = [test_address + '/tables', test_address + '/all_errors/NN', test_address + '/all_errors/KNN' , test_address + '/plots_of_real_prediction_values']
+        zip_file_name = 'test results for h =' + str(maxHistory) + ' #counties=' + str(numberOfSelectedCountiesname)
+        make_zip(selected_for_email, zip_file_name)
+        send_email(zip_file_name + '.zip')
 
         # save the entire session
-        # filename = env_address + 'test.out'
-        # my_shelf = shelve.open(filename, 'n')  # 'n' for new
-        # for key in dir():
-        #     try:
-        #         my_shelf[key] = locals()[key]
-        #     except:
-        #         print('ERROR shelving: {0}'.format(key))
-        # my_shelf.close()
+        filename = env_address + 'test.out'
+        my_shelf = shelve.open(filename, 'n')  # 'n' for new
+        for key in dir():
+            try:
+                my_shelf[key] = locals()[key]
+            except:
+                print('ERROR shelving: {0}'.format(key))
+        my_shelf.close()
 
 
 
@@ -1157,14 +1157,14 @@ def main(maxHistory):
                     break
 
         # save the entire session for each h and c
-        # filename = env_address + 'validation.out'
-        # my_shelf = shelve.open(filename, 'n')  # 'n' for new
-        # for key in dir():
-        #     try:
-        #         my_shelf[key] = locals()[key]
-        #     except:
-        #         print('ERROR shelving: {0}'.format(key))
-        # my_shelf.close()
+        filename = env_address + 'validation.out'
+        my_shelf = shelve.open(filename, 'n')  # 'n' for new
+        for key in dir():
+            try:
+                my_shelf[key] = locals()[key]
+            except:
+                print('ERROR shelving: {0}'.format(key))
+        my_shelf.close()
 
         number_of_improved_methods = 0 # we count number_of_improved_methods to run test if no method have improved in current h
 
@@ -1209,26 +1209,26 @@ def main(maxHistory):
             if indx_c == maxC:
                         break
             # save the entire session for each h and c
-        #     filename = env_address + 'validation.out'
-        #     my_shelf = shelve.open(filename, 'n')  # 'n' for new
-        #     for key in dir():
-        #         try:
-        #             my_shelf[key] = locals()[key]
-        #         except:
-        #             print('ERROR shelving: {0}'.format(key))
-        #     my_shelf.close()
-        # # save the entire session for each h
-        # filename = env_address + 'validation.out'
-        # my_shelf = shelve.open(filename, 'n')  # 'n' for new
-        # for key in dir():
-        #     try:
-        #         my_shelf[key] = locals()[key]
-        #     except:
-        #         print('ERROR shelving: {0}'.format(key))
-        # my_shelf.close()
+            filename = env_address + 'validation.out'
+            my_shelf = shelve.open(filename, 'n')  # 'n' for new
+            for key in dir():
+                try:
+                    my_shelf[key] = locals()[key]
+                except:
+                    print('ERROR shelving: {0}'.format(key))
+            my_shelf.close()
+        # save the entire session for each h
+        filename = env_address + 'validation.out'
+        my_shelf = shelve.open(filename, 'n')  # 'n' for new
+        for key in dir():
+            try:
+                my_shelf[key] = locals()[key]
+            except:
+                print('ERROR shelving: {0}'.format(key))
+        my_shelf.close()
 
         # push the file of outputs
-        # push('logs of h=' + str(h) + ' added')
+        push('logs of h=' + str(h) + ' added')
 
         # we run test if none of models have improved in curent h or if we passed half of maxhistory 
         if (number_of_improved_methods == 0) or (h == maxHistory//2) :###########################
@@ -1252,11 +1252,11 @@ def main(maxHistory):
         plot_results(3, 2, numberOfCovariates, methods, history, validation_errors[error], complete_error_names[error])
 
     # mail the validation results
-    # selected_for_email = [validation_address]
-    # zip_file_name = 'validation results for h =' + str(maxHistory) + ' #counties=' + str(numberOfSelectedCountiesname)
-    # make_zip(selected_for_email, zip_file_name)
-    # send_email(zip_file_name + '.zip')
-    # push('plots added')
+    selected_for_email = [validation_address]
+    zip_file_name = 'validation results for h =' + str(maxHistory) + ' #counties=' + str(numberOfSelectedCountiesname)
+    make_zip(selected_for_email, zip_file_name)
+    send_email(zip_file_name + '.zip')
+    push('plots added')
     ################################################################################################################# test zone
     test_process(h, r, target_name,spatial_mode, target_mode,best_h,best_c,historical_X_train,\
                     historical_X_test, historical_y_train_date, historical_y_test_date, best_loss,\
