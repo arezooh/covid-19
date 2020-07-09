@@ -1060,10 +1060,10 @@ def main(maxHistory):
         
 
         # find best loss
-        if (h==1):
-          best_loss = update_best_loss('none_mixed_model',spatial_mode,None,best_loss,X_train_train_to_use,X_train_val_to_use,\
-                                      y_train_train,y_train_val,None,None,data.columns.drop(['Target','date of day t','county_fips']),\
-                                        numberOfCovariates,maxC)
+#         if (h==1):
+#           best_loss = update_best_loss('none_mixed_model',spatial_mode,None,best_loss,X_train_train_to_use,X_train_val_to_use,\
+#                                       y_train_train,y_train_val,None,None,data.columns.drop(['Target','date of day t','county_fips']),\
+#                                         numberOfCovariates,maxC)
 
         
         covariates_list = []
@@ -1117,10 +1117,10 @@ def main(maxHistory):
         
 
         # find best loss
-        if h == 1 :
-          best_loss = update_best_loss('mixed_model',spatial_mode,None,best_loss,None,None,y_train_train,\
-                    y_train_val,y_prediction_train,y_prediction,None,\
-                    numberOfCovariates,maxC)
+#         if h == 1 :
+#           best_loss = update_best_loss('mixed_model',spatial_mode,None,best_loss,None,None,y_train_train,\
+#                     y_train_val,y_prediction_train,y_prediction,None,\
+#                     numberOfCovariates,maxC)
         # initiate loom for parallel processing        
         loom = ProcessLoom(max_runner_cap=len(base_data.columns) * len(mixed_methods) + 5)
         indx_c = 0
