@@ -1,6 +1,10 @@
 absl-py==0.9.0
 astunparse==1.6.3
+<<<<<<< HEAD
 cachetools==4.1.0
+=======
+cachetools==4.1.1
+>>>>>>> d533c3de71275689f906637cb072d099a94b7507
 certifi==2020.6.20
 chardet==3.0.4
 cycler==0.10.0
@@ -10,8 +14,13 @@ google-auth-oauthlib==0.4.1
 google-pasta==0.2.0
 grpcio==1.30.0
 h5py==2.10.0
+<<<<<<< HEAD
 idna==2.9
 joblib==0.15.1
+=======
+idna==2.10
+joblib==0.16.0
+>>>>>>> d533c3de71275689f906637cb072d099a94b7507
 Keras-Preprocessing==1.1.2
 kiwisolver==1.2.0
 Markdown==3.2.2
@@ -38,7 +47,11 @@ six==1.15.0
 sklearn==0.0
 statsmodels==0.11.1
 tensorboard==2.2.2
+<<<<<<< HEAD
 tensorboard-plugin-wit==1.6.0.post3
+=======
+tensorboard-plugin-wit==1.7.0
+>>>>>>> d533c3de71275689f906637cb072d099a94b7507
 tensorflow==2.2.0
 tensorflow-estimator==2.2.0
 termcolor==1.1.0
@@ -46,3 +59,7 @@ threadpoolctl==2.1.0
 urllib3==1.25.9
 Werkzeug==1.0.1
 wrapt==1.12.1
+<<<<<<< HEAD
+=======
+
+>>>>>>> d533c3de71275689f906637cb072d099a94b7507
