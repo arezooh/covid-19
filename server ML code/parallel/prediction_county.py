@@ -39,7 +39,7 @@ numberOfSelectedCounties = -1
 target_mode = 'regular'
 spatial_mode = 'county'
 numberOfSelectedCountiesname = 1535
-iteration = 2
+iteration = 3
 
 ######################################################### split data to train, val, test
 def splitData(numberOfCounties, main_data, target, spatial_mode, mode ):
