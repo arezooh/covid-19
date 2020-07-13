@@ -282,8 +282,8 @@ def NN_grid_search(X_train, y_train , X_test, y_test):
         layers.Dense(1,activation=tf.exp)
     ])
 
-    param_grid = ['poisson', 'MeanSquaredError','MeanAbsoluteError',
-                           'MeanSquaredLogarithmicError']
+    param_grid = ['poisson', 'MeanSquaredError','MeanAbsoluteError','MeanSquaredLogarithmicError']
+                       
 
 
 
@@ -305,7 +305,11 @@ def NN_grid_search(X_train, y_train , X_test, y_test):
         print(g)
         # save if best
         if NeuralNetworkObject.evaluate(testX, testy)[1] < best_score:
+            print('check3008 models')
             best_score = NeuralNetworkObject.evaluate(testX, testy)[1]
             best_grid = g
+            print(best_grid)
+    print(best_grid)
+    print('check311 models')
 
     return(best_grid)
