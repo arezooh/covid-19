@@ -35,7 +35,7 @@ import statistics
 plt.rcParams.update({'figure.max_open_warning': 0})
 
 r = 21  # the following day to predict
-numberOfSelectedCounties = 2
+numberOfSelectedCounties = -1
 target_mode = 'regular'
 spatial_mode = 'county'
 numberOfSelectedCountiesname = 1535
