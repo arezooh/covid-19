@@ -35,11 +35,11 @@ import statistics
 plt.rcParams.update({'figure.max_open_warning': 0})
 
 r = 21  # the following day to predict
-numberOfSelectedCounties = -1
+numberOfSelectedCounties = 2
 target_mode = 'regular'
 spatial_mode = 'county'
 numberOfSelectedCountiesname = 1535
-iteration = 1
+iteration = 20
 
 ######################################################### split data to train, val, test
 def splitData(numberOfCounties, main_data, target, spatial_mode, mode ):
@@ -1269,7 +1269,7 @@ if __name__ == "__main__":
     validation_address = './'+str(iteration)+' results/counties=' + str(numberOfSelectedCountiesname) + ' max_history=' + str(maxHistory) + '/validation/'
     test_address = './' +str(iteration)+ ' results/counties=' + str(numberOfSelectedCountiesname) + ' max_history=' + str(maxHistory) + '/test/'
     env_address = './' +str(iteration)+ ' results/counties=' + str(numberOfSelectedCountiesname) + ' max_history=' + str(maxHistory) + '/session_parameters/'
-    mail_address = './'+str(iteration)+'results/counties=' + str(numberOfSelectedCountiesname) + ' max_history=' + str(maxHistory) + '/email/'
+    mail_address = './'+str(iteration)+' results/counties=' + str(numberOfSelectedCountiesname) + ' max_history=' + str(maxHistory) + '/email/'
     if not os.path.exists(mail_address):
         os.makedirs(mail_address)
     if not os.path.exists(test_address):
