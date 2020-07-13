@@ -37,14 +37,14 @@ plt.rcParams.update({'figure.max_open_warning': 0})
 r = 21  # the following day to predict
 numberOfSelectedCounties = -1
 target_mode = 'regular'
-spatial_mode = 'country'
+spatial_mode = 'county'
 numberOfSelectedCountiesname = 1535
+iteration = 20
 
 ######################################################### split data to train, val, test
 def splitData(numberOfCounties, main_data, target, spatial_mode, mode ):
 
-    if numberOfCounties == -1:
-      numberOfCounties = len(main_data['county_fips'].unique())
+    numberOfCounties = len(main_data['county_fips'].unique())
 
     if mode == 'val':
       main_data = main_data.sort_values(by=['date of day t' , 'county_fips'])
@@ -125,7 +125,7 @@ def preprocess(main_data, spatial_mode, validationFlag):
 ################################ MASE_denominator
 def mase_denominator(r, target_name, target_mode ,numberOfSelectedCounties):
 
-    data = makeHistoricalData(0, r, target_name, 'mrmr', 'country', target_mode, './')
+    data = makeHistoricalData(0, r, target_name, 'mrmr', 'country', target_mode, './', iteration)
     if numberOfSelectedCounties == -1 :
       numberOfSelectedCounties = len(data['county_fips'].unique())
     data = clean_data(data, numberOfSelectedCounties)
@@ -216,6 +216,7 @@ def run_algorithms(X_train_dict, X_val_dict, y_train_dict, y_val_dict, best_loss
       for method in methods:
         X_train[method] = X_train_dict[method]
         X_train[method] = X_train[method][X_train[method]['county_fips']==county_fips].drop(['county_fips','date of day t'],axis=1)
+        print('run_alg X_train[method].shape',X_train[method].shape)
         X_val[method] = X_val_dict[method]
         X_val[method] = X_val[method][X_val[method]['county_fips']==county_fips].drop(['county_fips','date of day t'],axis=1)
         y_train[method] = y_train_dict[method]
@@ -284,35 +285,28 @@ def update_best_loss(model_type ,spatial_mode ,county_fips,best_loss,X_train_tra
                                         y_prediction_train['KNN'][(h, c)], y_prediction_train['NN'][(h, c)]])
           y_prediction_train_np = np.array(y_predictions_train).reshape(len(y_predictions_train), -1)
           X_train_mixedModel = pd.DataFrame(y_prediction_train_np.transpose())
-          loom.add_function(NN_grid_search, [X_train_mixedModel,y_train_train , X_test_mixedModel,y_train_val],{})
+          loom.add_function(NN_grid_search, [X_train_mixedModel,y_train_train , X_test_mixedModel,y_train_val])
           best_loss_output = loom.execute()
           best_loss['MM_NN'] = best_loss_output[0]['output']
           
-    if model_type == 'none_mixed_model':   
-          print('check 292')
-        
+    if model_type == 'none_mixed_model':
           loom = ProcessLoom(max_runner_cap= 2)
           if spatial_mode == 'country':
             loom.add_function(GBM_grid_search, [X_train_train_to_use['GBM'][covariates],
                                                     y_train_train , X_train_val_to_use['GBM'][covariates],
-                                                    y_train_val],{})
-            
+                                                    y_train_val])
             loom.add_function(NN_grid_search, [X_train_train_to_use['NN'][covariates],
                                                     y_train_train , X_train_val_to_use['NN'][covariates],
-                                                    y_train_val],{})
+                                                    y_train_val])
           if spatial_mode == 'county':
             loom.add_function(GBM_grid_search, [X_train_train_to_use[county_fips][h]['GBM'][covariates],
                                                     y_train_train , X_train_val_to_use[county_fips][h]['GBM'][covariates],
-                                                    y_train_val],{})
+                                                    y_train_val])
             loom.add_function(NN_grid_search, [X_train_train_to_use[county_fips][h]['NN'][covariates],
                                                     y_train_train , X_train_val_to_use[county_fips][h]['NN'][covariates],
-                                                    y_train_val],{})
-          
+                                                    y_train_val])
           best_loss_output=loom.execute()
-          
-          
           best_loss['GBM'],best_loss['NN'] = best_loss_output[0]['output'],best_loss_output[1]['output']
-          
     return best_loss
 
 ########################################################### 
@@ -336,7 +330,7 @@ def get_best_loss_mode(counties_best_loss_list):
 
 def generate_data(h, numberOfCovariates, covariates_names, numberOfSelectedCounties):
 
-    data = makeHistoricalData(h, r, 'confirmed', 'mrmr', spatial_mode, target_mode, './')
+    data = makeHistoricalData(h, r, 'confirmed', 'mrmr', spatial_mode, target_mode, './', iteration)
     data = clean_data(data, numberOfSelectedCounties)
 
     X_train, X_test, y_train, y_test = preprocess(data, spatial_mode, 0)
@@ -359,7 +353,7 @@ def generate_data(h, numberOfCovariates, covariates_names, numberOfSelectedCount
 ########################################################### plot the results
 
 def plot_results(row, col, numberOfCovariates, methods, history, errors, mode):
-
+    print(history)
     mpl.style.use('seaborn')
     plt.rc('font', size=20)
     fig, ax = plt.subplots(row, col, figsize=(40, 40))
@@ -475,36 +469,10 @@ def real_prediction_plot(df,r,target_name,best_h,spatial_mode,methods,numberOfSe
         os.makedirs(address)
 
     for method in methods:
-
-        data=makeHistoricalData(best_h[method]['MAPE'], r, target_name, 'mrmr', spatial_mode, target_mode, './')
-        if numberOfSelectedCounties == -1 :
-          numberOfSelectedCounties = len(data['county_fips'].unique())
-        data = data.sort_values(by=['county_fips', 'date of day t'])
-        data = data[(data['county_fips'] <= data['county_fips'].unique()[numberOfSelectedCounties - 1])]
-        data = data.reset_index(drop=True)
-        data = data[['state_fips','county_name','county_fips','date of day t','Target']]
-        data=data.sort_values(by=['date of day t','county_fips'])
-        data_train_train=data.iloc[:-2*(r*numberOfSelectedCounties),:]
-        data_train_val=data.iloc[-2*(r*numberOfSelectedCounties):-(r*numberOfSelectedCounties),:]
-        data_test=data.tail(r*numberOfSelectedCounties)
-        if spatial_mode == 'country' :
-            data_train_train=data_train_train.sort_values(by=['county_fips','date of day t'])
-            data_train_val=data_train_val.sort_values(by=['county_fips','date of day t'])
-            data_test=data_test.sort_values(by=['county_fips','date of day t'])
-            data=data_train_train.append(data_train_val)
-            data=data.append(data_test)
-        if spatial_mode == 'county' :
-            data_train = data_train_train.append(data_train_val)
-            data_train = data_train.sort_values(by=['county_fips','date of day t'])
-            data_test = data_test.sort_values(by=['county_fips','date of day t'])
-            data = data_train.append(data_test)
-        if spatial_mode == 'state' :
-            data_train = data_train_train.append(data_train_val)
-            data_train = data_train.sort_values(by=['state_fips','date of day t'])
-            data_test = data_test.sort_values(by=['state_fips','date of day t'])
-            data = data_train.append(data_test)
-        method_prediction_df = pd.DataFrame(df[method],columns=[method])
-        df_for_plot = pd.concat([data.reset_index(drop=True),method_prediction_df.reset_index(drop=True)],axis=1)
+       
+        method_prediction_df = df[method] # this df contain real and predicted target values
+        county_name_df=pd.read_csv('./'+'fixed-data.csv')[['county_fips','county_name']] # we need county names for plot label
+        df_for_plot = pd.merge(method_prediction_df,county_name_df,how='left')
 
         df_for_plot['date'] = df_for_plot['date of day t'].apply(lambda x:datetime.datetime.strptime(x,'%m/%d/%y')+datetime.timedelta(days=r))
         df_for_plot['date'] = df_for_plot['date'].apply(lambda x:datetime.datetime.strftime(x,'%m/%d/%y'))
@@ -583,7 +551,7 @@ def get_errors(h, c, method, y_prediction, y_prediction_train, y_test_date, MASE
 
         # for cumulative data form we need to change MASE error and we need new case data to calclate this error so in next lines we build new case
         # data from cumulative data form
-        data_new_case = makeHistoricalData(h, r, target_name, 'mrmr', spatial_mode, 'regular', './')
+        data_new_case = makeHistoricalData(h, r, target_name, 'mrmr', spatial_mode, 'regular', './', iteration)
         if numberOfSelectedCounties == -1 :
           numberOfSelectedCounties = len(data_new_case['county_fips'].unique())
         data_new_case = clean_data(data_new_case, numberOfSelectedCounties)
@@ -741,7 +709,7 @@ def send_email(*attachments):
     subject = "Server results"
     body = " "
     sender_email = "covidserver1@gmail.com"
-    receiver_email = ["arezo.h1371@yahoo.com","arashmarioriyad@gmail.com"]#
+    receiver_email = ["arezo.h1371@yahoo.com"]#,"arashmarioriyad@gmail.com"
     CC_email = ["p.ramazi@gmail.com"]#
     password = "S.123456.S"
 
@@ -782,6 +750,202 @@ def send_email(*attachments):
         server.sendmail(sender_email, receiver_email+CC_email , text)
 
 
+############################################################ test process
+def test_process(h, r, target_name,spatial_mode, target_mode,best_h,best_c,historical_X_train,\
+                 historical_X_test, historical_y_train_date, historical_y_test_date, best_loss,\
+                 numberOfSelectedCounties, covariates_names, maxHistory, test_address, env_address, mail_address):
+
+    
+    columns_table_t = ['best_h', 'best_c', 'mean absolute error', 'percentage of absolute error', 'adjusted R squared error',
+                      'second error', 'mean absolute scaled error']
+    columns_table = ['best_h', 'best_c', 'mean absolute error', 'percentage of absolute error',
+                      'adjusted R squared error',
+                      'sum of absolute error', 'mean absolute scaled error']
+    methods = ['GBM', 'GLM', 'KNN', 'NN', 'MM_GLM', 'MM_NN']
+    none_mixed_methods = ['GBM', 'GLM', 'KNN', 'NN']
+    mixed_methods = ['MM_GLM', 'MM_NN']
+
+    train_val_MASE_denominator, val_test_MASE_denominator, train_lag_MASE_denominator = mase_denominator(r, target_name, target_mode, numberOfSelectedCounties)
+    df_for_prediction_plot = {method : None for method in methods}
+
+    all_data = makeHistoricalData(h, r, target_name, 'mrmr', spatial_mode, target_mode, './', iteration)
+    all_data = clean_data(all_data, numberOfSelectedCounties)
+    print(all_data.shape)
+    all_counties = all_data['county_fips'].unique()
+    y_prediction = {county_fips: {'GBM': {}, 'GLM': {}, 'KNN': {}, 'NN': {}, 'MM_GLM': {}, 'MM_NN': {}}
+                    for county_fips in all_counties}
+    y_prediction_train = {county_fips: {'GBM': {}, 'GLM': {}, 'KNN': {}, 'NN': {}, 'MM_GLM': {}, 'MM_NN': {}}
+                    for county_fips in all_counties}
+    # run non-mixed methods on the whole training set with their best h and c
+    X_train_dict, X_test_dict, y_train_dict, y_test_dict = {}, {}, {}, {}
+
+
+    for county_fips in all_counties:
+
+        GBM, GLM, KNN, NN = run_algorithms(historical_X_train, historical_X_test, historical_y_train_date, historical_y_test_date, best_loss, 0, spatial_mode, county_fips)
+
+        y_prediction[county_fips]['GBM'], y_prediction_train[county_fips]['GBM'] = GBM
+        y_prediction[county_fips]['GLM'], y_prediction_train[county_fips]['GLM'] = GLM
+        y_prediction[county_fips]['KNN'], y_prediction_train[county_fips]['KNN'] = KNN
+        y_prediction[county_fips]['NN'], y_prediction_train[county_fips]['NN'] = NN
+
+
+    table_data = []
+
+    for method in none_mixed_methods:
+        meanAbsoluteError, percentageOfAbsoluteError, adj_r_squared, second_error, meanAbsoluteScaledError = get_errors(best_h[method]['MAPE'],
+        best_c[method]['MAPE'], method, flatten(data=y_prediction, h=h, c=None, method=method, state=6), flatten(data=y_prediction_train, h=h, c=None, method=method, state=6), historical_y_test_date[method],
+         val_test_MASE_denominator, numberOfSelectedCounties, mode='test')
+        
+        table_data.append([best_h[method]['MAPE'], best_c[method]['MAPE'],  round(meanAbsoluteError, 2),
+                            round(percentageOfAbsoluteError, 2), round(adj_r_squared, 2), round(second_error, 2), round(meanAbsoluteScaledError, 2)])
+
+    push('a new table added')
+
+    for method in none_mixed_methods:
+      method_real_pred_df = historical_y_train_date[method].append(historical_y_test_date[method])
+      prediction=list(flatten(data=y_prediction_train, h=h, c=None, method=method, state=6))+list(flatten(data=y_prediction, h=h, c=None, method=method, state=6))
+      method_real_pred_df[method] = prediction
+      df_for_prediction_plot[method] = method_real_pred_df
+
+    # generate data for non-mixed methods with the best h and c of mixed models and fit mixed models on them
+    # (with the whole training set)
+    y_predictions = {'MM_GLM': [], 'MM_NN': []}
+    y_prediction = {county_fips: {'GBM': {}, 'GLM': {}, 'KNN': {}, 'NN': {}, 'MM_GLM': {}, 'MM_NN': {}}
+                    for county_fips in all_counties}
+    y_prediction_train = {county_fips: {'GBM': {}, 'GLM': {}, 'KNN': {}, 'NN': {}, 'MM_GLM': {}, 'MM_NN': {}}
+                    for county_fips in all_counties}
+    #table_data = []
+    X_train_MM_dict = {county_fips: {'GBM': {}, 'GLM': {}, 'KNN': {}, 'NN': {}, 'MM_GLM': {}, 'MM_NN': {}}
+                    for county_fips in all_counties}
+    X_test_MM_dict = {county_fips: {'GBM': {}, 'GLM': {}, 'KNN': {}, 'NN': {}, 'MM_GLM': {}, 'MM_NN': {}}
+                    for county_fips in all_counties}
+    y_train_MM_dict = {county_fips: {'GBM': {}, 'GLM': {}, 'KNN': {}, 'NN': {}, 'MM_GLM': {}, 'MM_NN': {}}
+                    for county_fips in all_counties}
+    y_test_MM_dict = {county_fips: {'GBM': {}, 'GLM': {}, 'KNN': {}, 'NN': {}, 'MM_GLM': {}, 'MM_NN': {}}
+                    for county_fips in all_counties}
+    y_train, y_test = {}, {}
+    y_test_date = {}
+
+    # we make mixed_model train_data in this loop
+
+    for mixed_method in mixed_methods:
+        X_train, X_test, y_train_date, y_test_date[mixed_method] = generate_data(best_h[mixed_method]['MAPE'], best_c[mixed_method]['MAPE'],
+                                                                                  covariates_names, numberOfSelectedCounties)
+        y_test_date_temp = y_test_date[mixed_method]
+        y_train[mixed_method] = y_train_date#np.array(['Target']).reshape(-1)
+        y_test[mixed_method] = y_test_date_temp# np.array(['Target']).reshape(-1)
+        mixed_model_covariates_names = list(X_train.columns)
+        X_train_to_use = {method: None for method in methods}
+        X_test_to_use = {method: None for method in methods}
+        for method in none_mixed_methods:
+            X_train_to_use[method] = X_train.copy()
+            X_test_to_use[method] = X_test.copy()
+            if method in models_to_log:
+                # make temporal and some fixed covariates logarithmic
+                negative_features=['temperature']
+                for covar in mixed_model_covariates_names:
+                    if (' t' in covar) and (covar.split(' ')[0] not in negative_features) and (covar != 'date of day t'):
+                        X_train_to_use[method][covar] = np.log((X_train_to_use[method][covar] + 1).astype(float))
+                        X_test_to_use[method][covar] = np.log((X_test_to_use[method][covar] + 1).astype(float))
+
+                fix_log_list = ['total_population', 'population_density', 'area', 'median_household_income',
+                                'houses_density', 'airport_distance','deaths_per_100000']
+                for covar in fix_log_list:
+                    if covar in mixed_model_covariates_names:
+                        X_train_to_use[method][covar] = np.log((X_train_to_use[method][covar] + 1).astype(float))
+                        X_test_to_use[method][covar] = np.log((X_test_to_use[method][covar] + 1).astype(float))
+
+            X_train_dict[method] = X_train_to_use[method]
+            X_test_dict[method] = X_test_to_use[method]
+            y_train_dict[method] = y_train[mixed_method]
+            y_test_dict[method] = y_test[mixed_method]
+
+
+        #########################################################################################
+
+        # we run mixed model for each county in this loop
+
+        # for mixed_method in mixed_methods:
+
+        for county_fips in all_counties:
+          
+            GBM, GLM, KNN, NN = run_algorithms(X_train_dict, X_test_dict, y_train_dict, y_test_dict, best_loss, 0, spatial_mode, county_fips)
+            y_prediction[county_fips]['GBM'], y_prediction_train[county_fips]['GBM'] = GBM
+            y_prediction[county_fips]['GLM'], y_prediction_train[county_fips]['GLM'] = GLM
+            y_prediction[county_fips]['KNN'], y_prediction_train[county_fips]['KNN'] = KNN
+            y_prediction[county_fips]['NN'], y_prediction_train[county_fips]['NN'] = NN
+            y_predictions_test, y_predictions_train = [], []
+            # Construct the outputs for the testing dataset of the 'MM' methods
+            y_predictions_test.extend([y_prediction[county_fips]['GBM'], y_prediction[county_fips]['GLM'], y_prediction[county_fips]['KNN'], y_prediction[county_fips]['NN']])
+            y_prediction_test_np = np.array(y_predictions_test).reshape(len(y_predictions_test), -1)
+            X_test_mixedModel = pd.DataFrame(y_prediction_test_np.transpose())
+            # Construct the outputs for the training dataset of the 'MM' methods
+            y_predictions_train.extend([y_prediction_train[county_fips]['GBM'], y_prediction_train[county_fips]['GLM'], y_prediction_train[county_fips]['KNN'], y_prediction_train[county_fips]['NN']])
+            y_prediction_train_np = np.array(y_predictions_train).reshape(len(y_predictions_train), -1)
+            X_train_mixedModel = pd.DataFrame(y_prediction_train_np.transpose())
+            X_train_MM_dict[county_fips][mixed_method] = X_train_mixedModel
+            X_test_MM_dict[county_fips][mixed_method] = X_test_mixedModel
+            y_train_MM_dict[county_fips][mixed_method] = y_train[mixed_method][y_train[mixed_method]['county_fips']==county_fips]
+            y_test_MM_dict[county_fips][mixed_method] = y_test[mixed_method][y_test[mixed_method]['county_fips']==county_fips]
+
+
+            y_test_MM_dict[county_fips][mixed_method] = np.array(y_test_MM_dict[county_fips][mixed_method]['Target']).reshape(-1)
+            y_train_MM_dict[county_fips][mixed_method] = np.array(y_train_MM_dict[county_fips][mixed_method]['Target']).reshape(-1)
+
+    for county_fips in all_counties:
+
+        # mixed model with linear regression and neural network
+        MM_GLM, MM_NN = run_mixed_models(X_train_MM_dict[county_fips], X_test_MM_dict[county_fips], y_train_MM_dict[county_fips], y_test_MM_dict[county_fips] ,best_loss)
+        y_prediction[county_fips]['MM_GLM'], y_prediction_train[county_fips]['MM_GLM'] = MM_GLM
+        y_prediction[county_fips]['MM_NN'], y_prediction_train[county_fips]['MM_NN'] = MM_NN
+
+    # save the entire session
+    filename = env_address + 'test.out'
+    my_shelf = shelve.open(filename, 'n')  # 'n' for new
+    for key in dir():
+        try:
+            my_shelf[key] = locals()[key]
+        except:
+            print('ERROR shelving: {0}'.format(key))
+    my_shelf.close()
+
+    ############################################################################################
+    for mixed_method in mixed_methods:
+        meanAbsoluteError, percentageOfAbsoluteError, adj_r_squared, second_error, meanAbsoluteScaledError = get_errors(best_h[mixed_method]['MAPE'],
+        best_c[mixed_method]['MAPE'], mixed_method, flatten(data=y_prediction, h=h, c=None, method=mixed_method, state=6), flatten(data=y_prediction_train, h=h, c=None, method=mixed_method, state=6), y_test_date[mixed_method],
+                                    val_test_MASE_denominator, numberOfSelectedCounties, mode='test')
+        table_data.append([best_h[mixed_method]['MAPE'], best_c[mixed_method]['MAPE'], round(meanAbsoluteError, 2), round(percentageOfAbsoluteError, 2),
+                            round(adj_r_squared, 2), round(second_error, 2), round(meanAbsoluteScaledError, 2)])
+
+    table_name = 'table_of_best_test_results'
+    plot_table(table_data, columns_table_t, methods, table_name, mode='test')
+    # push('a new table added')
+
+    for method in mixed_methods:
+      method_real_pred_df=y_train[method].append(y_test[method])
+      prediction=list(flatten(data=y_prediction_train, h=h, c=None, method=method, state=6))+list(flatten(data=y_prediction, h=h, c=None, method=method, state=6))
+      method_real_pred_df[method] = prediction
+      df_for_prediction_plot[method] = method_real_pred_df
+
+    real_prediction_plot(df_for_prediction_plot,r,target_name,best_h,spatial_mode,methods, numberOfSelectedCounties)
+
+    # mail the test results
+    selected_for_email = [test_address + '/tables', test_address + '/all_errors/NN', test_address + '/all_errors/KNN' , test_address + '/plots_of_real_prediction_values']
+    zip_file_name = 'test results for h =' + str(maxHistory) + ' #counties=' + str(numberOfSelectedCountiesname)
+    make_zip(selected_for_email, zip_file_name)
+    send_email(zip_file_name + '.zip')
+
+    # save the entire session
+    filename = env_address + 'test.out'
+    my_shelf = shelve.open(filename, 'n')  # 'n' for new
+    for key in dir():
+        try:
+            my_shelf[key] = locals()[key]
+        except:
+            print('ERROR shelving: {0}'.format(key))
+    my_shelf.close()
+
 
 ########################################################## flatten
 def flatten(data=None, h=None, c=None, method=None, covariates_list=None, state=1):
@@ -815,27 +979,28 @@ def flatten(data=None, h=None, c=None, method=None, covariates_list=None, state=
     return result
 
 
-########################################################### main
-def main(maxHistory):
 
+
+########################################################### main
+def main(maxHistory, maxC):
     history = [i for i in range(1, maxHistory + 1)]
     methods = ['GBM', 'GLM', 'KNN', 'NN', 'MM_GLM', 'MM_NN']
     none_mixed_methods = ['GBM', 'GLM', 'KNN', 'NN']
     mixed_methods = ['MM_GLM', 'MM_NN']
     target_name = 'confirmed'
-    base_data = makeHistoricalData(0, r, target_name, 'mrmr', spatial_mode, target_mode,'./')
+    base_data = makeHistoricalData(0, r, target_name, 'mrmr', spatial_mode, target_mode, './', iteration)
     base_data = clean_data(base_data, numberOfSelectedCounties)
     covariates_names = list(base_data.columns)
     covariates_names.remove('Target')
     covariates_names.remove('date of day t')
     covariates_names.remove('county_fips')
-    # covariates_names.remove('daily-country-test-per-1000 t')
     numberOfCovariates = len(covariates_names)
-    print('number of covariates: ', numberOfCovariates)
-
-    y_prediction = {'GBM': {}, 'GLM': {}, 'KNN': {}, 'NN': {}, 'MM_GLM': {}, 'MM_NN': {}}
-    y_prediction_train = {'GBM': {}, 'GLM': {}, 'KNN': {}, 'NN': {}, 'MM_GLM': {}, 'MM_NN': {}}
-
+    y_prediction = {county_fips: {'GBM': {}, 'GLM': {}, 'KNN': {}, 'NN': {}, 'MM_GLM': {}, 'MM_NN': {}}
+                    for county_fips in base_data['county_fips'].unique()}
+    y_prediction_train = {county_fips: {'GBM': {}, 'GLM': {}, 'KNN': {}, 'NN': {}, 'MM_GLM': {}, 'MM_NN': {}}
+                    for county_fips in base_data['county_fips'].unique()}
+    y_val = {county_fips: {}
+                    for county_fips in base_data['county_fips'].unique()}
     error_names = ['MAPE', 'MAE', 'adj-R2', 'sec', 'MASE']
     complete_error_names = {'MAPE': 'Percentage Of Absolute Error', 'MAE': 'Mean Absolute Error',
                             'MASE': 'Mean Absolute Scaled Error', 'adj-R2': 'Adjusted R Squared Error',
@@ -844,351 +1009,179 @@ def main(maxHistory):
     minError = {method: {error: int(1e10) for error in error_names} for method in methods}
     best_h = {method: {error: 0 for error in error_names} for method in methods}
     best_c = {method: {error: 0 for error in error_names} for method in methods}
-
-    # best_loss = {method: None for method in ['GBM', 'NN', 'MM_NN']}
-    best_loss = {'GBM': 'poisson', 'MM_NN': 'poisson', 'NN': 'MeanAbsoluteError'}
-
-
+    # best_loss = {'GBM': 'poisson', 'MM_NN': 'poisson', 'NN': 'MeanAbsoluteError'}
+    best_loss = {method: None for method in ['GBM', 'NN', 'MM_NN']}
+    counties_best_loss_list = {method: list() for method in ['GBM', 'NN', 'MM_NN']}
+    df_for_prediction_plot = pd.DataFrame(columns = methods)
     columns_table_t = ['best_h', 'best_c', 'mean absolute error', 'percentage of absolute error', 'adjusted R squared error',
-                      'second error', 'mean absolute scaled error']  # table columns names
+                      'second error', 'mean absolute scaled error']
     columns_table = ['best_h', 'best_c', 'mean absolute error', 'percentage of absolute error',
                       'adjusted R squared error',
-                      'sum of absolute error', 'mean absolute scaled error']  # table columns names
-    historical_X_train = {}  # X_train for best h and c
-    historical_X_test = {}  # X_test for best h and c
-    historical_y_train = {}  # y_train for best h and c
-    historical_y_test = {}  # y_test for best h and c
-    historical_y_train_date = {}  # y_train for best h and c with dates info
-    historical_y_test_date = {}  # y_test for best h and c with dates info
-    parallel_outputs = {}
+                      'sum of absolute error', 'mean absolute scaled error']
+    historical_X_train = {}
+    historical_X_test = {}
+    historical_y_train = {}
+    historical_y_test = {}
+    historical_y_train_date = {}
+    historical_y_test_date = {}
+    X_train_train_to_use = {county_fips: {h: {method: None for method in methods} for h in history} for county_fips in base_data['county_fips'].unique()}
+    X_train_val_to_use = {county_fips: {h: {method: None for method in methods} for h in history} for county_fips in base_data['county_fips'].unique()}
+    X_test_to_use = {county_fips: {h: {method: None for method in methods} for h in history} for county_fips in base_data['county_fips'].unique()}
     train_val_MASE_denominator, val_test_MASE_denominator, train_lag_MASE_denominator = mase_denominator(r, target_name, target_mode, numberOfSelectedCounties)
-
-    ############################################################
-    # we define test as function to call it when h equal to half the maxHistory or when none of the models have improved in current h
-    def test_process(h, r, target_name,spatial_mode, target_mode,best_h,best_c,historical_X_train,\
-                    historical_X_test, historical_y_train_date, historical_y_test_date, best_loss,\
-                    numberOfSelectedCounties, covariates_names, maxHistory, test_address, env_address, mail_address):
-      
-        columns_table_t = ['best_h', 'best_c', 'mean absolute error', 'percentage of absolute error', 'adjusted R squared error',
-                          'second error', 'mean absolute scaled error']
-        columns_table = ['best_h', 'best_c', 'mean absolute error', 'percentage of absolute error',
-                          'adjusted R squared error',
-                          'sum of absolute error', 'mean absolute scaled error']
-        methods = ['GBM', 'GLM', 'KNN', 'NN', 'MM_GLM', 'MM_NN']
-        none_mixed_methods = ['GBM', 'GLM', 'KNN', 'NN']
-        mixed_methods = ['MM_GLM', 'MM_NN']
-
-        train_val_MASE_denominator, val_test_MASE_denominator, train_lag_MASE_denominator = mase_denominator(r, target_name, target_mode, numberOfSelectedCounties)
-        df_for_prediction_plot = {method : None for method in methods}
-        y_prediction = {}
-        y_prediction_train = {}
-        # run non-mixed methods on the whole training set with their best h and c
-        X_train_dict, X_test_dict, y_train_dict, y_test_dict = {}, {}, {}, {}
-
-        GBM, GLM, KNN, NN = run_algorithms(historical_X_train, historical_X_test, historical_y_train_date, historical_y_test_date, best_loss, 0, spatial_mode, None)
-
-        y_prediction['GBM'], y_prediction_train['GBM'] = GBM
-        y_prediction['GLM'], y_prediction_train['GLM'] = GLM
-        y_prediction['KNN'], y_prediction_train['KNN'] = KNN
-        y_prediction['NN'], y_prediction_train['NN'] = NN
-        table_data = []
-
-        for method in none_mixed_methods:
-            meanAbsoluteError, percentageOfAbsoluteError, adj_r_squared, second_error, meanAbsoluteScaledError = get_errors(best_h[method]['MAPE'],
-            best_c[method]['MAPE'], method, y_prediction[method], y_prediction_train[method], historical_y_test_date[method], val_test_MASE_denominator,
-                                                                                                                numberOfSelectedCounties, mode='test')
-            table_data.append([best_h[method]['MAPE'], best_c[method]['MAPE'],  round(meanAbsoluteError, 2),
-                                round(percentageOfAbsoluteError, 2), round(adj_r_squared, 2), round(second_error, 2), round(meanAbsoluteScaledError, 2)])
-
-        push('a new table added')
-
-        for method in none_mixed_methods:
-          prediction=list(y_prediction_train[method])+list(y_prediction[method])
-          df_for_prediction_plot[method]=prediction
-
-        # generate data for non-mixed methods with the best h and c of mixed models and fit mixed models on them
-        # (with the whole training set)
-        y_predictions = {'MM_GLM': [], 'MM_NN': []}
-        y_prediction = {}
-        #table_data = []
-        X_train_MM_dict, X_test_MM_dict, y_train_MM_dict, y_test_MM_dict = {}, {}, {}, {}
-        y_train, y_test = {}, {}
-        y_test_date = {}
-
-        for mixed_method in mixed_methods:
-            X_train, X_test, y_train_date, y_test_date[mixed_method] = generate_data(best_h[mixed_method]['MAPE'], best_c[mixed_method]['MAPE'],
-                                                                                      covariates_names, numberOfSelectedCounties)
-            y_test_date_temp = y_test_date[mixed_method]
-            y_train[mixed_method] = y_train_date
-            y_test[mixed_method] = y_test_date_temp
-            mixed_model_covariates_names = list(X_train.columns)
-            X_train_to_use = {method: None for method in methods}
-            X_test_to_use = {method: None for method in methods}
-            for method in none_mixed_methods:
-                X_train_to_use[method] = X_train.copy()
-                X_test_to_use[method] = X_test.copy()
+    
+    for h in history:
+        print("h = ", h)
+        all_data = makeHistoricalData(h, r, target_name, 'mrmr', spatial_mode, target_mode, './', iteration)
+        all_data = clean_data(all_data, numberOfSelectedCounties)
+        print(all_data.shape)
+        if (all_data.shape[0] < 1) :
+            history = history[:h-1]
+            break
+        all_counties = all_data['county_fips'].unique()
+        y_test_date = {county_fips: None for county_fips in all_counties}
+        y_train_date = {county_fips: None for county_fips in all_counties}
+        y_train = {county_fips: None for county_fips in all_counties}
+        y_test = {county_fips: None for county_fips in all_counties}
+        for county_fips in all_counties:
+            print("county_fips = ", county_fips)
+            data = all_data[all_data['county_fips']==county_fips]
+            print(data.shape)
+            parallel_outputs = {}
+            X_train_train, X_train_val, X_test, y_train_train_date, y_train_val_date, y_test_date[county_fips] = preprocess(data, spatial_mode, 1)
+            indx_c = 0
+            for c in covariates_names:
+                indx_c += 1
+                y_val[county_fips][(h, indx_c)] = np.array(y_train_val_date['Target']).reshape(-1)
+                if indx_c == maxC:
+                    break
+            for method in methods:
+                X_train_train_to_use[county_fips][h][method] = X_train_train.copy()
+                X_train_val_to_use[county_fips][h][method]= X_train_val.copy()
+                X_test_to_use[county_fips][h][method] = X_test.copy()
                 if method in models_to_log:
-                    # make temporal and some fixed covariates logarithmic
                     negative_features=['temperature']
-                    for covar in mixed_model_covariates_names:
-                        if (' t' in covar) and (covar.split(' ')[0] not in negative_features) and (covar not in ['county_fips','date of day t']):
-                            X_train_to_use[method][covar] = np.log((X_train_to_use[method][covar] + 1).astype(float))
-                            X_test_to_use[method][covar] = np.log((X_test_to_use[method][covar] + 1).astype(float))
-
+                    for covar in covariates_names:
+                        if (' t' in covar) and (covar.split(' ')[0] not in negative_features):
+                            X_train_train_to_use[county_fips][h][method][covar] = np.log((X_train_train_to_use[county_fips][h][method][covar] + 1).astype(float))
+                            X_train_val_to_use[county_fips][h][method][covar] = np.log((X_train_val_to_use[county_fips][h][method][covar] + 1).astype(float))
+                            X_test_to_use[county_fips][h][method][covar] = np.log((X_test_to_use[county_fips][h][method][covar] + 1).astype(float))
                     fix_log_list = ['total_population', 'population_density', 'area', 'median_household_income',
                                     'houses_density', 'airport_distance','deaths_per_100000']
                     for covar in fix_log_list:
-                        if covar in mixed_model_covariates_names:
-                            X_train_to_use[method][covar] = np.log((X_train_to_use[method][covar] + 1).astype(float))
-                            X_test_to_use[method][covar] = np.log((X_test_to_use[method][covar] + 1).astype(float))
-
-                X_train_dict[method] = X_train_to_use[method]
-                X_test_dict[method] = X_test_to_use[method]
-                y_train_dict[method] = y_train[mixed_method]
-                y_test_dict[method] = y_test[mixed_method]
-
-            GBM, GLM, KNN, NN = run_algorithms(X_train_dict, X_test_dict, y_train_dict, y_test_dict, best_loss, 0, spatial_mode, None)
-            y_prediction['GBM'], y_prediction_train['GBM'] = GBM
-            y_prediction['GLM'], y_prediction_train['GLM'] = GLM
-            y_prediction['KNN'], y_prediction_train['KNN'] = KNN
-            y_prediction['NN'], y_prediction_train['NN'] = NN
-            y_predictions_test, y_predictions_train = [], []
-            # Construct the outputs for the testing dataset of the 'MM' methods
-            y_predictions_test.extend([y_prediction['GBM'], y_prediction['GLM'], y_prediction['KNN'], y_prediction['NN']])
-            y_prediction_test_np = np.array(y_predictions_test).reshape(len(y_predictions_test), -1)
-            X_test_mixedModel = pd.DataFrame(y_prediction_test_np.transpose())
-            # Construct the outputs for the training dataset of the 'MM' methods
-            y_predictions_train.extend([y_prediction_train['GBM'], y_prediction_train['GLM'], y_prediction_train['KNN'], y_prediction_train['NN']])
-            y_prediction_train_np = np.array(y_predictions_train).reshape(len(y_predictions_train), -1)
-            X_train_mixedModel = pd.DataFrame(y_prediction_train_np.transpose())
-            X_train_MM_dict[mixed_method] = X_train_mixedModel
-            X_test_MM_dict[mixed_method] = X_test_mixedModel
-            y_train_MM_dict[mixed_method] = y_train[mixed_method]
-            y_test_MM_dict[mixed_method] = y_test[mixed_method]
-
-            y_test_MM_dict[mixed_method] = np.array(y_test_MM_dict[mixed_method]['Target']).reshape(-1)
-            y_train_MM_dict[mixed_method] = np.array(y_train_MM_dict[mixed_method]['Target']).reshape(-1)
-        # save the entire session
-        filename = env_address + 'test.out'
-        my_shelf = shelve.open(filename, 'n')  # 'n' for new
-        for key in dir():
-            try:
-                my_shelf[key] = locals()[key]
-            except:
-                print('ERROR shelving: {0}'.format(key))
-        my_shelf.close()
-        # mixed model with linear regression and neural network
-        MM_GLM, MM_NN = run_mixed_models(X_train_MM_dict, X_test_MM_dict, y_train_MM_dict, y_test_MM_dict ,best_loss)
-        y_prediction['MM_GLM'], y_prediction_train['MM_GLM'] = MM_GLM
-        y_prediction['MM_NN'], y_prediction_train['MM_NN'] = MM_NN
-        for mixed_method in mixed_methods:
-            meanAbsoluteError, percentageOfAbsoluteError, adj_r_squared, second_error, meanAbsoluteScaledError = get_errors(best_h[mixed_method]['MAPE'],
-            best_c[mixed_method]['MAPE'], mixed_method, y_prediction[mixed_method], y_prediction_train[mixed_method], y_test_date[mixed_method],
-                                        val_test_MASE_denominator, numberOfSelectedCounties, mode='test')
-            table_data.append([best_h[mixed_method]['MAPE'], best_c[mixed_method]['MAPE'], round(meanAbsoluteError, 2), round(percentageOfAbsoluteError, 2),
-                                round(adj_r_squared, 2), round(second_error, 2), round(meanAbsoluteScaledError, 2)])
-
-        table_name = 'table_of_best_test_results'
-        plot_table(table_data, columns_table_t, methods, table_name, mode='test')
-        push('a new table added')
-
-        for method in mixed_methods:
-          prediction=list(y_prediction_train[method])+list(y_prediction[method])
-          df_for_prediction_plot[method]=prediction
-
-        real_prediction_plot(df_for_prediction_plot,r,target_name,best_h, spatial_mode, methods, numberOfSelectedCounties)
-
-        # mail the test results
-        selected_for_email = [test_address + '/tables', test_address + '/all_errors/NN', test_address + '/all_errors/KNN' , test_address + '/plots_of_real_prediction_values']
-        zip_file_name = 'test results for h =' + str(maxHistory) + ' #counties=' + str(numberOfSelectedCountiesname)
-        make_zip(selected_for_email, zip_file_name)
-        send_email(zip_file_name + '.zip')
-
-        # save the entire session
-        filename = env_address + 'test.out'
-        my_shelf = shelve.open(filename, 'n')  # 'n' for new
-        for key in dir():
-            try:
-                my_shelf[key] = locals()[key]
-            except:
-                print('ERROR shelving: {0}'.format(key))
-        my_shelf.close()
-
-
-
-    #############################################################
-
-    for h in history:
-        data = makeHistoricalData(h, r, target_name, 'mrmr', spatial_mode, target_mode, './')
-        data = clean_data(data, numberOfSelectedCounties)
-
-        # pre-process and split the data, 'date's have dates info
-        X_train_train_to_use = {method: None for method in methods}
-        X_train_val_to_use = {method: None for method in methods}
-        X_test_to_use = {method: None for method in methods}
-        X_train_train, X_train_val, X_test, y_train_train_date, y_train_val_date, y_test_date = preprocess(data, spatial_mode, 1)
-
-        for method in methods:
-            X_train_train_to_use[method] = X_train_train.copy()
-            X_train_val_to_use[method]= X_train_val.copy()
-            X_test_to_use[method] = X_test.copy()
-            if method in models_to_log:
-                # make temporal and some fixed covariates logarithmic
-                negative_features=['temperature']
-                for covar in covariates_names:
-                    if (' t' in covar) and (covar.split(' ')[0] not in negative_features):
-                        X_train_train_to_use[method][covar] = np.log((X_train_train_to_use[method][covar] + 1).astype(float))
-                        X_train_val_to_use[method][covar] = np.log((X_train_val_to_use[method][covar] + 1).astype(float))
-                        X_test_to_use[method][covar] = np.log((X_test_to_use[method][covar] + 1).astype(float))
-
-                fix_log_list = ['total_population', 'population_density', 'area', 'median_household_income',
-                                'houses_density', 'airport_distance','deaths_per_100000']
-                for covar in fix_log_list:
-                    if covar in covariates_names:
-                        X_train_train_to_use[method][covar] = np.log((X_train_train_to_use[method][covar] + 1).astype(float))
-                        X_train_val_to_use[method][covar] = np.log((X_train_val_to_use[method][covar] + 1).astype(float))
-                        X_test_to_use[method][covar] = np.log((X_test_to_use[method][covar] + 1).astype(float))
-
-      
-        y_train_date = (pd.DataFrame(y_train_train_date).append(pd.DataFrame(y_train_val_date))).reset_index(drop=True)
-        y_train_train = np.array(y_train_train_date['Target']).reshape(-1)
-        y_train_val = np.array(y_train_val_date['Target']).reshape(-1)
-        y_test = np.array(y_test_date['Target']).reshape(-1)
-        y_train = np.array((pd.DataFrame(y_train_train).append(pd.DataFrame(y_train_val))).reset_index(drop=True)).reshape(-1)
-
-
-        
-
-        # find best loss
-#         if (h==1):
-#           best_loss = update_best_loss('none_mixed_model',spatial_mode,None,best_loss,X_train_train_to_use,X_train_val_to_use,\
-#                                       y_train_train,y_train_val,None,None,data.columns.drop(['Target','date of day t','county_fips']),\
-#                                         numberOfCovariates,maxC)
-
-        
-        covariates_list = []
-        # covariates are sorted by their correlation with Target. We start from the first important covariate and
-        # in each loop we add the next important one
-        # the first covariate is Target, we start from the second one
-        # initiate loom for parallel processing
-
-        
-        
-        loom = ProcessLoom(max_runner_cap=len(base_data.columns) * len(none_mixed_methods) + 5)
-        
-        indx_c = 0
-        for c in covariates_names:  # iterate through sorted covariates
-            indx_c += 1
-            print('h=', h, ' c=', indx_c)
-            for covariate in data.columns:  # add all historical covariates of this covariate and create a feature
-                if c.split(' ')[0] in covariate:
-                    covariates_list.append(covariate)
+                        if covar in covariates_names:
+                            X_train_train_to_use[county_fips][h][method][covar] = np.log((X_train_train_to_use[county_fips][h][method][covar] + 1).astype(float))
+                            X_train_val_to_use[county_fips][h][method][covar] = np.log((X_train_val_to_use[county_fips][h][method][covar] + 1).astype(float))
+                            X_test_to_use[county_fips][h][method][covar] = np.log((X_test_to_use[county_fips][h][method][covar] + 1).astype(float))
             
-            for method in none_mixed_methods:
-                X_train_train_temp = X_train_train_to_use[method][covariates_list]
-                X_train_val_temp = X_train_val_to_use[method][covariates_list]
-                
-                loom.add_function(parallel_run, [method, X_train_train_temp, X_train_val_temp, y_train_train, y_train_val, best_loss, indx_c])
-                
-              
-            if indx_c == maxC:
-                            break  
-        # run the processes in parallel
+            y_train_date[county_fips] = (pd.DataFrame(y_train_train_date).append(pd.DataFrame(y_train_val_date))).reset_index(drop=True)
+            y_train_train = np.array(y_train_train_date['Target']).reshape(-1)
+            y_train_val = np.array(y_train_val_date['Target']).reshape(-1)
+            y_test[county_fips] = np.array(y_test_date[county_fips]['Target']).reshape(-1)
+            y_train[county_fips] = np.array((pd.DataFrame(y_train_train).append(pd.DataFrame(y_train_val))).reset_index(drop=True)).reshape(-1)
 
-        parallel_outputs['non_mixed'] = loom.execute()
-        
-        ind = 0
-        for c in range(1, numberOfCovariates + 1):
-            for method in none_mixed_methods:
-                y_prediction[method][(h, c)], y_prediction_train[method][(h, c)] = parallel_outputs['non_mixed'][ind]['output']
-                ind += 1
-            if c == maxC:
-              break
-            
-        # save the entire session for each h and c
-        filename = env_address + 'validation.out'
-        my_shelf = shelve.open(filename, 'n')  # 'n' for new
-        for key in dir():
-            try:
-                my_shelf[key] = locals()[key]
-            except:
-                print('ERROR shelving: {0}'.format(key))
-        my_shelf.close()
-        
+            # find best loss
+            if (h==1):
+              best_loss = update_best_loss('none_mixed_model', spatial_mode ,county_fips,best_loss,X_train_train_to_use,X_train_val_to_use,\
+                                          y_train_train,y_train_val,None,None,data.columns.drop(['Target','date of day t','county_fips']),\
+                                            numberOfCovariates,maxC)
+              # update list of county losses (mode of this list will be used as best loss)
+              for method in ['GBM', 'NN']:
+                counties_best_loss_list[method].append(best_loss[method])
 
-        # find best loss
-#         if h == 1 :
-#           best_loss = update_best_loss('mixed_model',spatial_mode,None,best_loss,None,None,y_train_train,\
-#                     y_train_val,y_prediction_train,y_prediction,None,\
-#                     numberOfCovariates,maxC)
-        # initiate loom for parallel processing        
-        loom = ProcessLoom(max_runner_cap=len(base_data.columns) * len(mixed_methods) + 5)
-        indx_c = 0
-        for c in range(1, numberOfCovariates + 1):
-            indx_c += 1
-            for mixed_method in mixed_methods:
-                y_predictions_test, y_predictions_train = [], []
-                # Construct the outputs for the testing dataset of the 'MM' methods
-                y_predictions_test.extend([y_prediction['GBM'][(h, c)], y_prediction['GLM'][(h, c)],
-                                            y_prediction['KNN'][(h, c)], y_prediction['NN'][(h, c)]])
-                y_prediction_test_np = np.array(y_predictions_test).reshape(len(y_predictions_test), -1)
-                X_test_mixedModel = pd.DataFrame(y_prediction_test_np.transpose())
-                # Construct the outputs for the training dataset of the 'MM' methods
-                y_predictions_train.extend([y_prediction_train['GBM'][(h, c)], y_prediction_train['GLM'][(h, c)],
-                                            y_prediction_train['KNN'][(h, c)], y_prediction_train['NN'][(h, c)]])
-                y_prediction_train_np = np.array(y_predictions_train).reshape(len(y_predictions_train), -1)
-                X_train_mixedModel = pd.DataFrame(y_prediction_train_np.transpose())
-            
 
-                loom.add_function(mixed_parallel_run, [mixed_method, X_train_mixedModel, X_test_mixedModel, y_train_train, y_train_val, best_loss])
-            if c == maxC:
-                break
-
-        # run the processes in parallel
-        parallel_outputs['mixed'] = loom.execute()
-        ind = 0
-        for c in range(1, numberOfCovariates + 1):
-            for mixed_method in mixed_methods:
-                y_prediction[mixed_method][(h, c)], y_prediction_train[mixed_method][(h, c)] = parallel_outputs['mixed'][ind]['output']
-                y_prediction[mixed_method][(h, c)] = np.array(y_prediction[mixed_method][(h, c)]).ravel()
-                y_prediction_train[mixed_method][(h, c)] = np.array(y_prediction_train[mixed_method][(h, c)]).ravel()
-                ind += 1
-            if c == maxC:
+            covariates_list = []
+            loom = ProcessLoom(max_runner_cap=len(base_data.columns) * len(none_mixed_methods) + 5)
+            indx_c = 0
+            for c in covariates_names:
+                indx_c += 1
+                for covariate in data.columns:
+                    if c.split(' ')[0] in covariate:
+                        covariates_list.append(covariate)
+                for method in none_mixed_methods:
+                    X_train_train_temp = X_train_train_to_use[county_fips][h][method][covariates_list]
+                    X_train_val_temp = X_train_val_to_use[county_fips][h][method][covariates_list]
+                    loom.add_function(parallel_run, [method, X_train_train_temp, X_train_val_temp, y_train_train, y_train_val, best_loss, indx_c])
+                if indx_c == maxC:
                     break
+            parallel_outputs['non_mixed'] = loom.execute()
+            ind = 0
+            for c in range(1, numberOfCovariates + 1):
+                for method in none_mixed_methods:
+                    y_prediction[county_fips][method][(h, c)], y_prediction_train[county_fips][method][(h, c)] = parallel_outputs['non_mixed'][ind]['output']
+                    ind += 1
+                if c == maxC:
+                    break
+            filename = env_address + 'validation.out'
+            my_shelf = shelve.open(filename, 'n')
+            for key in dir():
+                try:
+                    my_shelf[key] = locals()[key]
+                except:
+                    print('ERROR shelving: {0}'.format(key))
+            my_shelf.close()
 
-        # save the entire session for each h and c
-        filename = env_address + 'validation.out'
-        my_shelf = shelve.open(filename, 'n')  # 'n' for new
-        for key in dir():
-            try:
-                my_shelf[key] = locals()[key]
-            except:
-                print('ERROR shelving: {0}'.format(key))
-        my_shelf.close()
+            # find best loss
+            if h == 1 :
+              best_loss = update_best_loss('mixed_model', spatial_mode, county_fips,best_loss,None,None,y_train_train,\
+                        y_train_val,y_prediction_train,y_prediction,None,\
+                        numberOfCovariates,maxC)
+              # update list of county losses (mode of this list will be used as best loss)
+              counties_best_loss_list['MM_NN'].append(best_loss['MM_NN'])
 
-        number_of_improved_methods = 0 # we count number_of_improved_methods to run test if no method have improved in current h
-
+            loom = ProcessLoom(max_runner_cap=len(base_data.columns) * len(mixed_methods) + 5)
+            indx_c = 0
+            for c in range(1, numberOfCovariates + 1):
+                indx_c += 1
+                for mixed_method in mixed_methods:
+                    y_predictions_test, y_predictions_train = [], []
+                    y_predictions_test.extend([y_prediction[county_fips]['GBM'][(h, c)], y_prediction[county_fips]['GLM'][(h, c)],
+                                                y_prediction[county_fips]['KNN'][(h, c)], y_prediction[county_fips]['NN'][(h, c)]])
+                    y_prediction_test_np = np.array(y_predictions_test).reshape(len(y_predictions_test), -1)
+                    X_test_mixedModel = pd.DataFrame(y_prediction_test_np.transpose())
+                    y_predictions_train.extend([y_prediction_train[county_fips]['GBM'][(h, c)], y_prediction_train[county_fips]['GLM'][(h, c)],
+                                                y_prediction_train[county_fips]['KNN'][(h, c)], y_prediction_train[county_fips]['NN'][(h, c)]])
+                    y_prediction_train_np = np.array(y_predictions_train).reshape(len(y_predictions_train), -1)
+                    X_train_mixedModel = pd.DataFrame(y_prediction_train_np.transpose())
+                    loom.add_function(mixed_parallel_run, [mixed_method, X_train_mixedModel, X_test_mixedModel, y_train_train, y_train_val, best_loss])
+                if indx_c == maxC:
+                    break
+            parallel_outputs['mixed'] = loom.execute()
+            ind = 0
+            for c in range(1, numberOfCovariates + 1):
+                for mixed_method in mixed_methods:
+                    y_prediction[county_fips][mixed_method][(h, c)], y_prediction_train[county_fips][mixed_method][(h, c)] = parallel_outputs['mixed'][ind]['output']
+                    y_prediction[county_fips][mixed_method][(h, c)] = np.array(y_prediction[county_fips][mixed_method][(h, c)]).ravel()
+                    y_prediction_train[county_fips][mixed_method][(h, c)] = np.array(y_prediction_train[county_fips][mixed_method][(h, c)]).ravel()
+                    ind += 1
+                if c == maxC:
+                    break
+            filename = env_address + 'validation.out'
+            my_shelf = shelve.open(filename, 'n')
+            for key in dir():
+                try:
+                    my_shelf[key] = locals()[key]
+                except:
+                    print('ERROR shelving: {0}'.format(key))
+            my_shelf.close()
+        print("########################################################################################################")
+        number_of_improved_methods = 0
         indx_c = 0
         covariates_list=['county_fips','date of day t']
-        for c in covariates_names:  # iterate through sorted covariates
+        for c in covariates_names:
+            print(indx_c)
             indx_c += 1
-            for covariate in data.columns:  # add all historical covariates of this covariate and create a feature
+            for covariate in data.columns:
                 if c.split(' ')[0] in covariate:
                     covariates_list.append(covariate)
-            y_val = np.array(y_train_val_date['Target']).reshape(-1)
-
             for method in methods:
-                X_train_train_temp = X_train_train_to_use[method][covariates_list]
-                X_train_val_temp = X_train_val_to_use[method][covariates_list]
-                X_test_temp = X_test_to_use[method][covariates_list]
-
+                X_train_train_temp = flatten(data=X_train_train_to_use, h=h, method=method, covariates_list=covariates_list, state=3)
+                X_train_val_temp = flatten(data=X_train_val_to_use, h=h, method=method, covariates_list=covariates_list, state=3)
+                X_test_temp = flatten(data=X_test_to_use, h=h, method=method, covariates_list=covariates_list, state=3)
                 validation_errors['MAE'][method][(h, indx_c)], validation_errors['MAPE'][method][(h, indx_c)], \
                 validation_errors['adj-R2'][method][(h, indx_c)], validation_errors['sec'][method][(h, indx_c)], \
                 validation_errors['MASE'][method][(h, indx_c)] = \
-                    get_errors(h, indx_c, method, y_prediction[method][(h, indx_c)], y_prediction_train[method][(h, indx_c)], y_val, train_val_MASE_denominator,
-                                numberOfSelectedCounties, mode='val')
-
-                # find best errors
+                    get_errors(h, indx_c, method, flatten(data=y_prediction, h=h, c=indx_c, method=method, state=1), flatten(data=y_prediction_train, h=h, c=indx_c, method=method, state=1), flatten(data=y_val, h=h, c=indx_c, state=2),
+                                train_val_MASE_denominator, numberOfSelectedCounties, mode='val')
                 for error in error_names:
                     if validation_errors[error][method][(h, indx_c)] < minError[method][error]:
                         minError[method][error] = validation_errors[error][method][(h, indx_c)]
@@ -1196,28 +1189,28 @@ def main(maxHistory):
                         best_c[method][error] = indx_c
                         if error == 'MAPE':
                             number_of_improved_methods += 1
-
+                            print(method+' improved')
                         if error == 'MAPE' and method != 'MM_GLM' and method != 'MM_NN':
                             historical_X_train[method] = (X_train_train_temp.append(X_train_val_temp)).reset_index(
                                 drop=True)
                             historical_X_test[method] = X_test_temp
-                            historical_y_train[method] = y_train
-                            historical_y_test[method] = y_test
-                            historical_y_train_date[method] = y_train_date
-                            historical_y_test_date[method] = y_test_date
-
-            if indx_c == maxC:
-                        break
-            # save the entire session for each h and c
+                            historical_y_train[method] = flatten(data=y_train, state=5)
+                            historical_y_test[method] = flatten(data=y_test, state=5)
+                            historical_y_train_date[method] = flatten(data=y_train_date, state=4)
+                            historical_y_test_date[method] = flatten(data=y_test_date, state=4)
             filename = env_address + 'validation.out'
-            my_shelf = shelve.open(filename, 'n')  # 'n' for new
+            my_shelf = shelve.open(filename, 'n')
             for key in dir():
                 try:
                     my_shelf[key] = locals()[key]
                 except:
                     print('ERROR shelving: {0}'.format(key))
             my_shelf.close()
-        # save the entire session for each h
+            if indx_c == maxC:
+                break
+        if h == 1:
+          best_loss = get_best_loss_mode(counties_best_loss_list)
+        
         filename = env_address + 'validation.out'
         my_shelf = shelve.open(filename, 'n')  # 'n' for new
         for key in dir():
@@ -1226,17 +1219,15 @@ def main(maxHistory):
             except:
                 print('ERROR shelving: {0}'.format(key))
         my_shelf.close()
-
-        # push the file of outputs
         push('logs of h=' + str(h) + ' added')
-
-        # we run test if none of models have improved in curent h or if we passed half of maxhistory 
-        if (number_of_improved_methods == 0) or (h == maxHistory//2) :###########################
+        if (number_of_improved_methods == 0) or (h == maxHistory//2) :
+          print('number of improved methods for h=',h,':',number_of_improved_methods)
           print('jump to test process')
           test_process(h, r, target_name,spatial_mode, target_mode,best_h,best_c,historical_X_train,\
-                    historical_X_test, historical_y_train_date, historical_y_test_date, best_loss,\
-                    numberOfSelectedCounties, covariates_names, maxHistory, test_address, env_address, mail_address)
-        
+                 historical_X_test, historical_y_train_date, historical_y_test_date, best_loss,\
+                 numberOfSelectedCounties, covariates_names, maxHistory, test_address, env_address, mail_address)
+
+
 
     # plot table for best results
     table_data = []
@@ -1257,24 +1248,28 @@ def main(maxHistory):
     make_zip(selected_for_email, zip_file_name)
     send_email(zip_file_name + '.zip')
     push('plots added')
-    ################################################################################################################# test zone
     test_process(h, r, target_name,spatial_mode, target_mode,best_h,best_c,historical_X_train,\
-                    historical_X_test, historical_y_train_date, historical_y_test_date, best_loss,\
-                    numberOfSelectedCounties, covariates_names, maxHistory, test_address, env_address, mail_address)
+                 historical_X_test, historical_y_train_date, historical_y_test_date, best_loss,\
+                 numberOfSelectedCounties, covariates_names, maxHistory, test_address, env_address, mail_address)
+
+    print("y_prediction", y_prediction)
+    print("y_val", y_val)
+    print(validation_errors)
+    print("best_h", best_h)
+    print("best_c", best_c)
+    print(historical_X_train['GBM'].columns.values)
+    print(historical_X_train['GBM'].shape)
+
 
 
 if __name__ == "__main__":
-
     begin = time.time()
     maxHistory = 14
     maxC = 100
-    
-    # make directories for saving the results
-    validation_address = './'+'results/counties=' + str(numberOfSelectedCountiesname) + ' max_history=' + str(maxHistory) + '/validation/'
-    test_address = './' + 'results/counties=' + str(numberOfSelectedCountiesname) + ' max_history=' + str(maxHistory) + '/test/'
-    env_address = './' + 'results/counties=' + str(numberOfSelectedCountiesname) + ' max_history=' + str(maxHistory) + '/session_parameters/'
-    mail_address = './results/counties=' + str(numberOfSelectedCountiesname) + ' max_history=' + str(maxHistory) + '/email'
-
+    validation_address = './'+str(iteration)+' results/counties=' + str(numberOfSelectedCountiesname) + ' max_history=' + str(maxHistory) + '/validation/'
+    test_address = './' +str(iteration)+ ' results/counties=' + str(numberOfSelectedCountiesname) + ' max_history=' + str(maxHistory) + '/test/'
+    env_address = './' +str(iteration)+ ' results/counties=' + str(numberOfSelectedCountiesname) + ' max_history=' + str(maxHistory) + '/session_parameters/'
+    mail_address = './'+str(iteration)+' results/counties=' + str(numberOfSelectedCountiesname) + ' max_history=' + str(maxHistory) + '/email/'
     if not os.path.exists(mail_address):
         os.makedirs(mail_address)
     if not os.path.exists(test_address):
@@ -1284,8 +1279,8 @@ if __name__ == "__main__":
     if not os.path.exists(env_address):
         os.makedirs(env_address)
     push('new folders added')
-    models_to_log = ['NN', 'GLM', 'GBM'] # models we want to make the features logarithmic for them, we remove KNN
-    main(maxHistory)
+    models_to_log = ['NN', 'GLM', 'GBM']
+    main(maxHistory, maxC)
     end = time.time()
     push('final results added')
     print("The total time of execution in minutes: ", round((end - begin) / 60, 2))

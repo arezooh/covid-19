@@ -35,7 +35,7 @@ import statistics
 plt.rcParams.update({'figure.max_open_warning': 0})
 
 r = 21  # the following day to predict
-numberOfSelectedCounties = -1
+numberOfSelectedCounties = 2
 target_mode = 'regular'
 spatial_mode = 'county'
 numberOfSelectedCountiesname = 1535
@@ -215,6 +215,7 @@ def run_algorithms(X_train_dict, X_val_dict, y_train_dict, y_val_dict, best_loss
       for method in methods:
         X_train[method] = X_train_dict[method]
         X_train[method] = X_train[method][X_train[method]['county_fips']==county_fips].drop(['county_fips','date of day t'],axis=1)
+        print('run_alg X_train[method].shape',X_train[method].shape)
         X_val[method] = X_val_dict[method]
         X_val[method] = X_val[method][X_val[method]['county_fips']==county_fips].drop(['county_fips','date of day t'],axis=1)
         y_train[method] = y_train_dict[method]
@@ -461,7 +462,7 @@ def box_violin_plot(X, Y, figsizes, fontsizes, name, address):
 ########################################################### plot prediction and real values
 
 def real_prediction_plot(df,r,target_name,best_h,spatial_mode,methods,numberOfSelectedCounties):
-    
+
     address = test_address + 'plots_of_real_prediction_values/'
     if not os.path.exists(address):
         os.makedirs(address)
@@ -474,7 +475,7 @@ def real_prediction_plot(df,r,target_name,best_h,spatial_mode,methods,numberOfSe
         data = data.sort_values(by=['county_fips', 'date of day t'])
         data = data[(data['county_fips'] <= data['county_fips'].unique()[numberOfSelectedCounties - 1])]
         data = data.reset_index(drop=True)
-        data = data[['county_name','county_fips','date of day t','Target']]
+        data = data[['state_fips','county_name','county_fips','date of day t','Target']]
         data=data.sort_values(by=['date of day t','county_fips'])
         data_train_train=data.iloc[:-2*(r*numberOfSelectedCounties),:]
         data_train_val=data.iloc[-2*(r*numberOfSelectedCounties):-(r*numberOfSelectedCounties),:]
@@ -485,12 +486,18 @@ def real_prediction_plot(df,r,target_name,best_h,spatial_mode,methods,numberOfSe
             data_test=data_test.sort_values(by=['county_fips','date of day t'])
             data=data_train_train.append(data_train_val)
             data=data.append(data_test)
-        if spatial_mode == 'county' : 
+        if spatial_mode == 'county' :
             data_train = data_train_train.append(data_train_val)
             data_train = data_train.sort_values(by=['county_fips','date of day t'])
             data_test = data_test.sort_values(by=['county_fips','date of day t'])
             data = data_train.append(data_test)
-        df_for_plot = pd.concat([data.reset_index(drop=True),df.reset_index(drop=True)],axis=1)
+        if spatial_mode == 'state' :
+            data_train = data_train_train.append(data_train_val)
+            data_train = data_train.sort_values(by=['state_fips','date of day t'])
+            data_test = data_test.sort_values(by=['state_fips','date of day t'])
+            data = data_train.append(data_test)
+        method_prediction_df = pd.DataFrame(df[method],columns=[method])
+        df_for_plot = pd.concat([data.reset_index(drop=True),method_prediction_df.reset_index(drop=True)],axis=1)
 
         df_for_plot['date'] = df_for_plot['date of day t'].apply(lambda x:datetime.datetime.strptime(x,'%m/%d/%y')+datetime.timedelta(days=r))
         df_for_plot['date'] = df_for_plot['date'].apply(lambda x:datetime.datetime.strftime(x,'%m/%d/%y'))
@@ -784,7 +791,7 @@ def test_process(h, r, target_name,spatial_mode, target_mode,best_h,best_c,histo
     mixed_methods = ['MM_GLM', 'MM_NN']
 
     train_val_MASE_denominator, val_test_MASE_denominator, train_lag_MASE_denominator = mase_denominator(r, target_name, target_mode, numberOfSelectedCounties)
-    df_for_prediction_plot = pd.DataFrame(columns = methods)
+    df_for_prediction_plot = {method : None for method in methods}
 
     all_data = makeHistoricalData(h, r, target_name, 'mrmr', spatial_mode, target_mode, './')
     all_data = clean_data(all_data, numberOfSelectedCounties)
@@ -818,7 +825,7 @@ def test_process(h, r, target_name,spatial_mode, target_mode,best_h,best_c,histo
         table_data.append([best_h[method]['MAPE'], best_c[method]['MAPE'],  round(meanAbsoluteError, 2),
                             round(percentageOfAbsoluteError, 2), round(adj_r_squared, 2), round(second_error, 2), round(meanAbsoluteScaledError, 2)])
 
-    # push('a new table added')
+    push('a new table added')
 
     for method in none_mixed_methods:
       prediction=list(flatten(data=y_prediction_train, h=h, c=None, method=method, state=6))+list(flatten(data=y_prediction, h=h, c=None, method=method, state=6))
@@ -843,7 +850,7 @@ def test_process(h, r, target_name,spatial_mode, target_mode,best_h,best_c,histo
     y_train, y_test = {}, {}
     y_test_date = {}
 
-    # we make mixed_model train_data in this loop
+
 
     for mixed_method in mixed_methods:
         X_train, X_test, y_train_date, y_test_date[mixed_method] = generate_data(best_h[mixed_method]['MAPE'], best_c[mixed_method]['MAPE'],
@@ -878,11 +885,9 @@ def test_process(h, r, target_name,spatial_mode, target_mode,best_h,best_c,histo
             y_test_dict[method] = y_test[mixed_method]
 
 
-    #########################################################################################
+        #########################################################################################
 
-    # we run mixed model for each county in this loop
-
-    for mixed_method in mixed_methods:
+        # we run mixed model for each county in this loop
 
         for county_fips in all_counties:
           
@@ -1200,6 +1205,7 @@ def main(maxHistory, maxC):
                         best_c[method][error] = indx_c
                         if error == 'MAPE':
                             number_of_improved_methods += 1
+                            print(method+' improved')
                         if error == 'MAPE' and method != 'MM_GLM' and method != 'MM_NN':
                             historical_X_train[method] = (X_train_train_temp.append(X_train_val_temp)).reset_index(
                                 drop=True)
@@ -1231,6 +1237,7 @@ def main(maxHistory, maxC):
         my_shelf.close()
         push('logs of h=' + str(h) + ' added')
         if (number_of_improved_methods == 0) or (h == maxHistory//2) :
+          print('number of improved methods for h=',h,':',number_of_improved_methods)
           print('jump to test process')
           test_process(h, r, target_name,spatial_mode, target_mode,best_h,best_c,historical_X_train,\
                  historical_X_test, historical_y_train_date, historical_y_test_date, best_loss,\
@@ -1273,8 +1280,8 @@ def main(maxHistory, maxC):
 
 if __name__ == "__main__":
     begin = time.time()
-    maxHistory = 14
-    maxC = 100
+    maxHistory = 2
+    maxC = 2
     validation_address = './'+'results/counties=' + str(numberOfSelectedCountiesname) + ' max_history=' + str(maxHistory) + '/validation/'
     test_address = './' + 'results/counties=' + str(numberOfSelectedCountiesname) + ' max_history=' + str(maxHistory) + '/test/'
     env_address = './' + 'results/counties=' + str(numberOfSelectedCountiesname) + ' max_history=' + str(maxHistory) + '/session_parameters/'
