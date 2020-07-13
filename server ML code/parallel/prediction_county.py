@@ -1009,8 +1009,8 @@ def main(maxHistory, maxC):
     minError = {method: {error: int(1e10) for error in error_names} for method in methods}
     best_h = {method: {error: 0 for error in error_names} for method in methods}
     best_c = {method: {error: 0 for error in error_names} for method in methods}
-    # best_loss = {'GBM': 'poisson', 'MM_NN': 'poisson', 'NN': 'MeanAbsoluteError'}
-    best_loss = {method: None for method in ['GBM', 'NN', 'MM_NN']}
+    best_loss = {'GBM': 'poisson', 'MM_NN': 'poisson', 'NN': 'MeanAbsoluteError'}
+    # best_loss = {method: None for method in ['GBM', 'NN', 'MM_NN']}
     counties_best_loss_list = {method: list() for method in ['GBM', 'NN', 'MM_NN']}
     df_for_prediction_plot = pd.DataFrame(columns = methods)
     columns_table_t = ['best_h', 'best_c', 'mean absolute error', 'percentage of absolute error', 'adjusted R squared error',
@@ -1079,14 +1079,14 @@ def main(maxHistory, maxC):
             y_test[county_fips] = np.array(y_test_date[county_fips]['Target']).reshape(-1)
             y_train[county_fips] = np.array((pd.DataFrame(y_train_train).append(pd.DataFrame(y_train_val))).reset_index(drop=True)).reshape(-1)
 
-            # find best loss
-            if (h==1):
-              best_loss = update_best_loss('none_mixed_model', spatial_mode ,county_fips,best_loss,X_train_train_to_use,X_train_val_to_use,\
-                                          y_train_train,y_train_val,None,None,data.columns.drop(['Target','date of day t','county_fips']),\
-                                            numberOfCovariates,maxC)
-              # update list of county losses (mode of this list will be used as best loss)
-              for method in ['GBM', 'NN']:
-                counties_best_loss_list[method].append(best_loss[method])
+#             # find best loss
+#             if (h==1):
+#               best_loss = update_best_loss('none_mixed_model', spatial_mode ,county_fips,best_loss,X_train_train_to_use,X_train_val_to_use,\
+#                                           y_train_train,y_train_val,None,None,data.columns.drop(['Target','date of day t','county_fips']),\
+#                                             numberOfCovariates,maxC)
+#               # update list of county losses (mode of this list will be used as best loss)
+#               for method in ['GBM', 'NN']:
+#                 counties_best_loss_list[method].append(best_loss[method])
 
 
             covariates_list = []
@@ -1120,13 +1120,13 @@ def main(maxHistory, maxC):
                     print('ERROR shelving: {0}'.format(key))
             my_shelf.close()
 
-            # find best loss
-            if h == 1 :
-              best_loss = update_best_loss('mixed_model', spatial_mode, county_fips,best_loss,None,None,y_train_train,\
-                        y_train_val,y_prediction_train,y_prediction,None,\
-                        numberOfCovariates,maxC)
-              # update list of county losses (mode of this list will be used as best loss)
-              counties_best_loss_list['MM_NN'].append(best_loss['MM_NN'])
+#             # find best loss
+#             if h == 1 :
+#               best_loss = update_best_loss('mixed_model', spatial_mode, county_fips,best_loss,None,None,y_train_train,\
+#                         y_train_val,y_prediction_train,y_prediction,None,\
+#                         numberOfCovariates,maxC)
+#               # update list of county losses (mode of this list will be used as best loss)
+#               counties_best_loss_list['MM_NN'].append(best_loss['MM_NN'])
 
             loom = ProcessLoom(max_runner_cap=len(base_data.columns) * len(mixed_methods) + 5)
             indx_c = 0
@@ -1208,8 +1208,8 @@ def main(maxHistory, maxC):
             my_shelf.close()
             if indx_c == maxC:
                 break
-        if h == 1:
-          best_loss = get_best_loss_mode(counties_best_loss_list)
+#         if h == 1:
+#           best_loss = get_best_loss_mode(counties_best_loss_list)
         
         filename = env_address + 'validation.out'
         my_shelf = shelve.open(filename, 'n')  # 'n' for new
