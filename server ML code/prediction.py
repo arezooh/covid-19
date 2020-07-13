@@ -296,7 +296,7 @@ def update_best_loss(model_type ,spatial_mode ,county_fips,best_loss,X_train_tra
             loom.add_function(GBM_grid_search, [X_train_train_to_use['GBM'][covariates],
                                                     y_train_train , X_train_val_to_use['GBM'][covariates],
                                                     y_train_val],{})
-            print('check 299')
+            
             loom.add_function(NN_grid_search, [X_train_train_to_use['NN'][covariates],
                                                     y_train_train , X_train_val_to_use['NN'][covariates],
                                                     y_train_val],{})
@@ -307,12 +307,12 @@ def update_best_loss(model_type ,spatial_mode ,county_fips,best_loss,X_train_tra
             loom.add_function(NN_grid_search, [X_train_train_to_use[county_fips][h]['NN'][covariates],
                                                     y_train_train , X_train_val_to_use[county_fips][h]['NN'][covariates],
                                                     y_train_val],{})
-          print('check 310')
+          
           best_loss_output=loom.execute()
-          print(best_loss_output)
-          print('check 312')
+          
+          
           best_loss['GBM'],best_loss['NN'] = best_loss_output[0]['output'],best_loss_output[1]['output']
-          print('check 314')
+          
     return best_loss
 
 ########################################################### 
@@ -847,7 +847,7 @@ def main(maxHistory):
 
     # best_loss = {method: None for method in ['GBM', 'NN', 'MM_NN']}
     best_loss = {'GBM': 'poisson', 'MM_NN': 'poisson', 'NN': 'MeanAbsoluteError'}
-    df_for_prediction_plot = {method : None for method in methods}
+
 
     columns_table_t = ['best_h', 'best_c', 'mean absolute error', 'percentage of absolute error', 'adjusted R squared error',
                       'second error', 'mean absolute scaled error']  # table columns names
@@ -865,9 +865,23 @@ def main(maxHistory):
 
     ############################################################
     # we define test as function to call it when h equal to half the maxHistory or when none of the models have improved in current h
-    def test_process():
-        
+    def test_process(h, r, target_name,spatial_mode, target_mode,best_h,best_c,historical_X_train,\
+                    historical_X_test, historical_y_train_date, historical_y_test_date, best_loss,\
+                    numberOfSelectedCounties, covariates_names, maxHistory, test_address, env_address, mail_address):
+      
+        columns_table_t = ['best_h', 'best_c', 'mean absolute error', 'percentage of absolute error', 'adjusted R squared error',
+                          'second error', 'mean absolute scaled error']
+        columns_table = ['best_h', 'best_c', 'mean absolute error', 'percentage of absolute error',
+                          'adjusted R squared error',
+                          'sum of absolute error', 'mean absolute scaled error']
+        methods = ['GBM', 'GLM', 'KNN', 'NN', 'MM_GLM', 'MM_NN']
+        none_mixed_methods = ['GBM', 'GLM', 'KNN', 'NN']
+        mixed_methods = ['MM_GLM', 'MM_NN']
+
+        train_val_MASE_denominator, val_test_MASE_denominator, train_lag_MASE_denominator = mase_denominator(r, target_name, target_mode, numberOfSelectedCounties)
+        df_for_prediction_plot = {method : None for method in methods}
         y_prediction = {}
+        y_prediction_train = {}
         # run non-mixed methods on the whole training set with their best h and c
         X_train_dict, X_test_dict, y_train_dict, y_test_dict = {}, {}, {}, {}
 
@@ -1075,8 +1089,8 @@ def main(maxHistory):
                 X_train_val_temp = X_train_val_to_use[method][covariates_list]
                 
                 loom.add_function(parallel_run, [method, X_train_train_temp, X_train_val_temp, y_train_train, y_train_val, best_loss, indx_c])
-                print('function added to loom')
-             
+                
+              
             if indx_c == maxC:
                             break  
         # run the processes in parallel
@@ -1172,7 +1186,7 @@ def main(maxHistory):
                 validation_errors['adj-R2'][method][(h, indx_c)], validation_errors['sec'][method][(h, indx_c)], \
                 validation_errors['MASE'][method][(h, indx_c)] = \
                     get_errors(h, indx_c, method, y_prediction[method][(h, indx_c)], y_prediction_train[method][(h, indx_c)], y_val, train_val_MASE_denominator,
-                               numberOfSelectedCounties, mode='val')
+                                numberOfSelectedCounties, mode='val')
 
                 # find best errors
                 for error in error_names:
@@ -1217,9 +1231,11 @@ def main(maxHistory):
         push('logs of h=' + str(h) + ' added')
 
         # we run test if none of models have improved in curent h or if we passed half of maxhistory 
-        if (number_of_improved_methods > 0) or (h == maxHistory//2) :###########################
+        if (number_of_improved_methods == 0) or (h == maxHistory//2) :###########################
           print('jump to test process')
-          test_process()
+          test_process(h, r, target_name,spatial_mode, target_mode,best_h,best_c,historical_X_train,\
+                    historical_X_test, historical_y_train_date, historical_y_test_date, best_loss,\
+                    numberOfSelectedCounties, covariates_names, maxHistory, test_address, env_address, mail_address)
         
 
     # plot table for best results
@@ -1242,7 +1258,9 @@ def main(maxHistory):
     send_email(zip_file_name + '.zip')
     push('plots added')
     ################################################################################################################# test zone
-    test_process()
+    test_process(h, r, target_name,spatial_mode, target_mode,best_h,best_c,historical_X_train,\
+                    historical_X_test, historical_y_train_date, historical_y_test_date, best_loss,\
+                    numberOfSelectedCounties, covariates_names, maxHistory, test_address, env_address, mail_address)
 
 
 if __name__ == "__main__":
