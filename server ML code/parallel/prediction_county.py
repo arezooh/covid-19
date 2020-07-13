@@ -476,6 +476,8 @@ def real_prediction_plot(df,r,target_name,best_h,spatial_mode,methods,numberOfSe
 
         df_for_plot['date'] = df_for_plot['date of day t'].apply(lambda x:datetime.datetime.strptime(x,'%m/%d/%y')+datetime.timedelta(days=r))
         df_for_plot['date'] = df_for_plot['date'].apply(lambda x:datetime.datetime.strftime(x,'%m/%d/%y'))
+        
+        df_for_plot.to_csv(address + str(method) + ' real_prediction_values.csv', index=False)
 
         counties = [36061]+random.sample(df_for_plot['county_fips'].unique().tolist(),2) # newyork + two random county
 
@@ -710,7 +712,7 @@ def send_email(*attachments):
     body = " "
     sender_email = "covidserver1@gmail.com"
     receiver_email = ["arezo.h1371@yahoo.com"]#,"arashmarioriyad@gmail.com"
-    CC_email = ["p.ramazi@gmail.com"]#
+    CC_email = []#"p.ramazi@gmail.com"
     password = "S.123456.S"
 
     # Create a multipart message and set headers
@@ -1009,8 +1011,8 @@ def main(maxHistory, maxC):
     minError = {method: {error: int(1e10) for error in error_names} for method in methods}
     best_h = {method: {error: 0 for error in error_names} for method in methods}
     best_c = {method: {error: 0 for error in error_names} for method in methods}
-    best_loss = {'GBM': 'poisson', 'MM_NN': 'poisson', 'NN': 'MeanAbsoluteError'}
-    # best_loss = {method: None for method in ['GBM', 'NN', 'MM_NN']}
+    # best_loss = {'GBM': 'poisson', 'MM_NN': 'poisson', 'NN': 'MeanAbsoluteError'}
+    best_loss = {method: None for method in ['GBM', 'NN', 'MM_NN']}
     counties_best_loss_list = {method: list() for method in ['GBM', 'NN', 'MM_NN']}
     df_for_prediction_plot = pd.DataFrame(columns = methods)
     columns_table_t = ['best_h', 'best_c', 'mean absolute error', 'percentage of absolute error', 'adjusted R squared error',
@@ -1034,7 +1036,7 @@ def main(maxHistory, maxC):
         all_data = makeHistoricalData(h, r, target_name, 'mrmr', spatial_mode, target_mode, './', iteration)
         all_data = clean_data(all_data, numberOfSelectedCounties)
         print(all_data.shape)
-        if (all_data.shape[0] < 1) :
+        if (all_data.shape[0] < 1) or (h==4) :
             history = history[:h-1]
             break
         all_counties = all_data['county_fips'].unique()
