@@ -1011,8 +1011,8 @@ def main(maxHistory, maxC):
     minError = {method: {error: int(1e10) for error in error_names} for method in methods}
     best_h = {method: {error: 0 for error in error_names} for method in methods}
     best_c = {method: {error: 0 for error in error_names} for method in methods}
-    # best_loss = {'GBM': 'poisson', 'MM_NN': 'poisson', 'NN': 'MeanAbsoluteError'}
-    best_loss = {method: None for method in ['GBM', 'NN', 'MM_NN']}
+    best_loss = {'GBM': 'poisson', 'MM_NN': 'poisson', 'NN': 'MeanAbsoluteError'}
+    # best_loss = {method: None for method in ['GBM', 'NN', 'MM_NN']}
     counties_best_loss_list = {method: list() for method in ['GBM', 'NN', 'MM_NN']}
     df_for_prediction_plot = pd.DataFrame(columns = methods)
     columns_table_t = ['best_h', 'best_c', 'mean absolute error', 'percentage of absolute error', 'adjusted R squared error',
