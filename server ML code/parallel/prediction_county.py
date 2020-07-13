@@ -476,6 +476,8 @@ def real_prediction_plot(df,r,target_name,best_h,spatial_mode,methods,numberOfSe
 
         df_for_plot['date'] = df_for_plot['date of day t'].apply(lambda x:datetime.datetime.strptime(x,'%m/%d/%y')+datetime.timedelta(days=r))
         df_for_plot['date'] = df_for_plot['date'].apply(lambda x:datetime.datetime.strftime(x,'%m/%d/%y'))
+        
+        df_for_plot.to_csv(address + str(method) + ' real_prediction_values.csv', index=False)
 
         counties = [36061]+random.sample(df_for_plot['county_fips'].unique().tolist(),2) # newyork + two random county
 
