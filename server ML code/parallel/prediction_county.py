@@ -712,7 +712,7 @@ def send_email(*attachments):
     body = " "
     sender_email = "covidserver1@gmail.com"
     receiver_email = ["arezo.h1371@yahoo.com"]#,"arashmarioriyad@gmail.com"
-    CC_email = []#"p.ramazi@gmail.com"
+    CC_email = ["p.ramazi@gmail.com"]#
     password = "S.123456.S"
 
     # Create a multipart message and set headers
@@ -1036,7 +1036,7 @@ def main(maxHistory, maxC):
         all_data = makeHistoricalData(h, r, target_name, 'mrmr', spatial_mode, target_mode, './', iteration)
         all_data = clean_data(all_data, numberOfSelectedCounties)
         print(all_data.shape)
-        if (all_data.shape[0] < 1) or (h==4) :
+        if (all_data.shape[0] < 1) :
             history = history[:h-1]
             break
         all_counties = all_data['county_fips'].unique()
