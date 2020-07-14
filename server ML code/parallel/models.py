@@ -42,30 +42,30 @@ def GBM(X_train, X_test, y_train, loss):
 
 
 ###################################################### GLM: Generalized Linear Model, we use Lasso
-# def GLM(X_train, X_test, y_train):
-#
-#     GLM_Model = ElasticNet(random_state=1)
-#     GLM_Model.fit(X_train, y_train)
-#     y_prediction = GLM_Model.predict(X_test)
-#     y_prediction_train = GLM_Model.predict(X_train)
-#     print('GLM coef: ', GLM_Model.coef_)
-#
-#     return np.array(y_prediction).ravel(), np.array(y_prediction_train).ravel()
-
 def GLM(X_train, X_test, y_train):
 
-    Xtrain = sm.add_constant(X_train.values, has_constant='add')
-    Xtest = sm.add_constant(X_test.values, has_constant='add')
-    poisson_training_results = sm.ZeroInflatedPoisson(endog=y_train, exog=Xtrain,
-                                                      exog_infl=Xtrain, inflation='logit').fit(maxiter=1000)
-    y_prediction_train = np.array(np.round(poisson_training_results.predict(Xtrain, exog_infl=Xtrain)))
-    y_prediction = np.array(np.round(poisson_training_results.predict(Xtest, exog_infl=Xtest)))
+    GLM_Model = ElasticNet(random_state=1)
+    GLM_Model.fit(X_train, y_train)
+    y_prediction = GLM_Model.predict(X_test)
+    y_prediction_train = GLM_Model.predict(X_train)
+    print('GLM coef: ', GLM_Model.coef_)
 
-    # poisson_training_results = sm.GLM(y_train, Xtrain, family=sm.families.Gaussian()).fit()
-    # y_prediction_train = np.array(np.round(poisson_training_results.predict(Xtrain)))
-    # y_prediction = np.array(np.round(poisson_training_results.predict(Xtest)))
+    return np.array(y_prediction).ravel(), np.array(y_prediction_train).ravel()
 
-    return y_prediction, y_prediction_train
+# def GLM(X_train, X_test, y_train):
+
+#     Xtrain = sm.add_constant(X_train.values, has_constant='add')
+#     Xtest = sm.add_constant(X_test.values, has_constant='add')
+#     poisson_training_results = sm.ZeroInflatedPoisson(endog=y_train, exog=Xtrain,
+#                                                       exog_infl=Xtrain, inflation='logit').fit(maxiter=1000)
+#     y_prediction_train = np.array(np.round(poisson_training_results.predict(Xtrain, exog_infl=Xtrain)))
+#     y_prediction = np.array(np.round(poisson_training_results.predict(Xtest, exog_infl=Xtest)))
+
+#     # poisson_training_results = sm.GLM(y_train, Xtrain, family=sm.families.Gaussian()).fit()
+#     # y_prediction_train = np.array(np.round(poisson_training_results.predict(Xtrain)))
+#     # y_prediction = np.array(np.round(poisson_training_results.predict(Xtest)))
+
+#     return y_prediction, y_prediction_train
 
 
 # ####################################################### KNN: K-Nearest Neighbors
