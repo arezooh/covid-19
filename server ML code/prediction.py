@@ -336,7 +336,7 @@ def get_best_loss_mode(counties_best_loss_list):
 
 def generate_data(h, numberOfCovariates, covariates_names, numberOfSelectedCounties):
 
-    data = makeHistoricalData(h, r, 'confirmed', 'mrmr', spatial_mode, target_mode, './')
+    data = makeHistoricalData(h, r, 'death', 'mrmr', spatial_mode, target_mode, './')
     data = clean_data(data, numberOfSelectedCounties)
 
     X_train, X_test, y_train, y_test = preprocess(data, spatial_mode, 0)
@@ -528,7 +528,7 @@ def real_prediction_plot(df,r,target_name,best_h,spatial_mode,methods,numberOfSe
             plt.plot(df_for_plot.loc[df_for_plot['county_fips']==county,'date'],df_for_plot.loc[df_for_plot['county_fips']==county,'Target'],label='Real values',linewidth=2.0)
             plt.xticks(rotation=65)
             fig.subplots_adjust(hspace=0.4)
-            plt.ylabel('Number of confirmed')
+            plt.ylabel('Number of deaths')
             countyname = df_for_plot.loc[df_for_plot['county_fips']==county,'county_name'].unique()
             if len(countyname)>0 : # it is False when newyork is not in selected counties and make error
               plt.title(df_for_plot.loc[df_for_plot['county_fips']==county,'county_name'].unique()[0])
@@ -822,7 +822,7 @@ def main(maxHistory):
     methods = ['GBM', 'GLM', 'KNN', 'NN', 'MM_GLM', 'MM_NN']
     none_mixed_methods = ['GBM', 'GLM', 'KNN', 'NN']
     mixed_methods = ['MM_GLM', 'MM_NN']
-    target_name = 'confirmed'
+    target_name = 'death'
     base_data = makeHistoricalData(0, r, target_name, 'mrmr', spatial_mode, target_mode,'./')
     base_data = clean_data(base_data, numberOfSelectedCounties)
     covariates_names = list(base_data.columns)
