@@ -467,6 +467,8 @@ def real_prediction_plot(df,r,target_name,best_h,spatial_mode,methods,numberOfSe
     address = test_address + 'plots_of_real_prediction_values/'
     if not os.path.exists(address):
         os.makedirs(address)
+        
+    result=pd.DataFrame(columns=['date of day t','county_fips','Target','prediction','county_name','date','method'])
 
     for method in methods:
        
@@ -476,8 +478,8 @@ def real_prediction_plot(df,r,target_name,best_h,spatial_mode,methods,numberOfSe
 
         df_for_plot['date'] = df_for_plot['date of day t'].apply(lambda x:datetime.datetime.strptime(x,'%m/%d/%y')+datetime.timedelta(days=r))
         df_for_plot['date'] = df_for_plot['date'].apply(lambda x:datetime.datetime.strftime(x,'%m/%d/%y'))
-        
-        df_for_plot.to_csv(address + str(method) + ' real_prediction_values.csv', index=False)
+        df_for_plot['method'] = method
+        result = result.append(df_for_plot.rename(columns={method:'prediction'}))
 
         counties = [36061]+random.sample(df_for_plot['county_fips'].unique().tolist(),2) # newyork + two random county
 
@@ -506,7 +508,8 @@ def real_prediction_plot(df,r,target_name,best_h,spatial_mode,methods,numberOfSe
         plt.xlabel('Date')
         plt.savefig(address + str(method) + ' real_prediction_values.jpg')
         plt.close()
-
+    
+    result.to_csv(address + ' real_prediction_values.csv', index=False)
 
 ########################################################### get errors for each model in each h and c
 def get_errors(h, c, method, y_prediction, y_prediction_train, y_test_date, MASE_denominator, numberOfSelectedCounties, mode):
@@ -712,7 +715,7 @@ def send_email(*attachments):
     body = " "
     sender_email = "covidserver1@gmail.com"
     receiver_email = ["arezo.h1371@yahoo.com"]#,"arashmarioriyad@gmail.com"
-    CC_email = ["p.ramazi@gmail.com"]#
+    CC_email = []#"p.ramazi@gmail.com"
     password = "S.123456.S"
 
     # Create a multipart message and set headers
