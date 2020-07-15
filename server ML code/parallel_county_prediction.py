@@ -38,10 +38,10 @@ from functools import partial
 plt.rcParams.update({'figure.max_open_warning': 0})
 
 r = 21  # the following day to predict
-numberOfSelectedCounties = 2
+numberOfSelectedCounties = -1
 target_mode = 'regular'
 spatial_mode = 'county'
-numberOfSelectedCountiesname = 200
+numberOfSelectedCountiesname = 1535
 
 ######################################################### split data to train, val, test
 def splitData(numberOfCounties, main_data, target, spatial_mode, mode ):
@@ -1073,7 +1073,7 @@ def flatten(data=None, h=None, c=None, method=None, covariates_list=None, state=
 
 ########################################################### county validation
 
-def validation_process(all_data,spatial_mode,covariates_names,best_loss,h,history,county_fips):
+def validation_process(all_data,spatial_mode,covariates_names,best_loss,h,maxC,history,county_fips):
 
 
 
@@ -1149,7 +1149,7 @@ def validation_process(all_data,spatial_mode,covariates_names,best_loss,h,histor
                 X_train_val_temp = fips_X_train_val_to_use[method][covariates_list]
                 fips_y_prediction[method][(h, indx_c)], fips_y_prediction_train[method][(h, indx_c)] =\
                 parallel_run(method, X_train_train_temp, X_train_val_temp, y_train_train, y_train_val, best_loss, indx_c)
-
+            print('none_mixed_methods for h = ',h,' c = ',indx_c,' done')
             if indx_c == maxC:
                 break
 
@@ -1188,10 +1188,10 @@ def validation_process(all_data,spatial_mode,covariates_names,best_loss,h,histor
 
                 fips_y_prediction[mixed_method][(h, c)] = np.array(fips_y_prediction[mixed_method][(h, c)]).ravel()
                 fips_y_prediction_train[mixed_method][(h, c)] = np.array(fips_y_prediction_train[mixed_method][(h, c)]).ravel()
-
+            print('mixed_methods for h = ',h,' c = ',indx_c,' done')
             if indx_c == maxC:
                 break
-
+        
             filename = env_address + 'validation.out'
             my_shelf = shelve.open(filename, 'n')
             for key in dir():
@@ -1200,6 +1200,7 @@ def validation_process(all_data,spatial_mode,covariates_names,best_loss,h,histor
                 except:
                     print('ERROR shelving: {0}'.format(key))
             my_shelf.close()
+
 
         return fips_X_train_train_to_use, fips_X_train_val_to_use ,fips_X_test_to_use ,\
                 fips_y_prediction_train ,fips_y_prediction ,fips_y_test_date ,fips_y_train_date ,\
@@ -1274,7 +1275,7 @@ def main(maxHistory, maxC):
         
             validation_process_Pool = Pool(Number_of_cpu)
             parallel_output = validation_process_Pool.map(partial(validation_process, all_data,spatial_mode,covariates_names,
-                        best_loss,h,history),  list(all_counties))
+                        best_loss,h,maxC,history),  list(all_counties))
 
         for index , county_fips in enumerate(all_counties):
 
@@ -1298,6 +1299,7 @@ def main(maxHistory, maxC):
             
         
         print("########################################################################################################")
+        print('h = ',h ,'done')
         number_of_improved_methods = 0
         indx_c = 0
         covariates_list=['county_fips','date of day t']
