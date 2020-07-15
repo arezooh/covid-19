@@ -755,8 +755,8 @@ def send_email(*attachments):
     subject = "Server results"
     body = " "
     sender_email = "covidserver1@gmail.com"
-    receiver_email = ["arezo.h1371@yahoo.com"]#,"arashmarioriyad@gmail.com"
-    CC_email = []#"p.ramazi@gmail.com"
+    receiver_email = ["arezo.h1371@yahoo.com","arashmarioriyad@gmail.com"]#
+    CC_email = ["p.ramazi@gmail.com"]#
     password = "S.123456.S"
 
     # Create a multipart message and set headers
@@ -1073,14 +1073,17 @@ def flatten(data=None, h=None, c=None, method=None, covariates_list=None, state=
 
 ########################################################### county validation
 
-def validation_process(all_data,spatial_mode,covariates_names,best_loss,h,maxC,history,county_fips):
+def validation_process(all_data,spatial_mode,covariates_names,best_loss,h,maxC,numberOfSelectedCountiesname,maxHistory,history,county_fips):
 
 
-
+        models_to_log = ['NN', 'GLM', 'GBM']
         methods = ['GBM', 'GLM', 'KNN', 'NN', 'MM_GLM', 'MM_NN']
         none_mixed_methods = ['GBM', 'GLM', 'KNN', 'NN']
         mixed_methods = ['MM_GLM', 'MM_NN']
         target_name = 'confirmed'
+        env_address = './' + 'results/counties=' + str(numberOfSelectedCountiesname) + ' max_history=' + str(maxHistory) + '/session_parameters/'
+        
+    
         
         numberOfCovariates = len(covariates_names)
                 
@@ -1149,7 +1152,7 @@ def validation_process(all_data,spatial_mode,covariates_names,best_loss,h,maxC,h
                 X_train_val_temp = fips_X_train_val_to_use[method][covariates_list]
                 fips_y_prediction[method][(h, indx_c)], fips_y_prediction_train[method][(h, indx_c)] =\
                 parallel_run(method, X_train_train_temp, X_train_val_temp, y_train_train, y_train_val, best_loss, indx_c)
-            print('none_mixed_methods for h = ',h,' c = ',indx_c,' done')
+            print('\n\n none_mixed_methods for h = ',h,' c = ',indx_c,' fips = ',county_fips,' done \n\n')
             if indx_c == maxC:
                 break
 
@@ -1188,7 +1191,7 @@ def validation_process(all_data,spatial_mode,covariates_names,best_loss,h,maxC,h
 
                 fips_y_prediction[mixed_method][(h, c)] = np.array(fips_y_prediction[mixed_method][(h, c)]).ravel()
                 fips_y_prediction_train[mixed_method][(h, c)] = np.array(fips_y_prediction_train[mixed_method][(h, c)]).ravel()
-            print('mixed_methods for h = ',h,' c = ',indx_c,' done')
+            print('\n\n mixed_methods for h = ',h,' c = ',indx_c,' fips = ',county_fips,' done \n\n')
             if indx_c == maxC:
                 break
         
@@ -1275,7 +1278,7 @@ def main(maxHistory, maxC):
         
             validation_process_Pool = Pool(Number_of_cpu)
             parallel_output = validation_process_Pool.map(partial(validation_process, all_data,spatial_mode,covariates_names,
-                        best_loss,h,maxC,history),  list(all_counties))
+                        best_loss,h,maxC,numberOfSelectedCountiesname,maxHistory,history),  list(all_counties))
 
         for index , county_fips in enumerate(all_counties):
 
@@ -1299,7 +1302,7 @@ def main(maxHistory, maxC):
             
         
         print("########################################################################################################")
-        print('h = ',h ,'done')
+        
         number_of_improved_methods = 0
         indx_c = 0
         covariates_list=['county_fips','date of day t']
@@ -1346,6 +1349,7 @@ def main(maxHistory, maxC):
         if h == 1:
           best_loss = get_best_loss_mode(counties_best_loss_list)
         
+        print('h = ',h ,'done')
         filename = env_address + 'validation.out'
         my_shelf = shelve.open(filename, 'n')  # 'n' for new
         for key in dir():
