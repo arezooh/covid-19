@@ -34,6 +34,7 @@ import statistics
 import multiprocessing
 from multiprocessing import Pool
 from functools import partial
+import gc
 
 plt.rcParams.update({'figure.max_open_warning': 0})
 
@@ -895,6 +896,11 @@ def test_process(h, r, target_name,spatial_mode, target_mode,best_h,best_c,histo
          y_prediction[state_fips]['KNN'], y_prediction_train[state_fips]['KNN'] = KNN
          y_prediction[state_fips]['NN'], y_prediction_train[state_fips]['NN'] = NN
 
+
+    run_algorithms_Pool.close()
+    # free the memmory
+    gc.collect()
+    del parallel_output, NN, KNN, GLM, GBM
     table_data = []
 
     for method in none_mixed_methods:
@@ -987,7 +993,10 @@ def test_process(h, r, target_name,spatial_mode, target_mode,best_h,best_c,histo
             y_test_MM_dict[state_fips][mixed_method]=parallel_output[index][3]
             
 
-        
+        make_data_Pool.close()
+        gc.collect()
+        del parallel_output
+
     # run mixed model with linear regression and neural network in parallel
     if __name__ == '__main__':
 
@@ -1003,6 +1012,9 @@ def test_process(h, r, target_name,spatial_mode, target_mode,best_h,best_c,histo
         y_prediction[state_fips]['MM_NN']=parallel_output[index][1][0]
         y_prediction_train[state_fips]['MM_NN']=parallel_output[index][1][1]
     
+    run_mixed_models_Pool.close()
+    gc.collect()
+    del parallel_output
 
     # save the entire session
     filename = env_address + 'test.out'
@@ -1309,7 +1321,10 @@ def main(maxHistory, maxC):
                 states_best_loss_list[method].append(parallel_output[index][10][method])
             
             
-            
+        validation_process_Pool.close()
+        # free the memory
+        gc.collect()
+        del parallel_output    
         
         print("########################################################################################################")
         
