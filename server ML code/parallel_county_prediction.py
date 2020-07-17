@@ -34,6 +34,8 @@ import statistics
 import multiprocessing
 from multiprocessing import Pool
 from functools import partial
+import gc
+#gc.collect()
 
 plt.rcParams.update({'figure.max_open_warning': 0})
 
@@ -81,7 +83,7 @@ def splitData(numberOfCounties, main_data, target, spatial_mode, mode ):
 
 
 ########################################################### clean data
-def clean_data(data, numberOfSelectedCounties):
+def clean_data(data, numberOfSelectedCounties, spatial_mode):
     global numberOfDays
     data = data.sort_values(by=['county_fips', 'date of day t'])
     # select the number of counties we want to use
@@ -91,14 +93,19 @@ def clean_data(data, numberOfSelectedCounties):
 
     using_data = data[(data['county_fips'] <= data['county_fips'].unique()[numberOfSelectedCounties - 1])]
     using_data = using_data.reset_index(drop=True)
-    main_data = using_data.drop(['county_name', 'state_fips', 'state_name'],
-                                axis=1)  # , 'date of day t'
+    if (spatial_mode == 'county') or (spatial_mode == 'country'):
+      main_data = using_data.drop(['county_name', 'state_fips', 'state_name'],
+                                  axis=1)  # , 'date of day t'
+    elif (spatial_mode == 'state'):
+      main_data = using_data.drop(['county_name', 'state_name'],
+                                axis=1)
     # target = pd.DataFrame(main_data['Target'])
     # main_data = main_data.drop(['Target'], axis=1)
     # numberOfCounties = len(using_data['county_fips'].unique())
     numberOfDays = len(using_data['date of day t'].unique())
 
     return main_data
+
 
 
 ########################################################### preprocess
@@ -125,13 +132,13 @@ def preprocess(main_data, spatial_mode, validationFlag):
 
 
 ################################ MASE_denominator
-def mase_denominator(r, target_name, target_mode ,numberOfSelectedCounties):
+def mase_denominator(r, target_name, target_mode ,numberOfSelectedCounties, spatial_mode):
 
-    data = makeHistoricalData(0, r, target_name, 'mrmr', 'country', target_mode, './')
+    data = makeHistoricalData(0, r, target_name, 'mrmr', spatial_mode, target_mode, './')
     if numberOfSelectedCounties == -1 :
       numberOfSelectedCounties = len(data['county_fips'].unique())
-    data = clean_data(data, numberOfSelectedCounties)
-    X_train_train, X_train_val, X_test, y_train_train_date, y_train_val_date, y_test_date = preprocess(data, 'country', 1)
+    data = clean_data(data, numberOfSelectedCounties, spatial_mode)
+    X_train_train, X_train_val, X_test, y_train_train_date, y_train_val_date, y_test_date = preprocess(data, spatial_mode, 1)
 
     train_train = (y_train_train_date.reset_index(drop=True)).sort_values(by=['date of day t', 'county_fips'])
     train_val = (y_train_val_date.reset_index(drop=True)).sort_values(by=['date of day t', 'county_fips'])
@@ -377,7 +384,7 @@ def poolcontext(*args, **kwargs):
 def generate_data(h, numberOfCovariates, covariates_names, numberOfSelectedCounties):
 
     data = makeHistoricalData(h, r, 'confirmed', 'mrmr', spatial_mode, target_mode, './')
-    data = clean_data(data, numberOfSelectedCounties)
+    data = clean_data(data, numberOfSelectedCounties, spatial_mode)
 
     X_train, X_test, y_train, y_test = preprocess(data, spatial_mode, 0)
     covariates = [covariates_names[i] for i in range(numberOfCovariates)]
@@ -600,7 +607,7 @@ def get_errors(h, c, method, y_prediction, y_prediction_train, y_test_date, MASE
         data_new_case = makeHistoricalData(h, r, target_name, 'mrmr', spatial_mode, 'regular', './')
         if numberOfSelectedCounties == -1 :
           numberOfSelectedCounties = len(data_new_case['county_fips'].unique())
-        data_new_case = clean_data(data_new_case, numberOfSelectedCounties)
+        data_new_case = clean_data(data_new_case, numberOfSelectedCounties, spatial_mode)
         reverse_dates=data_new_case['date of day t'].unique()[::-1]
         for i,j in enumerate(reverse_dates[1:]):
             data_new_case.loc[data_new_case['date of day t']==reverse_dates[i],target_name+' t']=list(np.array(data_new_case.loc[data_new_case['date of day t']==reverse_dates[i],target_name+' t'])-np.array(data_new_case.loc[data_new_case['date of day t']==j,target_name+' t']))
@@ -755,8 +762,8 @@ def send_email(*attachments):
     subject = "Server results"
     body = " "
     sender_email = "covidserver1@gmail.com"
-    receiver_email = ["arezo.h1371@yahoo.com","arashmarioriyad@gmail.com"]#
-    CC_email = ["p.ramazi@gmail.com"]#
+    receiver_email = ["arezo.h1371@yahoo.com"]#,"arashmarioriyad@gmail.com"
+    CC_email = []#"p.ramazi@gmail.com"
     password = "S.123456.S"
 
     # Create a multipart message and set headers
@@ -848,11 +855,11 @@ def test_process(h, r, target_name,spatial_mode, target_mode,best_h,best_c,histo
     none_mixed_methods = ['GBM', 'GLM', 'KNN', 'NN']
     mixed_methods = ['MM_GLM', 'MM_NN']
 
-    train_val_MASE_denominator, val_test_MASE_denominator, train_lag_MASE_denominator = mase_denominator(r, target_name, target_mode, numberOfSelectedCounties)
+    train_val_MASE_denominator, val_test_MASE_denominator, train_lag_MASE_denominator = mase_denominator(r, target_name, target_mode, numberOfSelectedCounties, spatial_mode)
     df_for_prediction_plot = {method : None for method in methods}
 
     all_data = makeHistoricalData(h, r, target_name, 'mrmr', spatial_mode, target_mode, './')
-    all_data = clean_data(all_data, numberOfSelectedCounties)
+    all_data = clean_data(all_data, numberOfSelectedCounties, spatial_mode)
     print(all_data.shape)
     all_counties = all_data['county_fips'].unique()
     y_prediction = {county_fips: {'GBM': {}, 'GLM': {}, 'KNN': {}, 'NN': {}, 'MM_GLM': {}, 'MM_NN': {}}
@@ -883,6 +890,11 @@ def test_process(h, r, target_name,spatial_mode, target_mode,best_h,best_c,histo
          y_prediction[county_fips]['GLM'], y_prediction_train[county_fips]['GLM'] = GLM
          y_prediction[county_fips]['KNN'], y_prediction_train[county_fips]['KNN'] = KNN
          y_prediction[county_fips]['NN'], y_prediction_train[county_fips]['NN'] = NN
+
+    run_algorithms_Pool.close()
+    # free the memmory
+    gc.collect()
+    del parallel_output, NN, KNN, GLM, GBM
 
     table_data = []
 
@@ -974,8 +986,11 @@ def test_process(h, r, target_name,spatial_mode, target_mode,best_h,best_c,histo
             y_train_MM_dict[county_fips][mixed_method]=parallel_output[index][2]
             y_test_MM_dict[county_fips][mixed_method]=parallel_output[index][3]
             
-
         
+        make_data_Pool.close()
+        gc.collect()
+        del parallel_output
+
     # run mixed model with linear regression and neural network in parallel
     if __name__ == '__main__':
 
@@ -991,6 +1006,10 @@ def test_process(h, r, target_name,spatial_mode, target_mode,best_h,best_c,histo
         y_prediction[county_fips]['MM_NN']=parallel_output[index][1][0]
         y_prediction_train[county_fips]['MM_NN']=parallel_output[index][1][1]
     
+
+    run_mixed_models_Pool.close()
+    gc.collect()
+    del parallel_output
 
     # save the entire session
     filename = env_address + 'test.out'
@@ -1073,14 +1092,13 @@ def flatten(data=None, h=None, c=None, method=None, covariates_list=None, state=
 
 ########################################################### county validation
 
-def validation_process(all_data,spatial_mode,covariates_names,best_loss,h,maxC,numberOfSelectedCountiesname,maxHistory,history,county_fips):
+def validation_process(all_data,spatial_mode,covariates_names,best_loss,target_name,h,maxC,numberOfSelectedCountiesname,maxHistory,history,county_fips):
 
 
         models_to_log = ['NN', 'GLM', 'GBM']
         methods = ['GBM', 'GLM', 'KNN', 'NN', 'MM_GLM', 'MM_NN']
         none_mixed_methods = ['GBM', 'GLM', 'KNN', 'NN']
         mixed_methods = ['MM_GLM', 'MM_NN']
-        target_name = 'confirmed'
         env_address = './' + 'results/counties=' + str(numberOfSelectedCountiesname) + ' max_history=' + str(maxHistory) + '/session_parameters/'
         
     
@@ -1219,7 +1237,7 @@ def main(maxHistory, maxC):
     mixed_methods = ['MM_GLM', 'MM_NN']
     target_name = 'confirmed'
     base_data = makeHistoricalData(0, r, target_name, 'mrmr', spatial_mode, target_mode, './')
-    base_data = clean_data(base_data, numberOfSelectedCounties)
+    base_data = clean_data(base_data, numberOfSelectedCounties, spatial_mode)
     covariates_names = list(base_data.columns)
     covariates_names.remove('Target')
     covariates_names.remove('date of day t')
@@ -1257,14 +1275,14 @@ def main(maxHistory, maxC):
     X_train_train_to_use = {county_fips: {h: {method: None for method in methods} for h in history} for county_fips in base_data['county_fips'].unique()}
     X_train_val_to_use = {county_fips: {h: {method: None for method in methods} for h in history} for county_fips in base_data['county_fips'].unique()}
     X_test_to_use = {county_fips: {h: {method: None for method in methods} for h in history} for county_fips in base_data['county_fips'].unique()}
-    train_val_MASE_denominator, val_test_MASE_denominator, train_lag_MASE_denominator = mase_denominator(r, target_name, target_mode, numberOfSelectedCounties)
+    train_val_MASE_denominator, val_test_MASE_denominator, train_lag_MASE_denominator = mase_denominator(r, target_name, target_mode, numberOfSelectedCounties, spatial_mode)
     Number_of_cpu = multiprocessing.cpu_count()
     # print("Number of cpu : ", Number_of_cpu)
 
     for h in history:
         print("h = ", h)
         all_data = makeHistoricalData(h, r, target_name, 'mrmr', spatial_mode, target_mode, './')
-        all_data = clean_data(all_data, numberOfSelectedCounties)
+        all_data = clean_data(all_data, numberOfSelectedCounties, spatial_mode)
         print(all_data.shape)
         
         all_counties = all_data['county_fips'].unique()
@@ -1278,7 +1296,7 @@ def main(maxHistory, maxC):
         
             validation_process_Pool = Pool(Number_of_cpu)
             parallel_output = validation_process_Pool.map(partial(validation_process, all_data,spatial_mode,covariates_names,
-                        best_loss,h,maxC,numberOfSelectedCountiesname,maxHistory,history),  list(all_counties))
+                        best_loss,target_name,h,maxC,numberOfSelectedCountiesname,maxHistory,history),  list(all_counties))
 
         for index , county_fips in enumerate(all_counties):
 
@@ -1297,7 +1315,11 @@ def main(maxHistory, maxC):
               # update list of county losses (mode of this list will be used as best loss)
               for method in ['GBM', 'NN', 'MM_NN']:
                 counties_best_loss_list[method].append(parallel_output[index][10][method])
-            
+
+        validation_process_Pool.close()
+        # free the memory
+        gc.collect()
+        del parallel_output
             
             
         
