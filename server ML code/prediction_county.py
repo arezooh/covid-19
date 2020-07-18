@@ -1014,12 +1014,7 @@ def main(maxHistory, maxC):
     covariates_names.remove('date of day t')
     covariates_names.remove('county_fips')
     numberOfCovariates = len(covariates_names)
-    y_prediction = {county_fips: {'GBM': {}, 'GLM': {}, 'KNN': {}, 'NN': {}, 'MM_GLM': {}, 'MM_NN': {}}
-                    for county_fips in base_data['county_fips'].unique()}
-    y_prediction_train = {county_fips: {'GBM': {}, 'GLM': {}, 'KNN': {}, 'NN': {}, 'MM_GLM': {}, 'MM_NN': {}}
-                    for county_fips in base_data['county_fips'].unique()}
-    y_val = {county_fips: {}
-                    for county_fips in base_data['county_fips'].unique()}
+    
     error_names = ['MAPE', 'MAE', 'adj-R2', 'sec', 'MASE']
     complete_error_names = {'MAPE': 'Percentage Of Absolute Error', 'MAE': 'Mean Absolute Error',
                             'MASE': 'Mean Absolute Scaled Error', 'adj-R2': 'Adjusted R Squared Error',
@@ -1043,9 +1038,6 @@ def main(maxHistory, maxC):
     historical_y_test = {}
     historical_y_train_date = {}
     historical_y_test_date = {}
-    X_train_train_to_use = {county_fips: {h: {method: None for method in methods} for h in history} for county_fips in base_data['county_fips'].unique()}
-    X_train_val_to_use = {county_fips: {h: {method: None for method in methods} for h in history} for county_fips in base_data['county_fips'].unique()}
-    X_test_to_use = {county_fips: {h: {method: None for method in methods} for h in history} for county_fips in base_data['county_fips'].unique()}
     train_val_MASE_denominator, val_test_MASE_denominator, train_lag_MASE_denominator = mase_denominator(r, target_name, target_mode, numberOfSelectedCounties)
     
     for h in history:
@@ -1054,6 +1046,16 @@ def main(maxHistory, maxC):
         all_data = clean_data(all_data, numberOfSelectedCounties)
         print(all_data.shape)
         all_counties = all_data['county_fips'].unique()
+        
+        X_train_train_to_use = {county_fips: {h: {method: None for method in methods} for h in history} for county_fips in all_counties}
+        X_train_val_to_use = {county_fips: {h: {method: None for method in methods} for h in history} for county_fips in all_counties}
+        X_test_to_use = {county_fips: {h: {method: None for method in methods} for h in history} for county_fips in all_counties}
+        y_prediction = {county_fips: {'GBM': {}, 'GLM': {}, 'KNN': {}, 'NN': {}, 'MM_GLM': {}, 'MM_NN': {}}
+                    for county_fips in all_counties}
+        y_prediction_train = {county_fips: {'GBM': {}, 'GLM': {}, 'KNN': {}, 'NN': {}, 'MM_GLM': {}, 'MM_NN': {}}
+                        for county_fips in all_counties}
+        y_val = {county_fips: {}
+                        for county_fips in all_counties}
         y_test_date = {county_fips: None for county_fips in all_counties}
         y_train_date = {county_fips: None for county_fips in all_counties}
         y_train = {county_fips: None for county_fips in all_counties}
