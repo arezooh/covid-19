@@ -385,7 +385,7 @@ def poolcontext(*args, **kwargs):
 
 def generate_data(h, numberOfCovariates, covariates_names, numberOfSelectedCounties):
 
-    data = makeHistoricalData(h, r, 'confirmed', 'mrmr', spatial_mode, target_mode, './')
+    data = makeHistoricalData(h, r, 'death', 'mrmr', spatial_mode, target_mode, './')
     data = clean_data(data, numberOfSelectedCounties, spatial_mode)
 
     X_train, X_test, y_train, y_test = preprocess(data, spatial_mode, 0)
@@ -553,7 +553,7 @@ def real_prediction_plot(df,r,target_name,best_h,spatial_mode,methods,numberOfSe
             plt.plot(df_for_plot.loc[df_for_plot['county_fips']==county,'date'],df_for_plot.loc[df_for_plot['county_fips']==county,'Target'],label='Real values',linewidth=2.0)
             plt.xticks(rotation=65)
             fig.subplots_adjust(hspace=0.4)
-            plt.ylabel('Number of confirmed')
+            plt.ylabel('Number of deaths')
             countyname = df_for_plot.loc[df_for_plot['county_fips']==county,'county_name'].unique()
             if len(countyname)>0 : # it is False when newyork is not in selected counties and make error
               plt.title(df_for_plot.loc[df_for_plot['county_fips']==county,'county_name'].unique()[0])
@@ -1052,7 +1052,7 @@ def test_process(h, r, target_name,spatial_mode, target_mode,best_h,best_c,histo
     selected_for_email = [test_address + '/tables', test_address + '/all_errors/NN', test_address + '/all_errors/KNN' , test_address + '/plots_of_real_prediction_values']
     zip_file_name = 'test results for h =' + str(maxHistory) + ' #counties=' + str(numberOfSelectedCountiesname)
     make_zip(selected_for_email, zip_file_name)
-    send_email(zip_file_name + '.zip')
+    # send_email(zip_file_name + '.zip')
 
     # save the entire session
     filename = env_address + 'test.out'
@@ -1153,11 +1153,14 @@ def validation_process(all_data,spatial_mode,covariates_names,best_loss,target_n
         fips_y_test = np.array(fips_y_test_date['Target']).reshape(-1)
         fips_y_train = np.array((pd.DataFrame(y_train_train).append(pd.DataFrame(y_train_val))).reset_index(drop=True)).reshape(-1)
 
-        # find best loss
-        if (h==1):
-          best_loss = update_best_loss('none_mixed_model', spatial_mode ,state_fips,best_loss,fips_X_train_train_to_use,fips_X_train_val_to_use,\
-                                      y_train_train,y_train_val,None,None,data.columns.drop(['Target','date of day t','county_fips', 'state_fips']),\
-                                        numberOfCovariates,maxC)
+        # # find best loss
+        # if (h==1):
+        #     try:
+        #         best_loss = update_best_loss('none_mixed_model', spatial_mode ,state_fips,best_loss,fips_X_train_train_to_use,fips_X_train_val_to_use,\
+        #                                   y_train_train,y_train_val,None,None,data.columns.drop(['Target','date of day t','county_fips', 'state_fips']),\
+        #                                     numberOfCovariates,maxC)
+        #     except:
+        #         print("Something went wrong in update best_loss")
 
 
 
@@ -1177,20 +1180,23 @@ def validation_process(all_data,spatial_mode,covariates_names,best_loss,target_n
             if indx_c == maxC:
                 break
 
-            filename = env_address + 'validation.out'
-            my_shelf = shelve.open(filename, 'n')
-            for key in dir():
-                try:
-                    my_shelf[key] = locals()[key]
-                except:
-                    print('ERROR shelving: {0}'.format(key))
-            my_shelf.close()
+            # filename = env_address + 'validation.out'
+            # my_shelf = shelve.open(filename, 'n')
+            # for key in dir():
+            #     try:
+            #         my_shelf[key] = locals()[key]
+            #     except:
+            #         print('ERROR shelving: {0}'.format(key))
+            # my_shelf.close()
 
-        # find best loss
-        if h == 1 :
-          best_loss = update_best_loss('mixed_model', spatial_mode, state_fips,best_loss,None,None,y_train_train,\
-                    y_train_val,fips_y_prediction_train,fips_y_prediction,None,\
-                    numberOfCovariates,maxC)
+        # # find best loss
+        # if h == 1 :
+        #     try:
+        #         best_loss = update_best_loss('mixed_model', spatial_mode, state_fips,best_loss,None,None,y_train_train,\
+        #                 y_train_val,fips_y_prediction_train,fips_y_prediction,None,\
+        #                 numberOfCovariates,maxC)
+        #     except:
+        #         print("Something went wrong in update best_loss")
 
 
         indx_c = 0
@@ -1216,14 +1222,14 @@ def validation_process(all_data,spatial_mode,covariates_names,best_loss,target_n
             if indx_c == maxC:
                 break
         
-            filename = env_address + 'validation.out'
-            my_shelf = shelve.open(filename, 'n')
-            for key in dir():
-                try:
-                    my_shelf[key] = locals()[key]
-                except:
-                    print('ERROR shelving: {0}'.format(key))
-            my_shelf.close()
+            # filename = env_address + 'validation.out'
+            # my_shelf = shelve.open(filename, 'n')
+            # for key in dir():
+            #     try:
+            #         my_shelf[key] = locals()[key]
+            #     except:
+            #         print('ERROR shelving: {0}'.format(key))
+            # my_shelf.close()
 
 
         return fips_X_train_train_to_use, fips_X_train_val_to_use ,fips_X_test_to_use ,\
@@ -1238,7 +1244,7 @@ def main(maxHistory, maxC):
     methods = ['GBM', 'GLM', 'KNN', 'NN', 'MM_GLM', 'MM_NN']
     none_mixed_methods = ['GBM', 'GLM', 'KNN', 'NN']
     mixed_methods = ['MM_GLM', 'MM_NN']
-    target_name = 'confirmed'
+    target_name = 'death'
     base_data = makeHistoricalData(0, r, target_name, 'mrmr', spatial_mode, target_mode, './')
     base_data = clean_data(base_data, numberOfSelectedCounties, spatial_mode)
     covariates_names = list(base_data.columns)
@@ -1247,12 +1253,7 @@ def main(maxHistory, maxC):
     covariates_names.remove('county_fips')
     covariates_names.remove('state_fips')
     numberOfCovariates = len(covariates_names)
-    y_prediction = {state_fips: {'GBM': {}, 'GLM': {}, 'KNN': {}, 'NN': {}, 'MM_GLM': {}, 'MM_NN': {}}
-                    for state_fips in base_data['state_fips'].unique()}
-    y_prediction_train = {state_fips: {'GBM': {}, 'GLM': {}, 'KNN': {}, 'NN': {}, 'MM_GLM': {}, 'MM_NN': {}}
-                    for state_fips in base_data['state_fips'].unique()}
-    y_val = {state_fips: {}
-                    for state_fips in base_data['state_fips'].unique()}
+    
     error_names = ['MAPE', 'MAE', 'adj-R2', 'sec', 'MASE']
     complete_error_names = {'MAPE': 'Percentage Of Absolute Error', 'MAE': 'Mean Absolute Error',
                             'MASE': 'Mean Absolute Scaled Error', 'adj-R2': 'Adjusted R Squared Error',
@@ -1261,8 +1262,8 @@ def main(maxHistory, maxC):
     minError = {method: {error: int(1e10) for error in error_names} for method in methods}
     best_h = {method: {error: 0 for error in error_names} for method in methods}
     best_c = {method: {error: 0 for error in error_names} for method in methods}
-    # best_loss = {'GBM': 'poisson', 'MM_NN': 'poisson', 'NN': 'MeanAbsoluteError'}
-    best_loss = {method: None for method in ['GBM', 'NN', 'MM_NN']}
+    best_loss = {'GBM': 'least_squares', 'MM_NN': 'poisson', 'NN': 'MeanAbsoluteError'}
+    # best_loss = {method: None for method in ['GBM', 'NN', 'MM_NN']}
     states_best_loss_list = {method: list() for method in ['GBM', 'NN', 'MM_NN']}
     df_for_prediction_plot = pd.DataFrame(columns = methods)
     columns_table_t = ['best_h', 'best_c', 'mean absolute error', 'percentage of absolute error', 'adjusted R squared error',
@@ -1276,9 +1277,6 @@ def main(maxHistory, maxC):
     historical_y_test = {}
     historical_y_train_date = {}
     historical_y_test_date = {}
-    X_train_train_to_use = {state_fips: {h: {method: None for method in methods} for h in history} for state_fips in base_data['state_fips'].unique()}
-    X_train_val_to_use = {state_fips: {h: {method: None for method in methods} for h in history} for state_fips in base_data['state_fips'].unique()}
-    X_test_to_use = {state_fips: {h: {method: None for method in methods} for h in history} for state_fips in base_data['state_fips'].unique()}
     train_val_MASE_denominator, val_test_MASE_denominator, train_lag_MASE_denominator = mase_denominator(r, target_name, target_mode, numberOfSelectedCounties, spatial_mode)
     Number_of_cpu = multiprocessing.cpu_count()
     print("Number of cpu : ", Number_of_cpu)
@@ -1289,7 +1287,18 @@ def main(maxHistory, maxC):
         all_data = clean_data(all_data, numberOfSelectedCounties, spatial_mode)
         print(all_data.shape)
         
+        X_train_train_to_use = {state_fips: {h: {method: None for method in methods} for h in history} for state_fips in all_data['state_fips'].unique()}
+        X_train_val_to_use = {state_fips: {h: {method: None for method in methods} for h in history} for state_fips in all_data['state_fips'].unique()}
+        X_test_to_use = {state_fips: {h: {method: None for method in methods} for h in history} for state_fips in all_data['state_fips'].unique()}
+        y_prediction = {state_fips: {'GBM': {}, 'GLM': {}, 'KNN': {}, 'NN': {}, 'MM_GLM': {}, 'MM_NN': {}}
+                    for state_fips in all_data['state_fips'].unique()}
+        y_prediction_train = {state_fips: {'GBM': {}, 'GLM': {}, 'KNN': {}, 'NN': {}, 'MM_GLM': {}, 'MM_NN': {}}
+                        for state_fips in all_data['state_fips'].unique()}
+        y_val = {state_fips: {}
+                        for state_fips in all_data['state_fips'].unique()}
+        
         all_states = all_data['state_fips'].unique()
+        print('all_states',all_states)
         y_test_date = {state_fips: None for state_fips in all_states}
         y_train_date = {state_fips: None for state_fips in all_states}
         y_train = {state_fips: None for state_fips in all_states}
@@ -1301,7 +1310,7 @@ def main(maxHistory, maxC):
             validation_process_Pool = Pool(Number_of_cpu)
             parallel_output = validation_process_Pool.map(partial(validation_process, all_data,spatial_mode,covariates_names,
                         best_loss,target_name,h,maxC,numberOfSelectedCountiesname,maxHistory,history),  list(all_states))
-
+        print('all_states',all_states)
         for index , state_fips in enumerate(all_states):
 
             X_train_train_to_use[state_fips][h]=parallel_output[index][0]
@@ -1409,7 +1418,7 @@ def main(maxHistory, maxC):
     selected_for_email = [validation_address]
     zip_file_name = 'validation results for h =' + str(maxHistory) + ' #counties=' + str(numberOfSelectedCountiesname)
     make_zip(selected_for_email, zip_file_name)
-    send_email(zip_file_name + '.zip')
+    # send_email(zip_file_name + '.zip')
     push('plots added')
     test_process(h, r, target_name,spatial_mode, target_mode,best_h,best_c,historical_X_train,\
                  historical_X_test, historical_y_train_date, historical_y_test_date, best_loss,\
