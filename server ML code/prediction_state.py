@@ -1012,12 +1012,6 @@ def main(maxHistory, maxC):
     covariates_names.remove('county_fips')
     covariates_names.remove('state_fips')
     numberOfCovariates = len(covariates_names)
-    y_prediction = {state_fips: {'GBM': {}, 'GLM': {}, 'KNN': {}, 'NN': {}, 'MM_GLM': {}, 'MM_NN': {}}
-                    for state_fips in base_data['state_fips'].unique()}
-    y_prediction_train = {state_fips: {'GBM': {}, 'GLM': {}, 'KNN': {}, 'NN': {}, 'MM_GLM': {}, 'MM_NN': {}}
-                    for state_fips in base_data['state_fips'].unique()}
-    y_val = {state_fips: {}
-                    for state_fips in base_data['state_fips'].unique()}
     error_names = ['MAPE', 'MAE', 'adj-R2', 'sec', 'MASE']
     complete_error_names = {'MAPE': 'Percentage Of Absolute Error', 'MAE': 'Mean Absolute Error',
                             'MASE': 'Mean Absolute Scaled Error', 'adj-R2': 'Adjusted R Squared Error',
@@ -1041,15 +1035,23 @@ def main(maxHistory, maxC):
     historical_y_test = {}
     historical_y_train_date = {}
     historical_y_test_date = {}
-    X_train_train_to_use = {state_fips: {h: {method: None for method in methods} for h in history} for state_fips in base_data['state_fips'].unique()}
-    X_train_val_to_use = {state_fips: {h: {method: None for method in methods} for h in history} for state_fips in base_data['state_fips'].unique()}
-    X_test_to_use = {state_fips: {h: {method: None for method in methods} for h in history} for state_fips in base_data['state_fips'].unique()}
     train_val_MASE_denominator, val_test_MASE_denominator, train_lag_MASE_denominator = mase_denominator(r, target_name, target_mode, numberOfSelectedCounties)
     for h in history:
         print("h =", h)
         all_data = makeHistoricalData(h, r, target_name, 'mrmr', spatial_mode, target_mode, './')
         all_data = clean_data(all_data, numberOfSelectedCounties)
         all_states = all_data['state_fips'].unique()
+        
+        X_train_train_to_use = {state_fips: {h: {method: None for method in methods} for h in history} for state_fips in all_states}
+        X_train_val_to_use = {state_fips: {h: {method: None for method in methods} for h in history} for state_fips in all_states}
+        X_test_to_use = {state_fips: {h: {method: None for method in methods} for h in history} for state_fips in all_states}
+        y_prediction = {state_fips: {'GBM': {}, 'GLM': {}, 'KNN': {}, 'NN': {}, 'MM_GLM': {}, 'MM_NN': {}}
+                    for state_fips in all_states}
+        y_prediction_train = {state_fips: {'GBM': {}, 'GLM': {}, 'KNN': {}, 'NN': {}, 'MM_GLM': {}, 'MM_NN': {}}
+                        for state_fips in all_states}
+        y_val = {state_fips: {}
+                        for state_fips in all_states}
+        
         y_test_date = {state_fips: None for state_fips in all_states}
         y_train_date = {state_fips: None for state_fips in all_states}
         y_train = {state_fips: None for state_fips in all_states}
