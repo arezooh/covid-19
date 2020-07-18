@@ -1286,19 +1286,20 @@ def main(maxHistory, maxC):
         all_data = makeHistoricalData(h, r, target_name, 'mrmr', spatial_mode, target_mode, './')
         all_data = clean_data(all_data, numberOfSelectedCounties, spatial_mode)
         print(all_data.shape)
-        
-        X_train_train_to_use = {state_fips: {h: {method: None for method in methods} for h in history} for state_fips in all_data['state_fips'].unique()}
-        X_train_val_to_use = {state_fips: {h: {method: None for method in methods} for h in history} for state_fips in all_data['state_fips'].unique()}
-        X_test_to_use = {state_fips: {h: {method: None for method in methods} for h in history} for state_fips in all_data['state_fips'].unique()}
-        y_prediction = {state_fips: {'GBM': {}, 'GLM': {}, 'KNN': {}, 'NN': {}, 'MM_GLM': {}, 'MM_NN': {}}
-                    for state_fips in all_data['state_fips'].unique()}
-        y_prediction_train = {state_fips: {'GBM': {}, 'GLM': {}, 'KNN': {}, 'NN': {}, 'MM_GLM': {}, 'MM_NN': {}}
-                        for state_fips in all_data['state_fips'].unique()}
-        y_val = {state_fips: {}
-                        for state_fips in all_data['state_fips'].unique()}
-        
         all_states = all_data['state_fips'].unique()
         print('all_states',all_states)
+        
+        X_train_train_to_use = {state_fips: {h: {method: None for method in methods} for h in history} for state_fips in all_states}
+        X_train_val_to_use = {state_fips: {h: {method: None for method in methods} for h in history} for state_fips in all_states}
+        X_test_to_use = {state_fips: {h: {method: None for method in methods} for h in history} for state_fips in all_states}
+        y_prediction = {state_fips: {'GBM': {}, 'GLM': {}, 'KNN': {}, 'NN': {}, 'MM_GLM': {}, 'MM_NN': {}}
+                    for state_fips in all_states}
+        y_prediction_train = {state_fips: {'GBM': {}, 'GLM': {}, 'KNN': {}, 'NN': {}, 'MM_GLM': {}, 'MM_NN': {}}
+                        for state_fips in all_states}
+        y_val = {state_fips: {}
+                        for state_fips in all_states}
+        
+        
         y_test_date = {state_fips: None for state_fips in all_states}
         y_train_date = {state_fips: None for state_fips in all_states}
         y_train = {state_fips: None for state_fips in all_states}
