@@ -40,10 +40,10 @@ import gc
 plt.rcParams.update({'figure.max_open_warning': 0})
 
 r = 21  # the following day to predict
-numberOfSelectedCounties = 2
+numberOfSelectedCounties = -1
 target_mode = 'regular'
 spatial_mode = 'county'
-numberOfSelectedCountiesname = 2
+numberOfSelectedCountiesname = 1535
 
 ######################################################### split data to train, val, test
 def splitData(numberOfCounties, main_data, target, spatial_mode, mode ):
@@ -1512,8 +1512,8 @@ def main(maxHistory, maxC):
 
 if __name__ == "__main__":
     begin = time.time()
-    maxHistory = 4
-    maxC = 2
+    maxHistory = 14
+    maxC = 100
     validation_address = './'+'results/counties=' + str(numberOfSelectedCountiesname) + ' max_history=' + str(maxHistory) + '/validation/'
     test_address = './' + 'results/counties=' + str(numberOfSelectedCountiesname) + ' max_history=' + str(maxHistory) + '/test/'
     env_address = './' + 'results/counties=' + str(numberOfSelectedCountiesname) + ' max_history=' + str(maxHistory) + '/session_parameters/'
