@@ -593,7 +593,13 @@ def real_prediction_plot(df,r,target_name,best_h,spatial_mode,methods,numberOfSe
         df_for_plot['date'] = df_for_plot['date of day t'].apply(lambda x:datetime.datetime.strptime(x,'%m/%d/%y')+datetime.timedelta(days=r))
         df_for_plot['date'] = df_for_plot['date'].apply(lambda x:datetime.datetime.strftime(x,'%m/%d/%y'))
 
-        counties = [36061]+random.sample(df_for_plot['county_fips'].unique().tolist(),2) # newyork + two random county
+        counties = []
+        for i in [36061,40117,51059]: # newyork + two random county
+          if len(df_for_plot[df_for_plot['county_fips']==i]) > 0 :
+              counties.append(i)
+          else :
+              counties = counties + random.sample(df_for_plot['county_fips'].unique().tolist(),1)
+
 
         length=list()
         for county in counties:
@@ -612,10 +618,10 @@ def real_prediction_plot(df,r,target_name,best_h,spatial_mode,methods,numberOfSe
             plt.plot(df_for_plot.loc[df_for_plot['county_fips']==county,'date'],df_for_plot.loc[df_for_plot['county_fips']==county,'Target'],label='Real values',linewidth=2.0)
             plt.xticks(rotation=65)
             fig.subplots_adjust(hspace=0.4)
-            plt.ylabel('Number of deaths')
+            plt.ylabel('Number of confirmed')
             countyname = df_for_plot.loc[df_for_plot['county_fips']==county,'county_name'].unique()
-            if len(countyname)>0 : # it is False when newyork is not in selected counties and make error
-              plt.title(df_for_plot.loc[df_for_plot['county_fips']==county,'county_name'].unique()[0])
+            # if len(countyname)>0 : # it is False when newyork is not in selected counties and make error
+            plt.title(df_for_plot.loc[df_for_plot['county_fips']==county,'county_name'].unique()[0])
             plt.legend()
         plt.xlabel('Date')
         plt.savefig(address + str(method) + ' real_prediction_values.jpg')
@@ -1251,14 +1257,14 @@ def validation_process(all_data,spatial_mode,covariates_names,best_loss,target_n
             if indx_c == maxC:
                 break
 
-            filename = env_address + 'validation.out'
-            my_shelf = shelve.open(filename, 'n')
-            for key in dir():
-                try:
-                    my_shelf[key] = locals()[key]
-                except:
-                    print('ERROR shelving: {0}'.format(key))
-            my_shelf.close()
+#             filename = env_address + 'validation.out'
+#             my_shelf = shelve.open(filename, 'n')
+#             for key in dir():
+#                 try:
+#                     my_shelf[key] = locals()[key]
+#                 except:
+#                     print('ERROR shelving: {0}'.format(key))
+#             my_shelf.close()
 
         # find best loss
         if h == 1 :
@@ -1290,14 +1296,14 @@ def validation_process(all_data,spatial_mode,covariates_names,best_loss,target_n
             if indx_c == maxC:
                 break
         
-            filename = env_address + 'validation.out'
-            my_shelf = shelve.open(filename, 'n')
-            for key in dir():
-                try:
-                    my_shelf[key] = locals()[key]
-                except:
-                    print('ERROR shelving: {0}'.format(key))
-            my_shelf.close()
+#             filename = env_address + 'validation.out'
+#             my_shelf = shelve.open(filename, 'n')
+#             for key in dir():
+#                 try:
+#                     my_shelf[key] = locals()[key]
+#                 except:
+#                     print('ERROR shelving: {0}'.format(key))
+#             my_shelf.close()
 
 
         return fips_X_train_train_to_use, fips_X_train_val_to_use ,fips_X_test_to_use ,\
