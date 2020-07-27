@@ -576,20 +576,47 @@ def box_violin_plot(X, Y, figsizes, fontsizes, name, address):
     sns.violinplot(x=X, y=Y)
     plt.savefig(address + str(name) + 'violinplot.png')
     plt.close()
+    
 ########################################################### plot prediction and real values
 
-def real_prediction_plot(df,r,target_name,best_h,spatial_mode,methods,numberOfSelectedCounties):
+def real_prediction_plot(df,r,target_name,best_h,maxHistory,spatial_mode,methods,numberOfSelectedCounties):
 
     address = test_address + 'plots_of_real_prediction_values/'
     if not os.path.exists(address):
         os.makedirs(address)
 
     for method in methods:
-        
-        method_prediction_df = df[method] # this df contain real and predicted target values
-        county_name_df=pd.read_csv('./'+'fixed-data.csv')[['county_fips','county_name']] # we need county names for plot label
-        df_for_plot = pd.merge(method_prediction_df,county_name_df,how='left')
 
+        data=makeHistoricalData(best_h[method]['MAPE'], r, target_name, 'mrmr', spatial_mode, target_mode, './')
+        if numberOfSelectedCounties == -1 :
+          numberOfSelectedCounties = len(data['county_fips'].unique())
+        data = data.sort_values(by=['county_fips', 'date of day t'])
+        data = data[(data['county_fips'] <= data['county_fips'].unique()[numberOfSelectedCounties - 1])]
+        data = data.reset_index(drop=True)
+        data = data[['state_fips','county_name','county_fips','date of day t','Target']]
+        data=data.sort_values(by=['date of day t','county_fips'])
+        data_train_train=data.iloc[:-2*(r*numberOfSelectedCounties),:]
+        data_train_val=data.iloc[-2*(r*numberOfSelectedCounties):-(r*numberOfSelectedCounties),:]
+        data_test=data.tail(r*numberOfSelectedCounties)
+        if spatial_mode == 'country' :
+            data_train_train=data_train_train.sort_values(by=['county_fips','date of day t'])
+            data_train_val=data_train_val.sort_values(by=['county_fips','date of day t'])
+            data_test=data_test.sort_values(by=['county_fips','date of day t'])
+            data=data_train_train.append(data_train_val)
+            data=data.append(data_test)
+        if spatial_mode == 'county' :
+            data_train = data_train_train.append(data_train_val)
+            data_train = data_train.sort_values(by=['county_fips','date of day t'])
+            data_test = data_test.sort_values(by=['county_fips','date of day t'])
+            data = data_train.append(data_test)
+        if spatial_mode == 'state' :
+            data_train = data_train_train.append(data_train_val)
+            data_train = data_train.sort_values(by=['state_fips','date of day t'])
+            data_test = data_test.sort_values(by=['state_fips','date of day t'])
+            data = data_train.append(data_test)
+        method_prediction_df = pd.DataFrame(df[method],columns=[method])
+        df_for_plot = pd.concat([data.reset_index(drop=True),method_prediction_df.reset_index(drop=True)],axis=1)
+        
         df_for_plot['date'] = df_for_plot['date of day t'].apply(lambda x:datetime.datetime.strptime(x,'%m/%d/%y')+datetime.timedelta(days=r))
         df_for_plot['date'] = df_for_plot['date'].apply(lambda x:datetime.datetime.strftime(x,'%m/%d/%y'))
 
@@ -600,7 +627,6 @@ def real_prediction_plot(df,r,target_name,best_h,spatial_mode,methods,numberOfSe
           else :
               counties = counties + random.sample(df_for_plot['county_fips'].unique().tolist(),1)
 
-
         length=list()
         for county in counties:
           length.append(len(df_for_plot[df_for_plot['county_fips']==county]))
@@ -609,24 +635,25 @@ def real_prediction_plot(df,r,target_name,best_h,spatial_mode,methods,numberOfSe
 
         fig, ax = plt.subplots(figsize=(plot_with,75))
         mpl.style.use('default')
-
+        plt.rc('font', size=45)
+        
         for index,county in enumerate(counties):
 
             plt.subplot(311+index)
-            plt.rc('font', size=45)
-            plt.plot(df_for_plot.loc[df_for_plot['county_fips']==county,'date'],df_for_plot.loc[df_for_plot['county_fips']==county,method],label='Prediction',linewidth=2.0)
-            plt.plot(df_for_plot.loc[df_for_plot['county_fips']==county,'date'],df_for_plot.loc[df_for_plot['county_fips']==county,'Target'],label='Real values',linewidth=2.0)
+            plt.plot(df_for_plot.loc[df_for_plot['county_fips']==county,'date'][:-(r-1)],df_for_plot.loc[df_for_plot['county_fips']==county,method].round()[:-(r-1)],label='Train prediction',color='forestgreen',linewidth=2.0)
+            plt.plot(df_for_plot.loc[df_for_plot['county_fips']==county,'date'][-r:],df_for_plot.loc[df_for_plot['county_fips']==county,method].round()[-r:],label='Test prediction',color='dodgerblue',linewidth=2.0)
+            plt.plot(df_for_plot.loc[df_for_plot['county_fips']==county,'date'],df_for_plot.loc[df_for_plot['county_fips']==county,'Target'],label='Real values',color='black',linewidth=2.0)
+            plt.plot(df_for_plot.loc[df_for_plot['county_fips']==county,'date'][-r:],df_for_plot.loc[df_for_plot['county_fips']==county,'Target'][-(maxHistory+r):-maxHistory],'-.',color='gray',label='Naive prediction',linewidth=2.0)
             plt.xticks(rotation=65)
             fig.subplots_adjust(hspace=0.4)
             plt.ylabel('Number of confirmed')
             countyname = df_for_plot.loc[df_for_plot['county_fips']==county,'county_name'].unique()
-            # if len(countyname)>0 : # it is False when newyork is not in selected counties and make error
-            plt.title(df_for_plot.loc[df_for_plot['county_fips']==county,'county_name'].unique()[0])
+            if len(countyname)>0 : # it is False when newyork is not in selected counties and make error
+              plt.title(df_for_plot.loc[df_for_plot['county_fips']==county,'county_name'].unique()[0])
             plt.legend()
         plt.xlabel('Date')
         plt.savefig(address + str(method) + ' real_prediction_values.jpg')
         plt.close()
-
 
 ########################################################### get errors for each model in each h and c
 def get_errors(h, c, method, y_prediction, y_prediction_train, y_test_date, MASE_denominator, numberOfSelectedCounties, mode):
