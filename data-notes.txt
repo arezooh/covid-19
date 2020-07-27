@@ -63,6 +63,9 @@ fixed-data.csv:
 		passenger_load:
 				average daily passenger load of nearest international airport
 				Source: https://data.transportation.gov/Aviation/International_Report_Passengers/xgub-n9bw
+		deaths_per_100000:
+				county 2018 deaths per 100000
+				Source: https://wonder.cdc.gov/mcd-icd10.html
 		
 
 
