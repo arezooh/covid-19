@@ -1,4 +1,3 @@
-
 fixed-data.csv:
 
 		state_fips
@@ -64,6 +63,9 @@ fixed-data.csv:
 		passenger_load:
 				average daily passenger load of nearest international airport
 				Source: https://data.transportation.gov/Aviation/International_Report_Passengers/xgub-n9bw
+		deaths_per_100000:
+				county 2018 deaths per 100000
+				Source: https://wonder.cdc.gov/mcd-icd10.html
 		
 
 
@@ -90,7 +92,7 @@ temporal-data.csv:
 				Calculated as Sum(0.5 * "confirmed") over neighboring counties at day t
 		severe_cases:
 				number of severe cases in each county at day t
-        sourse: https://public.tableau.com/profile/todd.bellemare#!/vizhome/DefinitiveHCCOVID-19CapacityPredictor/DefinitiveHealthcareCOVID-19CapacityPredictor	
+        			sourse: https://public.tableau.com/profile/todd.bellemare#!/vizhome/DefinitiveHCCOVID-19CapacityPredictor/DefinitiveHealthcareCOVID-19CapacityPredictor	
 
 		airlines-data:
 				source: https://www.flightradar24.com/31.11,-95.18/4 , 
@@ -99,3 +101,12 @@ temporal-data.csv:
 		daily-country-test-per-1000:
 				number of test performed in country per 1000 people in each day
 				Source: https://covidtracking.com/api
+		daily-state-test:
+				Nummber of tests performed in each state at day t
+				Source:https://covidtracking.com
+		confirmed:
+				number of confirmed covid-19 cases
+				Source: https://usafacts.org/visualizations/coronavirus-covid-19-spread-map/
+		death:
+				number of covid-19 deaths
+				Source: https://usafacts.org/visualizations/coronavirus-covid-19-spread-map/
