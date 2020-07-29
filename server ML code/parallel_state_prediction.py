@@ -596,7 +596,8 @@ def real_prediction_plot(df,r,target_name, best_h, maxHistory,spatial_mode,metho
 
         df_for_plot['date'] = df_for_plot['date of day t'].apply(lambda x:datetime.datetime.strptime(x,'%m/%d/%y')+datetime.timedelta(days=r))
         df_for_plot['date'] = df_for_plot['date'].apply(lambda x:datetime.datetime.strftime(x,'%m/%d/%y'))
-
+        df_for_plot.loc[df_for_plot[method]<0,method] = 0
+        
         counties = []
         for i in [36061,40117,51059]: # newyork + two random county
           if len(df_for_plot[df_for_plot['county_fips']==i]) > 0 :
