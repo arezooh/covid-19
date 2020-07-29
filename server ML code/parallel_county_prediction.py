@@ -446,7 +446,7 @@ def poolcontext(*args, **kwargs):
 
 def generate_data(h, numberOfCovariates, covariates_names, numberOfSelectedCounties):
 
-    data = makeHistoricalData(h, r, 'death', 'mrmr', spatial_mode, target_mode, './')
+    data = makeHistoricalData(h, r, 'confirmed', 'mrmr', spatial_mode, target_mode, './')
     data = clean_data(data, numberOfSelectedCounties, spatial_mode)
 
     X_train, X_test, y_train, y_test = preprocess(data, spatial_mode, 0)
@@ -1323,7 +1323,7 @@ def main(maxHistory, maxC):
     methods = ['GBM', 'GLM', 'KNN', 'NN', 'MM_GLM', 'MM_NN']
     none_mixed_methods = ['GBM', 'GLM', 'KNN', 'NN']
     mixed_methods = ['MM_GLM', 'MM_NN']
-    target_name = 'death'
+    target_name = 'confirmed'
     base_data = makeHistoricalData(0, r, target_name, 'mrmr', spatial_mode, target_mode, './')
     base_data = clean_data(base_data, numberOfSelectedCounties, spatial_mode)
     covariates_names = list(base_data.columns)
@@ -1539,7 +1539,7 @@ if __name__ == "__main__":
         os.makedirs(env_address)
     push('new folders added')
     models_to_log = ['NN', 'GLM', 'GBM']
-    #main(maxHistory, maxC)
+    main(maxHistory, maxC)
     end = time.time()
     push('final results added')
     print("The total time of execution in minutes: ", round((end - begin) / 60, 2))
