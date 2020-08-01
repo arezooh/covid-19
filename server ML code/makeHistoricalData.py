@@ -70,9 +70,9 @@ def makeHistoricalData(h, r, target, feature_selection, spatial_mode, target_mod
 
         dates=timeDeapandantData['date'].unique()
         for i in range(len(dates)-1): 
-            timeDeapandantData.loc[timeDeapandantData['date']==dates[i+1],target_name]=\
-            list(np.array(timeDeapandantData.loc[timeDeapandantData['date']==dates[i+1],target_name])+\
-                 np.array(timeDeapandantData.loc[timeDeapandantData['date']==dates[i],target_name]))
+            timeDeapandantData.loc[timeDeapandantData['date']==dates[i+1],target]=\
+            list(np.array(timeDeapandantData.loc[timeDeapandantData['date']==dates[i+1],target])+\
+                 np.array(timeDeapandantData.loc[timeDeapandantData['date']==dates[i],target]))
 
     
     ###################################################################### weekly average mode
