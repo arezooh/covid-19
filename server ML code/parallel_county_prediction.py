@@ -511,7 +511,7 @@ def plot_results(row, col, numberOfCovariates, methods, history, errors, mode):
     address = validation_address + 'plots_of_errors/'
     if not os.path.exists(address):
         os.makedirs(address)
-    plt.savefig(address + str(mode)+'.png')
+    plt.savefig(address + str(mode)+'.pdf')
 
 
 ########################################################### plot table for final results
@@ -540,7 +540,7 @@ def plot_table(table_data, col_labels, row_labels, name, mode):
     the_table.scale(1.5, 1.5)
     ax.axis('off')
 
-    plt.savefig(address + name + '.png', bbox_inches='tight')
+    plt.savefig(address + name + '.pdf', bbox_inches='tight')
 
 
 ########################################################### plotting mean errors (first error)
@@ -556,7 +556,7 @@ def plot_targets(method, x_axis, df, main_address):
     address = main_address + 'procedure_of_prediction/'
     if not os.path.exists(address):
         os.makedirs(address)
-    plt.savefig(address +'procedure_'+ str(method) +'.png')
+    plt.savefig(address +'procedure_'+ str(method) +'.pdf')
 
 
 ########################################################### box plots and violin plots
@@ -567,14 +567,14 @@ def box_violin_plot(X, Y, figsizes, fontsizes, name, address):
     plt.rc('font', size=fontsizes['box'])
     plt.locator_params(axis='y', nbins=20)
     sns.boxplot(x=X, y=Y)
-    plt.savefig(address + str(name) + 'boxplot.png')
+    plt.savefig(address + str(name) + 'boxplot.pdf')
     plt.close()
     # violin plot
     fig = plt.figure(figsize=figsizes['violin'])
     plt.rc('font', size=fontsizes['violin'])
     plt.locator_params(axis='y', nbins=20)
     sns.violinplot(x=X, y=Y)
-    plt.savefig(address + str(name) + 'violinplot.png')
+    plt.savefig(address + str(name) + 'violinplot.pdf')
     plt.close()
     
 ########################################################### plot prediction and real values
@@ -591,8 +591,12 @@ def real_prediction_plot(df,r,target_name,best_h, maxHistory,spatial_mode,method
         county_name_df=pd.read_csv('./'+'fixed-data.csv')[['county_fips','county_name']] # we need county names for plot label
         df_for_plot = pd.merge(method_prediction_df,county_name_df,how='left')
 
-        df_for_plot['date'] = df_for_plot['date of day t'].apply(lambda x:datetime.datetime.strptime(x,'%m/%d/%y')+datetime.timedelta(days=r))
-        df_for_plot['date'] = df_for_plot['date'].apply(lambda x:datetime.datetime.strftime(x,'%m/%d/%y'))
+        if target_mode != 'weeklyaverage':
+          df_for_plot['date'] = df_for_plot['date of day t'].apply(lambda x:datetime.datetime.strptime(x,'%m/%d/%y')+datetime.timedelta(days=r))
+          df_for_plot['date'] = df_for_plot['date'].apply(lambda x:datetime.datetime.strftime(x,'%m/%d/%y'))
+        else:
+          df_for_plot['date'] = df_for_plot['date of day t'].apply(lambda x:'week '+str(x+r))
+        
         df_for_plot.loc[df_for_plot[method]<0,method] = 0
 
         counties = []
@@ -631,7 +635,7 @@ def real_prediction_plot(df,r,target_name,best_h, maxHistory,spatial_mode,method
             plt.title(df_for_plot.loc[df_for_plot['county_fips']==county,'county_name'].unique()[0])
             plt.legend()
         plt.xlabel('Date')
-        plt.savefig(address + str(method) + ' real_prediction_values.jpg')
+        plt.savefig(address + str(method) + ' real_prediction_values.pdf')
         plt.close()
 
 ########################################################### get errors for each model in each h and c
@@ -846,8 +850,8 @@ def make_zip(selected_for_email, subject):
             # print(address)
             if not os.path.exists(address):
                     os.makedirs(address)
-            for jpgfile in glob.iglob(os.path.join(i, "*.png")):
-                shutil.copy(jpgfile, address)
+            for pdffile in glob.iglob(os.path.join(i, "*.pdf")):
+                shutil.copy(pdffile, address)
     shutil.make_archive(subject, 'zip', mail_address)
 
 
