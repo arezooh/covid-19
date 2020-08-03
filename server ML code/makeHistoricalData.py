@@ -40,7 +40,7 @@ def makeHistoricalData(h, r, target, feature_selection, spatial_mode, target_mod
             timeDeapandantData.loc[timeDeapandantData['date']==i,'daily-state-test']=temp[i].tolist()
 
     else:
-        # for state and county mode we just remove first days with null in test variable
+        # for state and county mode we dont impute daily-state-test
         timeDeapandantData=timeDeapandantData#[~(pd.isna(timeDeapandantData['daily-state-test']))]
 
 
@@ -70,9 +70,9 @@ def makeHistoricalData(h, r, target, feature_selection, spatial_mode, target_mod
 
         dates=timeDeapandantData['date'].unique()
         for i in range(len(dates)-1): 
-            timeDeapandantData.loc[timeDeapandantData['date']==dates[i+1],target_name]=\
-            list(np.array(timeDeapandantData.loc[timeDeapandantData['date']==dates[i+1],target_name])+\
-                 np.array(timeDeapandantData.loc[timeDeapandantData['date']==dates[i],target_name]))
+            timeDeapandantData.loc[timeDeapandantData['date']==dates[i+1],target]=\
+            list(np.array(timeDeapandantData.loc[timeDeapandantData['date']==dates[i+1],target])+\
+                 np.array(timeDeapandantData.loc[timeDeapandantData['date']==dates[i],target]))
 
     
     ###################################################################### weekly average mode
@@ -130,7 +130,13 @@ def makeHistoricalData(h, r, target, feature_selection, spatial_mode, target_mod
             return(weeklydata)
         timeDeapandantData=make_moving_weekly_average(timeDeapandantData)
 
+    ###################################################################### logarithmic target mode
     
+    if target_mode == 'logarithmic': # make target logarithmic
+        timeDeapandantData[target] = np.log((timeDeapandantData[target] + 1).astype(float))
+        
+        
+
     ##################################################################
 
 
@@ -192,9 +198,12 @@ def makeHistoricalData(h, r, target, feature_selection, spatial_mode, target_mod
                 threshold += 1
         # if covariate is independant of time
         elif name not in nameOfTimeDependantCovariates and name not in ['date', 'county_fips']:
-            temporalDataFrame = allData[[name]]
-            temp = temporalDataFrame.head((totalNumberOfDays-h-r+1)*totalNumberOfCounties).copy().reset_index(drop=True)
-            result = pd.concat([result, temp], axis=1)
+            # we dont need covariates that is fixed for each county in county mode
+            # but also we need county and state name in all modes
+            if (spatial_mode != 'county') or (name in ['county_name', 'state_name', 'state_fips']):
+              temporalDataFrame = allData[[name]]
+              temp = temporalDataFrame.head((totalNumberOfDays-h-r+1)*totalNumberOfCounties).copy().reset_index(drop=True)
+              result = pd.concat([result, temp], axis=1)
 
     # next 3 lines is for adding FIPS code to final dataframe
     temporalDataFrame = allData[['county_fips']]
@@ -240,17 +249,21 @@ def makeHistoricalData(h, r, target, feature_selection, spatial_mode, target_mod
             zero_removed_county_index=[i for i in range(first_non_zero_date_index,county_end_index)]
             
             # we choose r days for test and r days for validation so at least we must have r days for train -> 3*r
-            if (len(zero_removed_county_index) >= 3*r):
+            if len(zero_removed_county_index) >= 3*r:
                     overall_non_zero_index = overall_non_zero_index + zero_removed_county_index
    
 
     
-    # zero_removed_data=result.loc[overall_non_zero_index,:]
+    zero_removed_data=result.loc[overall_non_zero_index,:]
     result=result.reset_index()
+    # we use reindex to avoid pandas warnings
     zero_removed_data=result.loc[result['index'].isin(overall_non_zero_index),:]
     zero_removed_data=zero_removed_data.drop(['index'],axis=1)
+    result = zero_removed_data
 
-    return zero_removed_data
+
+
+    return result
 
 
 def main():
