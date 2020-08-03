@@ -130,7 +130,13 @@ def makeHistoricalData(h, r, target, feature_selection, spatial_mode, target_mod
             return(weeklydata)
         timeDeapandantData=make_moving_weekly_average(timeDeapandantData)
 
+    ###################################################################### logarithmic target mode
     
+    if target_mode == 'logarithmic': # make target logarithmic
+        timeDeapandantData[target] = np.log((timeDeapandantData[target] + 1).astype(float))
+        
+        
+
     ##################################################################
 
 
