@@ -469,7 +469,7 @@ def box_violin_plot(X, Y, figsizes, fontsizes, name, address):
 ########################################################### plot prediction and real values
 
 
-def real_prediction_plot(df,r,target_name,best_h,maxHistory,spatial_mode,methods,numberOfSelectedCounties):
+def real_prediction_plot(df,r,target_name,target_mode,best_h,maxHistory,spatial_mode,methods,numberOfSelectedCounties):
 
     address = test_address + 'plots_of_real_prediction_values/'
     if not os.path.exists(address):
@@ -545,7 +545,8 @@ def real_prediction_plot(df,r,target_name,best_h,maxHistory,spatial_mode,methods
             plt.plot(df_for_plot.loc[df_for_plot['county_fips']==county,'date'][:-(r-1)],df_for_plot.loc[df_for_plot['county_fips']==county,method].round()[:-(r-1)],label='Train prediction',linewidth=2.0)#,color='forestgreen'
             plt.plot(df_for_plot.loc[df_for_plot['county_fips']==county,'date'][-r:],df_for_plot.loc[df_for_plot['county_fips']==county,method].round()[-r:],label='Test prediction',linewidth=2.0)#,color='dodgerblue'
             plt.plot(df_for_plot.loc[df_for_plot['county_fips']==county,'date'],df_for_plot.loc[df_for_plot['county_fips']==county,'Target'],label='Real values',color='black',linewidth=2.0)
-            plt.plot(df_for_plot.loc[df_for_plot['county_fips']==county,'date'][-r:],df_for_plot.loc[df_for_plot['county_fips']==county,'Target'][-(2*r):-r],'-.',color='gray',label='Naive prediction',linewidth=2.0)
+            if target_mode != 'cumulative' :
+                plt.plot(df_for_plot.loc[df_for_plot['county_fips']==county,'date'][-r:],df_for_plot.loc[df_for_plot['county_fips']==county,'Target'][-(2*r):-r],'-.',color='gray',label='Naive prediction',linewidth=2.0)
             plt.xticks(rotation=65)
             fig.subplots_adjust(hspace=0.4)
             plt.ylabel('Number of deaths')
@@ -1034,7 +1035,7 @@ def main(maxHistory):
           prediction=list(y_prediction_train[method])+list(y_prediction[method])
           df_for_prediction_plot[method]=prediction
 
-        real_prediction_plot(df_for_prediction_plot,r,target_name,best_h, maxHistory, spatial_mode, methods, numberOfSelectedCounties)
+        real_prediction_plot(df_for_prediction_plot,r,target_name,target_mode,best_h, maxHistory, spatial_mode, methods, numberOfSelectedCounties)
 
         # mail the test results
         selected_for_email = [test_address + '/tables', test_address + '/all_errors/NN', test_address + '/all_errors/KNN' , test_address + '/plots_of_real_prediction_values']
