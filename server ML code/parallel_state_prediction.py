@@ -136,11 +136,11 @@ def preprocess(main_data, spatial_mode, validationFlag):
 ################################ MASE_denominator
 def mase_denominator(r, h, target_name, target_mode ,numberOfSelectedCounties, spatial_mode):
 
-    data = makeHistoricalData(h, r, target_name, 'mrmr', 'country', target_mode, './')
+    data = makeHistoricalData(h, r, target_name, 'mrmr', spatial_mode, target_mode, './')
     if numberOfSelectedCounties == -1 :
       numberOfSelectedCounties = len(data['county_fips'].unique())
     data = clean_data(data, numberOfSelectedCounties, spatial_mode)
-    X_train_train, X_train_val, X_test, y_train_train_date, y_train_val_date, y_test_date = preprocess(data, 'country', 1)
+    X_train_train, X_train_val, X_test, y_train_train_date, y_train_val_date, y_test_date = preprocess(data, spatial_mode, 1)
 
     train_train = (y_train_train_date.reset_index(drop=True)).sort_values(by=['date of day t', 'county_fips'])
     train_val = (y_train_val_date.reset_index(drop=True)).sort_values(by=['date of day t', 'county_fips'])
