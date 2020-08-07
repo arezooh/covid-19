@@ -617,8 +617,8 @@ def get_errors(h, c, method, y_prediction, y_prediction_train, y_test_date, y_tr
             
         regular_real_predicted_target = regular_real_predicted_target.sort_values(by=['date of day t','county_fips'])
         regular_real_predicted_target=regular_real_predicted_target.tail((r+6)*numberOfSelectedCounties)
-        print('regular_real_predicted_target')
-        print(regular_real_predicted_target)
+#         print('regular_real_predicted_target')
+#         print(regular_real_predicted_target)
         dates = regular_real_predicted_target['date of day t'].unique()
         for index in range(len(dates)):
             ind=index+6
@@ -629,8 +629,8 @@ def get_errors(h, c, method, y_prediction, y_prediction_train, y_test_date, y_tr
                 regular_real_predicted_target.loc[regular_real_predicted_target['date of day t']==date,'prediction']=list(np.array(regular_real_predicted_target.loc[regular_real_predicted_target['date of day t']==date,'prediction'])-np.array(regular_real_predicted_target.loc[regular_real_predicted_target['date of day t']==past_date,'prediction']))
             if ind == len(dates)-1:
                 break
-        print('regular_real_predicted_target')
-        print(regular_real_predicted_target)
+#         print('regular_real_predicted_target')
+#         print(regular_real_predicted_target)
         y_test = np.array(regular_real_predicted_target.tail(r*numberOfSelectedCounties)['Target']).reshape(-1)
         y_prediction = np.array(regular_real_predicted_target.tail(r*numberOfSelectedCounties)['prediction']).reshape(-1)
         
