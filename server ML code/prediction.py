@@ -794,8 +794,8 @@ def send_email(*attachments):
     subject = "Server results"
     body = " "
     sender_email = "covidserver1@gmail.com"
-    receiver_email = ["arezo.h1371@yahoo.com"]#,"arashmarioriyad@gmail.com"
-    CC_email = []#"p.ramazi@gmail.com"
+    receiver_email = ["arezo.h1371@yahoo.com","arashmarioriyad@gmail.com"]#
+    CC_email = ["p.ramazi@gmail.com"]#
     password = "S.123456.S"
 
     # Create a multipart message and set headers
