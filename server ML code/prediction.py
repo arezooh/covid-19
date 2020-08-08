@@ -562,8 +562,8 @@ def real_prediction_plot(df,r,target_name,target_mode,best_h,maxHistory,spatial_
 
 ########################################################### get errors for each model in each h and c
 def get_errors(h, c, method, y_prediction, y_prediction_train, y_test_date, y_train_date, MASE_denominator, numberOfSelectedCounties, target_name, mode):
-    # make predictions rounded to their closest number and make the negatives ones zero
-    y_prediction = np.round(y_prediction)
+    # set negative predictions to zero
+    
     y_prediction[y_prediction < 0] = 0
     
     
@@ -668,8 +668,8 @@ def get_errors(h, c, method, y_prediction, y_prediction_train, y_test_date, y_tr
         y_prediction = np.array(regular_real_predicted_target.tail(r*numberOfSelectedCounties)['prediction']).reshape(-1)
             
             
-        
-    
+    # make predictions rounded to their closest number 
+    y_prediction = np.round(y_prediction)
     #############################################################
     # write outputs into a file
     orig_stdout = sys.stdout
