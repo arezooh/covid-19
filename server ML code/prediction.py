@@ -125,7 +125,7 @@ def preprocess(main_data, validationFlag):
 ################################ MASE_denominator
 def mase_denominator(r, h, target_name, target_mode ,numberOfSelectedCounties, spatial_mode):
 
-    data = makeHistoricalData(h, r, target_name, 'mrmr', spatial_mode, target_mode, './')
+    data = makeHistoricalData(h, r, target_name, 'mrmr', spatial_mode, 'regular', './')
     if numberOfSelectedCounties == -1 :
       numberOfSelectedCounties = len(data['county_fips'].unique())
     data = clean_data(data, numberOfSelectedCounties)
