@@ -181,8 +181,8 @@ def split_d4Datas(imageArray, data_index):
 # time_mainStart = time.time()
 
 gridIntersection = loadIntersection('./map_intersection_square.json')
-countiesData_temporal = loadCounties('./full-temporal-data.csv')
-countiesData_fix = loadCounties('./full-fixed-data.csv')
+countiesData_temporal = loadCounties('../final data/full-temporal-data.csv')
+countiesData_fix = loadCounties('../final data/full-fixed-data.csv')
 
 init_hashCounties()
 init_days()
