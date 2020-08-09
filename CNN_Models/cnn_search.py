@@ -11,6 +11,7 @@ from tensorflow import keras
 from tensorflow.keras.layers import Conv2D, Dense, BatchNormalization, MaxPooling2D, Dropout
 
 from sklearn.preprocessing import MinMaxScaler
+from sklearn.metrics import r2_score
 from numpy import array
 
 from math import log2, floor
@@ -428,9 +429,6 @@ def evaluate_data(model, x_test, y_test, input_size):
             subY_test = y_test[0:data_shape[0], i:i+input_size, j:j+input_size, 0:y_noData]
 
             score = model.evaluate(subX_test, subY_test, verbose=0)
-            # score = model.evaluate(x_dataTest, y_dataTest, verbose=0)
-            # print('Test loss:', score[0])
-            # print('Test accuracy:', score[1])
             sum_loss += score[0]
             sum_acc += score[1]
 
@@ -442,7 +440,7 @@ def evaluate_data(model, x_test, y_test, input_size):
 def log(str):
     t = datetime.datetime.now().isoformat()
     with open('log', 'a') as logFile:
-        logFile.write('[{0}] {1}'.format(t, str))
+        logFile.write('[{0}] {1}\n'.format(t, str))
 
 ################################################################ systematic search for find best model
 # We change 5 parameters to find best model (for now, we can't change number of blocks(NO_blocks))
@@ -474,7 +472,7 @@ for input_size in p1:
                     NO_blocks = floor(log2(input_size))
                     # print(input_size, hidden_dropout, visible_dropout, NO_blocks, NO_dense_layer, increase_filters)
                     # log this state
-                    log('create_model({0}, {1}, {2}, {3}, {4}, {5})\n'.format(input_size, hidden_dropout, visible_dropout, NO_blocks, NO_dense_layer, increase_filters))
+                    log('create_model({0}, {1}, {2}, {3}, {4}, {5})'.format(input_size, hidden_dropout, visible_dropout, NO_blocks, NO_dense_layer, increase_filters))
                     #
                     model = create_model(input_size, hidden_dropout, visible_dropout, NO_blocks, NO_dense_layer, increase_filters)
                     train_data(model, pad_data(x_dataTrain, input_size), pad_data(y_dataTrain, input_size), pad_data(x_dataValidation, input_size), pad_data(y_dataValidation, input_size), 2, input_size)
@@ -484,11 +482,4 @@ for input_size in p1:
                     if (result[1] > best_result[1]):
                         best_result = result
                         best_parameters = (input_size, hidden_dropout, visible_dropout, NO_dense_layer, increase_filters)
-
-print('\t|--SUCCESS: all models tested')
-
-with open('result.txt', 'w') as resultFile:
-    resultFile.write('best_result: {0}\n'.format(best_result))
-    resultFile.write('best_parameters: {0}\n'.format(best_parameters))
-
-print('\t|--SUCCESS: best_result saved into result.txt')
+                        
