@@ -959,7 +959,7 @@ def main(maxHistory):
             table_data.append([best_h[method]['MAPE'], best_c[method]['MAPE'],  round(meanAbsoluteError, 2),
                                 round(percentageOfAbsoluteError, 2), round(adj_r_squared, 2), round(second_error, 2), round(meanAbsoluteScaledError, 2)])
 
-        push('a new table added')
+#         push('a new table added')
 
         for method in none_mixed_methods:
           prediction=list(y_prediction_train[method])+list(y_prediction[method])
@@ -1049,7 +1049,7 @@ def main(maxHistory):
 
         table_name = 'table_of_best_test_results'
         plot_table(table_data, columns_table_t, methods, table_name, mode='test')
-        push('a new table added')
+#         push('a new table added')
 
         for method in mixed_methods:
           prediction=list(y_prediction_train[method])+list(y_prediction[method])
@@ -1289,8 +1289,8 @@ def main(maxHistory):
                 print('ERROR shelving: {0}'.format(key))
         my_shelf.close()
 
-        # push the file of outputs
-        push('logs of h=' + str(h) + ' added')
+#         # push the file of outputs
+#         push('logs of h=' + str(h) + ' added')
 
         # we run test if none of models have improved in curent h or if we passed half of maxhistory 
         if (number_of_improved_methods == 0) or (h == maxHistory//2) :###########################
@@ -1319,7 +1319,7 @@ def main(maxHistory):
     zip_file_name = 'validation results for h =' + str(maxHistory) + ' #counties=' + str(numberOfSelectedCountiesname)
 #     make_zip(selected_for_email, zip_file_name)
 #     send_email(zip_file_name + '.zip')
-    push('plots added')
+#     push('plots added')
     ################################################################################################################# test zone
     test_process(h, r, target_name,spatial_mode, target_mode,best_h,best_c,historical_X_train,\
                     historical_X_test, historical_y_train_date, historical_y_test_date, best_loss,\
@@ -1347,9 +1347,9 @@ if __name__ == "__main__":
         os.makedirs(validation_address)
     if not os.path.exists(env_address):
         os.makedirs(env_address)
-    push('new folders added')
+#     push('new folders added')
     models_to_log = ['NN', 'GLM', 'GBM'] # models we want to make the features logarithmic for them, we remove KNN
     main(maxHistory)
     end = time.time()
-    push('final results added')
+#     push('final results added')
     print("The total time of execution in minutes: ", round((end - begin) / 60, 2))
