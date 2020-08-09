@@ -42,6 +42,7 @@ fixed-data.csv:
 				Calculated as "number of houses" / "land area"
 		total_college_population:
 				Total number of students and staff of universities and colleges devided by total population in each county
+				source: https://nces.ed.gov/ipeds/use-the-data
 		diabetes:
 				Percent of Adults with Diabetes in each county
 				Source: https://www.countyhealthrankings.org/app/alabama/2020/downloads
