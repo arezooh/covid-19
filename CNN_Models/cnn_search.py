@@ -1,11 +1,13 @@
 import json
 import csv
-from datetime import date
-from datetime import timedelta
+import sys
 import datetime
 import time
-import pandas as pd
+from datetime import date
+from datetime import timedelta
+from math import log2, floor
 
+import pandas as pd
 import tensorflow as tf
 from tensorflow import keras
 from tensorflow.keras.layers import Conv2D, Dense, BatchNormalization, MaxPooling2D, Dropout
@@ -14,7 +16,8 @@ from sklearn.preprocessing import MinMaxScaler
 from sklearn.metrics import r2_score
 from numpy import array
 
-from math import log2, floor
+import multiprocessing
+import os
 
 _CSV_Directory_ = ''
 _JSON_Directory_ = ''
@@ -474,11 +477,9 @@ p3 = [0, 0.2, 0.3, 0.4]
 p4 = [1, 2, 3]
 p5 = [0, 1]
 
-best_result = (0, 0)
-best_parameters = (-1, -1, -1, -1, -1)
-
-
-for input_size in p1:
+def evaluate_model(input_size):
+    pid = os.getpid()
+    log('Process started | pid: {0}, input_size: {1}'.format(pid, input_size))
     for hidden_dropout in p2:
         for visible_dropout in p3:
             for NO_dense_layer in p4:
@@ -486,14 +487,23 @@ for input_size in p1:
                     NO_blocks = floor(log2(input_size))
                     # print(input_size, hidden_dropout, visible_dropout, NO_blocks, NO_dense_layer, increase_filters)
                     # log this state
-                    log('create_model({0}, {1}, {2}, {3}, {4}, {5})'.format(input_size, hidden_dropout, visible_dropout, NO_blocks, NO_dense_layer, increase_filters))
+                    log('pid: {6} | create_model({0}, {1}, {2}, {3}, {4}, {5})'.format(input_size, hidden_dropout, visible_dropout, NO_blocks, NO_dense_layer, increase_filters, pid))
                     #
                     model = create_model(input_size, hidden_dropout, visible_dropout, NO_blocks, NO_dense_layer, increase_filters)
                     train_data(model, pad_data(x_dataTrain, input_size), pad_data(y_dataTrain, input_size), pad_data(x_dataValidation, input_size), pad_data(y_dataValidation, input_size), 2, input_size)
                     result = evaluate_data(model, pad_data(x_dataTest, input_size), pad_data(y_dataTest, input_size), input_size)
-                    log('result | LOSS:{0} | ACC:{1}'.format(result[0], result[1]))
-                    # update best_result if the accuray was better
-                    if (result[1] > best_result[1]):
-                        best_result = result
-                        best_parameters = (input_size, hidden_dropout, visible_dropout, NO_dense_layer, increase_filters)
+                    log('pid: {2} | result, LOSS:{0}, ACC:{1}'.format(result[0], result[1], pid))
+
+################################################################ main 
+
+if __name__ == "__main__":
+    processes = []
+    for i in range(len(p1)):
+        processes.append(multiprocessing.Process(target=evaluate_model, args=(p1[i],)))
+        processes[i].start()
+
+    for proc in processes:
+        proc.join()
+
+    log('|--END OF MAIN CODE--|')
                         
