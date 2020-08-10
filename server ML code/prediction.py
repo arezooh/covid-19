@@ -36,7 +36,7 @@ plt.rcParams.update({'figure.max_open_warning': 0})
 
 r = 21  # the following day to predict
 numberOfSelectedCounties = -1
-target_mode = 'weeklymovingaverage'
+target_mode = 'differential'
 spatial_mode = 'country'
 numberOfSelectedCountiesname = 1535
 
@@ -545,8 +545,8 @@ def real_prediction_plot(df,r,target_name,target_mode,best_h,maxHistory,spatial_
             plt.plot(df_for_plot.loc[df_for_plot['county_fips']==county,'date'][:-(r-1)],df_for_plot.loc[df_for_plot['county_fips']==county,method].round()[:-(r-1)],label='Train prediction',linewidth=2.0)#,color='forestgreen'
             plt.plot(df_for_plot.loc[df_for_plot['county_fips']==county,'date'][-r:],df_for_plot.loc[df_for_plot['county_fips']==county,method].round()[-r:],label='Test prediction',linewidth=2.0)#,color='dodgerblue'
             plt.plot(df_for_plot.loc[df_for_plot['county_fips']==county,'date'],df_for_plot.loc[df_for_plot['county_fips']==county,'Target'].round(),label='Real values',color='black',linewidth=2.0)
-            if target_mode != 'cumulative' :
-                plt.plot(df_for_plot.loc[df_for_plot['county_fips']==county,'date'][-r:],df_for_plot.loc[df_for_plot['county_fips']==county,'Target'].round()[-(2*r):-r],'-.',color='gray',label='Naive prediction',linewidth=2.0)
+#             if target_mode != 'cumulative' :
+#                 plt.plot(df_for_plot.loc[df_for_plot['county_fips']==county,'date'][-r:],df_for_plot.loc[df_for_plot['county_fips']==county,'Target'].round()[-(2*r):-r],'-.',color='gray',label='Naive prediction',linewidth=2.0)
             plt.xticks(rotation=65)
             fig.subplots_adjust(hspace=0.4)
             plt.ylabel('Number of deaths')
