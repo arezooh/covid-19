@@ -417,24 +417,38 @@ def train_data(model, x_train, y_train, x_validation, y_validation, NO_epochs, i
 
 # This function extract windows with "input_size" size from image, evaluate model with the windows data
 def evaluate_data(model, x_test, y_test, input_size):
+    global normalizeObject_f0
     data_shape = x_test.shape
+    y_shape = y_test.shape
     y_noData = y_test.shape[-1]
     sum_loss = 0
     sum_acc = 0
     total = 0
+    y_predict = array([[[0]*y_test.shape[2]]*y_test.shape[1]]*14)
+    y_test_org = normalizeObject_f0.inverse_transform(y_test.reshape(y_shape[0] * y_shape[1] * y_shape[2], y_shape[3]))
+    y_test_org = y_test_org.reshape(y_shape[0], y_shape[1], y_shape[2], y_shape[3])
 
-    for i in range(data_shape[1] - input_size + 1):
-        for j in range(data_shape[2] - input_size + 1):
+    for i in range(data_shape[1]):
+        for j in range(data_shape[2]):
             subX_test = x_test[0:data_shape[0], i:i+input_size, j:j+input_size, 0:data_shape[3]]
             subY_test = y_test[0:data_shape[0], i:i+input_size, j:j+input_size, 0:y_noData]
 
             score = model.evaluate(subX_test, subY_test, verbose=0)
             sum_loss += score[0]
             sum_acc += score[1]
-
             total += 1
 
-    return (sum_loss / total, sum_acc / total)
+            subY_predict_normal = model.predict(subX_test)
+            pred_shape = subY_predict_normal.shape
+            subY_predict = normalizeObject_f0.inverse_transform(subY_predict_normal.reshape(pred_shape[0] * pred_shape[1] * pred_shape[2], pred_shape[3]))
+            subY_predict = subY_predict.reshape(pred_shape[0], pred_shape[1], pred_shape[2], pred_shape[3])
+
+            for k in range(pred_shape[0]):
+                y_predict[k][i][j] = subY_predict[k][0][0][0]
+
+    r2score = r2_score(y_test_org, y_predict)
+
+    return (sum_loss / total, sum_acc / total, r2score)
 
 # Use this function to log states of code, helps to find bugs
 def log(str):
