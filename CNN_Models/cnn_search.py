@@ -492,7 +492,7 @@ def evaluate_model(input_size):
                     model = create_model(input_size, hidden_dropout, visible_dropout, NO_blocks, NO_dense_layer, increase_filters)
                     train_data(model, pad_data(x_dataTrain, input_size), pad_data(y_dataTrain, input_size), pad_data(x_dataValidation, input_size), pad_data(y_dataValidation, input_size), 2, input_size)
                     result = evaluate_data(model, pad_data(x_dataTest, input_size), pad_data(y_dataTest, input_size), input_size)
-                    log('pid: {2} | result, LOSS:{0}, ACC:{1}'.format(result[0], result[1], pid))
+                    log('pid: {3} | result, LOSS:{0}, ACC:{1}, r2score:{2}'.format(result[0], result[1], result[2], pid))
 
 ################################################################ main 
 
