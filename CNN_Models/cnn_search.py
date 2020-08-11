@@ -110,53 +110,63 @@ def calculateIndex(target_fips, target_date):
 
 def calculateGridData(counties):
     global countiesData_temporal, countiesData_fix
-    confirmed = 0
     death = 0
-    virusPressure = 0
-    virusPressure_weightSum = 0
+    confirmed = 0
+    houses = 0
+    houses_density = 0
     meat_plants = 0
-    social_distancing_visitation_grade = 0
-    social_distancing_visitation_grade_weightSum = 0
-    population = 0
-    area = 0
-    population_density = 0
     longitude = 0
     longitude_sum = 0
     social_distancing_travel_distance_grade = 0
     social_distancing_travel_distance_grade_weightSum = 0
-    houses = 0
-    houses_density = 0
+    daily_state_test = 0
+    daily_state_test_weightSum = 0
+    population = 0
+    passenger_load = 0
+    population_density = 0
+    area = 0
     for county in counties:
         index_temporal, index_fix = calculateIndex(county['fips'], (startDay + timedelta(days=i)).isoformat())
         if (index_temporal != -1):
-            confirmed += round(float(countiesData_temporal[index_temporal]['confirmed']) * county['percent'])
+            # sum
             death += round(float(countiesData_temporal[index_temporal]['death']) * county['percent'])
+            confirmed += round(float(countiesData_temporal[index_temporal]['confirmed']) * county['percent'])
+            passenger_load += round(float(countiesData_fix[index_fix]['passenger_load']) * county['percent'], 6)
             meat_plants += round(int(countiesData_fix[index_fix]['meat_plants'], 10) * county['percent'])
-            virusPressure += float(countiesData_temporal[index_temporal]['virus-pressure']) * county['percent']
-            virusPressure_weightSum += county['percent']
-            social_distancing_visitation_grade += float(countiesData_temporal[index_temporal][ 'social-distancing-visitation-grade']) * county['percent']
-            social_distancing_visitation_grade_weightSum += county['percent']
             population += round(int(countiesData_fix[index_fix]['total_population'], 10) * county['percent'])
-            area += float(countiesData_fix[index_fix]['area']) * county['percent']
+            # average
             longitude += float(countiesData_fix[index_fix]['longitude'])
             longitude_sum += 1
             social_distancing_travel_distance_grade += float(countiesData_temporal[index_temporal]['social-distancing-travel-distance-grade']) * county['percent']
             social_distancing_travel_distance_grade_weightSum += county['percent']
+            daily_state_test += float(countiesData_temporal[index_temporal]['daily_state_test']) * county['percent']
+            daily_state_test_weightSum += county['percent']
+            # density
             houses += float(countiesData_fix[index_fix]['houses_density']) * float(countiesData_fix[index_fix]['area']) * county['percent']
+            area += float(countiesData_fix[index_fix]['area']) * county['percent']
 
-    if virusPressure_weightSum != 0:
-        virusPressure /= virusPressure_weightSum
-    if social_distancing_visitation_grade_weightSum != 0:
-        social_distancing_visitation_grade /= social_distancing_visitation_grade_weightSum
+    if daily_state_test_weightSum != 0:
+        daily_state_test = round(daily_state_test / daily_state_test_weightSum, 2)
     if area != 0:
         population_density = round(population / area, 2)
         houses_density = round(houses / area, 2)
     if longitude_sum != 0:
-        longitude /= longitude_sum
+        longitude = round(longitude / longitude_sum, 3)
     if social_distancing_travel_distance_grade_weightSum != 0:
-        social_distancing_travel_distance_grade /= social_distancing_travel_distance_grade_weightSum
+        social_distancing_travel_distance_grade = round(social_distancing_travel_distance_grade / social_distancing_travel_distance_grade_weightSum, 1)
 
-    return [confirmed, round(virusPressure, 2), meat_plants, death, round(social_distancing_visitation_grade, 1), population_density, population, round(longitude, 3), round(social_distancing_travel_distance_grade, 1), houses_density]
+    output = []
+    output.append(death)
+    output.append(confirmed)
+    output.append(houses_density)
+    output.append(meat_plants)
+    output.append(longitude)
+    output.append(social_distancing_travel_distance_grade)
+    output.append(daily_state_test)
+    output.append(population)
+    output.append(passenger_load)
+    output.append(population_density)
+    return output
 
 def init_days():
     global startDay
