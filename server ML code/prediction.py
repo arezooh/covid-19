@@ -34,9 +34,9 @@ import statistics
 
 plt.rcParams.update({'figure.max_open_warning': 0})
 
-r = 21  # the following day to predict
+r = 3  # the following day to predict
 numberOfSelectedCounties = -1
-target_mode = 'differential'
+target_mode = 'weeklyaverage'
 spatial_mode = 'country'
 numberOfSelectedCountiesname = 1535
 
