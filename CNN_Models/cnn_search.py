@@ -327,51 +327,57 @@ print('\t|--start normalizing data...')
 
 # time_imageNormalization = time.time()
 
-normalizers = []
+x_normalizers = []
 
-imageArray = array(imageArray).reshape(shape_imageArray[0] * shape_imageArray[1] * shape_imageArray[2], shape_imageArray[3])
+reshaped_x_dataTrain = x_dataTrain.reshape(instance_shape[0] * instance_shape[1] * instance_shape[2], instance_shape[3])
+reshaped_y_dataTrain = y_dataTrain.reshape(instance_shape[0] * instance_shape[1] * instance_shape[2])
+reshaped_x_dataValidation = x_dataValidation.reshape(instance_shape[0] * instance_shape[1] * instance_shape[2], instance_shape[3])
+reshaped_y_dataValidation = y_dataValidation.reshape(instance_shape[0] * instance_shape[1] * instance_shape[2])
+reshaped_x_dataTest = x_dataTest.reshape(instance_shape[0] * instance_shape[1] * instance_shape[2], instance_shape[3])
+reshaped_y_dataTest = y_dataTest.reshape(instance_shape[0] * instance_shape[1] * instance_shape[2])
 
-normalizeObject_f0 = MinMaxScaler()
-normalizeObject_f1 = MinMaxScaler()
-normalizeObject_f2 = MinMaxScaler()
-normalizeObject_f3 = MinMaxScaler()
-normalizeObject_f4 = MinMaxScaler()
-normalizeObject_f5 = MinMaxScaler()
-normalizeObject_f6 = MinMaxScaler()
-normalizeObject_f7 = MinMaxScaler()
-normalizeObject_f8 = MinMaxScaler()
-normalizeObject_f9 = MinMaxScaler()
+normal_x_dataTrain = zeros((instance_shape[0], instance_shape[1], instance_shape[2], instance_shape[3]))
+normal_x_dataValidation = zeros((instance_shape[0], instance_shape[1], instance_shape[2], instance_shape[3]))
+normal_x_dataTest = zeros((instance_shape[0], instance_shape[1], instance_shape[2], instance_shape[3]))
 
-imageArray_f0 = split_d4Datas(imageArray, 0)
-imageArray_f1 = split_d4Datas(imageArray, 1)
-imageArray_f2 = split_d4Datas(imageArray, 2)
-imageArray_f3 = split_d4Datas(imageArray, 3)
-imageArray_f4 = split_d4Datas(imageArray, 4)
-imageArray_f5 = split_d4Datas(imageArray, 5)
-imageArray_f6 = split_d4Datas(imageArray, 6)
-imageArray_f7 = split_d4Datas(imageArray, 7)
-imageArray_f8 = split_d4Datas(imageArray, 8)
-imageArray_f9 = split_d4Datas(imageArray, 9)
+# Normal X_data
 
-imageArray_f0 = normalizeObject_f0.fit_transform(imageArray_f0)
-imageArray_f1 = normalizeObject_f1.fit_transform(imageArray_f1)
-imageArray_f2 = normalizeObject_f2.fit_transform(imageArray_f2)
-imageArray_f3 = normalizeObject_f3.fit_transform(imageArray_f3)
-imageArray_f4 = normalizeObject_f4.fit_transform(imageArray_f4)
-imageArray_f5 = normalizeObject_f5.fit_transform(imageArray_f5)
-imageArray_f6 = normalizeObject_f6.fit_transform(imageArray_f6)
-imageArray_f7 = normalizeObject_f7.fit_transform(imageArray_f7)
-imageArray_f8 = normalizeObject_f8.fit_transform(imageArray_f8)
-imageArray_f9 = normalizeObject_f9.fit_transform(imageArray_f9)
+for i in range(14*4 + 6):
+    obj = MinMaxScaler()
+    x_normalizers.append(obj)
 
-for i in range(len(imageArray)):
-    imageNormal.append([imageArray_f0[i][0], imageArray_f1[i][0], imageArray_f2[i][0],
-                      imageArray_f3[i][0], imageArray_f4[i][0], imageArray_f5[i][0],
-                      imageArray_f6[i][0], imageArray_f7[i][0], imageArray_f8[i][0], imageArray_f9[i][0]])
+    tempTrain = reshaped_x_dataTrain[:, i]
+    tempTrain = obj.fit_transform(tempTrain)
+    tempTrain = tempTrain.reshape(instance_shape[0], instance_shape[1], instance_shape[2])
 
-imageNormal = array(imageNormal)
-imageNormal = imageNormal.reshape(shape_imageArray[0], shape_imageArray[1], shape_imageArray[2], shape_imageArray[3])
-    
+    tempValidation = reshaped_x_dataValidation[:, i]
+    tempValidation = obj.transform(tempValidation)
+    tempValidation = tempValidation.reshape(instance_shape[0], instance_shape[1], instance_shape[2])
+
+    tempTest = reshaped_x_dataTest[:, i]
+    tempTest = obj.transform(tempTest)
+    tempTest = tempTest.reshape(instance_shape[0], instance_shape[1], instance_shape[2])
+
+    for j in range(instance_shape[0]):
+        for k in range(instance_shape[1]):
+            for s in range(instance_shape[2]):
+                normal_x_dataTrain[j][k][s][i] = tempTrain[j][k][s]
+                normal_x_dataValidation[j][k][s][i] = tempValidation[j][k][s]
+                normal_x_dataTest[j][k][s][i] = tempTest[j][k][s]
+
+# Normal Y_data
+
+y_normalizers = MinMaxScaler()
+
+normal_y_dataTrain = y_normalizers.fit_transform(reshaped_y_dataTrain)
+normal_y_dataTrain = normal_y_dataTrain.reshape(instance_shape[0], instance_shape[1], instance_shape[2])
+
+normal_y_dataValidation = y_normalizers.transform(reshaped_y_dataValidation)
+normal_y_dataValidation = normal_y_dataValidation.reshape(instance_shape[0], instance_shape[1], instance_shape[2])
+
+normal_y_dataTest = y_normalizers.transform(reshaped_y_dataTest)
+normal_y_dataTest = normal_y_dataTest.reshape(instance_shape[0], instance_shape[1], instance_shape[2])
+
 # time_lap = time.time()
 
 # # Show data
