@@ -1,3 +1,5 @@
+# Imports
+
 import json
 import csv
 import sys
@@ -14,13 +16,18 @@ from tensorflow.keras.layers import Conv2D, Dense, BatchNormalization, MaxPoolin
 
 from sklearn.preprocessing import MinMaxScaler
 from sklearn.metrics import r2_score
-from numpy import array
+from numpy import array, zeros, save, load
 
 import multiprocessing
 import os
 
+# Defines
+
 _CSV_Directory_ = ''
 _JSON_Directory_ = ''
+_INSTANCES_FILENAME_ = 'instances.npy'
+
+# Globals
 
 startDay = datetime.datetime.strptime('2020-01-22', '%Y-%m-%d')
 endDay = datetime.datetime.strptime('2020-05-08', '%Y-%m-%d')
@@ -33,6 +40,8 @@ countiesData_temporal = {}
 countiesData_fix = {}
 
 input_shape = [0, 0, 0, 0]
+
+# Functions
 
 def loadIntersection(jsonFilename):
     jsonMetaData = []
@@ -156,13 +165,13 @@ def calculateGridData(counties):
         social_distancing_travel_distance_grade = round(social_distancing_travel_distance_grade / social_distancing_travel_distance_grade_weightSum, 1)
 
     output = []
-    output.append(death)
-    output.append(confirmed)
+    output.append(death)        #temporal
+    output.append(confirmed)    #temporal
     output.append(houses_density)
     output.append(meat_plants)
     output.append(longitude)
-    output.append(social_distancing_travel_distance_grade)
-    output.append(daily_state_test)
+    output.append(social_distancing_travel_distance_grade)  #temporal
+    output.append(daily_state_test) #temporal
     output.append(population)
     output.append(passenger_load)
     output.append(population_density)
@@ -190,6 +199,29 @@ def split_d4Datas(imageArray, data_index):
         output.append([imageArray[i][data_index]])
 
     return output
+
+# parse 28days data into 1 instance
+def parse_data_into_instance(data):
+    instance = []
+
+    # add fixed data
+    instance.append(data[0][2])
+    instance.append(data[0][3])
+    instance.append(data[0][4])
+    instance.append(data[0][7])
+    instance.append(data[0][8])
+    instance.append(data[0][9])
+
+    # add temporal data
+    for i in range(14):
+        instance.append(data[i][0])
+        instance.append(data[i][1])
+        instance.append(data[i][5])
+        instance.append(data[i][6])
+
+    result = data[27][0]
+
+    return (instance, result)
 
 # time_mainStart = time.time()
 
@@ -219,6 +251,8 @@ for i in range(dayLen):
         grid.append(gridRow)
     imageArray.append(grid)
 
+shape_imageArray = array(imageArray).shape
+
 # # Show data
 # for i in range(len(imageArray)):
 #     print("day " + str(i))
@@ -230,6 +264,41 @@ for i in range(dayLen):
 
 print('\t|--SUCCESS: image created')
 
+################################################################ creating instances
+
+print('\t|--start creating instances...')
+
+# time_instanceCreation = time.time()
+
+# 6fix data, 4temporal data, 4D: number of instances, datas, grid row, grid column
+instance_shape = (dayLen - 28, 14 * 4 + 6, shape_imageArray[1], shape_imageArray[2])
+x_instances = zeros(instance_shape)
+y_instances = zeros((dayLen - 28, shape_imageArray[1], shape_imageArray[2]))
+
+for i in range(dayLen - 28):
+    for x in range(instance_shape[2]):
+        for y in range(instance_shape[3]):
+            features, result = parse_data_into_instance(imageArray[i:i+28, x, y, 0:10])
+            for j in range(len(features)):
+                x_instances[i][j][x][y] = features[j]
+                y_instances[i][x][y] = result
+
+# # Show data
+# for i in range(len(imageArray)):
+#     print("day " + str(i))
+#     for x in range(len(imageArray[i])):
+#         for y in range(len(imageArray[i][x])):
+#             print(imageArray[i][x][y], end='')
+#         print('')
+#     print('')
+
+print('\t|--SUCCESS: instances created')
+
+save('x_' + _INSTANCES_FILENAME_, x_instances)
+save('y_' + _INSTANCES_FILENAME_, y_instances)
+
+print('\t|--SUCCESS: instances saved into disk')
+
 ################################################################ normalize data
 
 print('\t|--start normalizing data...')
@@ -237,7 +306,6 @@ print('\t|--start normalizing data...')
 # time_imageNormalization = time.time()
 
 imageNormal = []
-shape_imageArray = array(imageArray).shape
 
 imageArray = array(imageArray).reshape(shape_imageArray[0] * shape_imageArray[1] * shape_imageArray[2], shape_imageArray[3])
 
