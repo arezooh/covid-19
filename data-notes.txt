@@ -96,7 +96,7 @@ temporal-data.csv:
         			sourse: https://public.tableau.com/profile/todd.bellemare#!/vizhome/DefinitiveHCCOVID-19CapacityPredictor/DefinitiveHealthcareCOVID-19CapacityPredictor	
 
 		airlines-data:
-				source: https://www.flightradar24.com/31.11,-95.18/4 , 
+				source: https://www.flightradar24.com/31.11,-95.18/4 , https://www.bts.dot.gov/browse-statistical-products-and-data/bts-publications/airline-service-quality-performance-234-time
 				api: https://data-live.flightradar24.com/zones/fcgi/feed.js?bounds=51.70,0.51,-139.20,-51.16&faa=1&satellite=1&mlat=1&flarm=1&adsb=1&gnd=1&air=1&vehicles=1&estimated=1&maxage=14400&gliders=1&stats=1
 
 		daily-country-test-per-1000:
