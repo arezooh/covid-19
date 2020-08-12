@@ -1,4 +1,4 @@
-# Imports
+################################################################ Imports
 
 import json
 import csv
@@ -19,29 +19,31 @@ from sklearn.metrics import r2_score
 from numpy import array, zeros, save, load
 
 import multiprocessing
-import os
+from os import getpid
 
-# Defines
+################################################################ Defines
 
 _CSV_Directory_ = ''
 _JSON_Directory_ = ''
 _INSTANCES_FILENAME_ = 'instances.npy'
+_GRID_INTERSECTION_FILENAME_ = './map_intersection_square.json'
+_COUNTIES_DATA_FIX_ = '../final data/full-fixed-data.csv'
+_COUNTIES_DATA_TEMPORAL_ = '../final data/full-temporal-data.csv'
 
-# Globals
+################################################################ Globals
 
 startDay = datetime.datetime.strptime('2020-01-22', '%Y-%m-%d')
 endDay = datetime.datetime.strptime('2020-05-08', '%Y-%m-%d')
 dayLen = (endDay - startDay).days
-dataTrain = []
-dataTest = []
 hashCounties = [-1] * 78031     #78030 is biggest county fips
 
 countiesData_temporal = {}
 countiesData_fix = {}
 
-input_shape = [0, 0, 0, 0]
+x_normalizers = []
+y_normalizers = MinMaxScaler()
 
-# Functions
+################################################################ Functions
 
 def loadIntersection(jsonFilename):
     jsonMetaData = []
@@ -223,182 +225,6 @@ def parse_data_into_instance(data):
 
     return (instance, result)
 
-# time_mainStart = time.time()
-
-gridIntersection = loadIntersection('./map_intersection_square.json')
-countiesData_temporal = loadCounties('../final data/full-temporal-data.csv')
-countiesData_fix = loadCounties('../final data/full-fixed-data.csv')
-
-init_hashCounties()
-init_days()
-
-################################################################ creating image array(CNN input) ### Binary Search
-
-print('\t|--start creating image...')
-
-# time_imageCreation = time.time()
-
-# each row on imageArray include image data on day i
-imageArray = []
-
-for i in range(dayLen):
-    grid = []
-    for x in range(len(gridIntersection)):
-        gridRow = []
-        for y in range(len(gridIntersection[x])):
-            gridCell = calculateGridData(gridIntersection[x][y])
-            gridRow.append(gridCell)
-        grid.append(gridRow)
-    imageArray.append(grid)
-
-shape_imageArray = array(imageArray).shape
-
-# # Show data
-# for i in range(len(imageArray)):
-#     print("day " + str(i))
-#     for x in range(len(imageArray[i])):
-#         for y in range(len(imageArray[i][x])):
-#             print(imageArray[i][x][y], end='')
-#         print('')
-#     print('')
-
-print('\t|--SUCCESS: image created')
-
-################################################################ creating instances
-
-print('\t|--start creating instances...')
-
-# time_instanceCreation = time.time()
-
-# 6fix data, 4temporal data, 4D: number of instances, datas, grid row, grid column
-instance_shape = (dayLen - 28, shape_imageArray[1], shape_imageArray[2], 14 * 4 + 6)
-x_instances = zeros(instance_shape)
-y_instances = zeros((dayLen - 28, shape_imageArray[1], shape_imageArray[2]))
-
-for i in range(dayLen - 28):
-    for x in range(instance_shape[2]):
-        for y in range(instance_shape[3]):
-            features, result = parse_data_into_instance(imageArray[i:i+28, x, y, 0:10])
-            for j in range(len(features)):
-                x_instances[i][x][y][j] = features[j]
-                y_instances[i][x][y] = result
-
-# # Show data
-# for i in range(len(imageArray)):
-#     print("day " + str(i))
-#     for x in range(len(imageArray[i])):
-#         for y in range(len(imageArray[i][x])):
-#             print(imageArray[i][x][y], end='')
-#         print('')
-#     print('')
-
-print('\t|--SUCCESS: instances created')
-
-save('x_' + _INSTANCES_FILENAME_, x_instances)
-save('y_' + _INSTANCES_FILENAME_, y_instances)
-
-print('\t|--SUCCESS: instances saved into disk')
-
-################################################################ split imageArray into train, validation and test
-
-print('\t|--start spliting data into train, validation and test...')
-
-x_dataTrain = x_instances[:-42]
-y_dataTrain = y_instances[:-42]
-
-x_dataValidation = x_instances[-42:-21]
-y_dataValidation = y_instances[-42:-21]
-
-x_dataTest = x_instances[-21:]
-y_dataTest = y_instances[-21:]
-
-# Clear memory
-gridIntersection.clear()
-countiesData_temporal.clear()
-countiesData_fix.clear()
-# imageArray.clear()
-# imageNormal.clear()
-
-print('\t|--SUCCESS: data splited into train, validation and test')
-
-################################################################ normalize data
-
-print('\t|--start normalizing data...')
-
-# time_imageNormalization = time.time()
-
-x_normalizers = []
-
-reshaped_x_dataTrain = x_dataTrain.reshape(instance_shape[0] * instance_shape[1] * instance_shape[2], instance_shape[3])
-reshaped_y_dataTrain = y_dataTrain.reshape(instance_shape[0] * instance_shape[1] * instance_shape[2])
-reshaped_x_dataValidation = x_dataValidation.reshape(instance_shape[0] * instance_shape[1] * instance_shape[2], instance_shape[3])
-reshaped_y_dataValidation = y_dataValidation.reshape(instance_shape[0] * instance_shape[1] * instance_shape[2])
-reshaped_x_dataTest = x_dataTest.reshape(instance_shape[0] * instance_shape[1] * instance_shape[2], instance_shape[3])
-reshaped_y_dataTest = y_dataTest.reshape(instance_shape[0] * instance_shape[1] * instance_shape[2])
-
-normal_x_dataTrain = zeros((instance_shape[0], instance_shape[1], instance_shape[2], instance_shape[3]))
-normal_x_dataValidation = zeros((instance_shape[0], instance_shape[1], instance_shape[2], instance_shape[3]))
-normal_x_dataTest = zeros((instance_shape[0], instance_shape[1], instance_shape[2], instance_shape[3]))
-
-# Normal X_data
-
-for i in range(14*4 + 6):
-    obj = MinMaxScaler()
-    x_normalizers.append(obj)
-
-    tempTrain = reshaped_x_dataTrain[:, i]
-    tempTrain = obj.fit_transform(tempTrain)
-    tempTrain = tempTrain.reshape(instance_shape[0], instance_shape[1], instance_shape[2])
-
-    tempValidation = reshaped_x_dataValidation[:, i]
-    tempValidation = obj.transform(tempValidation)
-    tempValidation = tempValidation.reshape(instance_shape[0], instance_shape[1], instance_shape[2])
-
-    tempTest = reshaped_x_dataTest[:, i]
-    tempTest = obj.transform(tempTest)
-    tempTest = tempTest.reshape(instance_shape[0], instance_shape[1], instance_shape[2])
-
-    for j in range(instance_shape[0]):
-        for k in range(instance_shape[1]):
-            for s in range(instance_shape[2]):
-                normal_x_dataTrain[j][k][s][i] = tempTrain[j][k][s]
-                normal_x_dataValidation[j][k][s][i] = tempValidation[j][k][s]
-                normal_x_dataTest[j][k][s][i] = tempTest[j][k][s]
-
-# Normal Y_data
-
-y_normalizers = MinMaxScaler()
-
-normal_y_dataTrain = y_normalizers.fit_transform(reshaped_y_dataTrain)
-normal_y_dataTrain = normal_y_dataTrain.reshape(instance_shape[0], instance_shape[1], instance_shape[2])
-
-normal_y_dataValidation = y_normalizers.transform(reshaped_y_dataValidation)
-normal_y_dataValidation = normal_y_dataValidation.reshape(instance_shape[0], instance_shape[1], instance_shape[2])
-
-normal_y_dataTest = y_normalizers.transform(reshaped_y_dataTest)
-normal_y_dataTest = normal_y_dataTest.reshape(instance_shape[0], instance_shape[1], instance_shape[2])
-
-# time_lap = time.time()
-
-# # Show data
-# for i in range(len(imageNormal)):
-#     print("day " + str(i))
-#     for x in range(len(imageNormal[i])):
-#         for y in range(len(imageNormal[i][x])):
-#             print(imageNormal[i][x][y], end='')
-#         print('')
-#     print('')
-
-print('\t|--SUCCESS: data normalized')
-
-################################################################ print execution time
-    
-# time_endTime = time.time()
-
-# print('\t|Image creation time: {0}'.format(time_imageNormalization - time_imageCreation))
-# print('\t|Image normalization time: {0}'.format(time_lap - time_imageNormalization))
-# print('\t|full execution time: {0}'.format(time_endTime - time_mainStart))
-
 def create_model(inputSize, hiddenDropout, visibleDropout, noBlocks, noDenseLayer, increaseFilters):
     noFilters = 64
     model = keras.Sequential()
@@ -463,7 +289,7 @@ def train_data(model, x_train, y_train, x_validation, y_validation, NO_epochs, i
 
 # This function extract windows with "input_size" size from image, evaluate model with the windows data
 def evaluate_data(model, x_test, y_test, input_size):
-    global normalizeObject_f0
+    global x_normalizers
     data_shape = x_test.shape
     y_shape = y_test.shape
     y_noData = y_test.shape[-1]
@@ -471,7 +297,7 @@ def evaluate_data(model, x_test, y_test, input_size):
     sum_acc = 0
     total = 0
     y_predict = array([[[0]*y_test.shape[2]]*y_test.shape[1]]*14)
-    y_test_org = normalizeObject_f0.inverse_transform(y_test.reshape(y_shape[0] * y_shape[1] * y_shape[2], y_shape[3]))
+    y_test_org = x_normalizers[0].inverse_transform(y_test.reshape(y_shape[0] * y_shape[1] * y_shape[2], y_shape[3]))
     y_test_org = y_test_org.reshape(y_shape[0], y_shape[1], y_shape[2], y_shape[3])
 
     for i in range(data_shape[1]):
@@ -486,7 +312,7 @@ def evaluate_data(model, x_test, y_test, input_size):
 
             subY_predict_normal = model.predict(subX_test)
             pred_shape = subY_predict_normal.shape
-            subY_predict = normalizeObject_f0.inverse_transform(subY_predict_normal.reshape(pred_shape[0] * pred_shape[1] * pred_shape[2], pred_shape[3]))
+            subY_predict = x_normalizers[0].inverse_transform(subY_predict_normal.reshape(pred_shape[0] * pred_shape[1] * pred_shape[2], pred_shape[3]))
             subY_predict = subY_predict.reshape(pred_shape[0], pred_shape[1], pred_shape[2], pred_shape[3])
 
             for k in range(pred_shape[0]):
@@ -500,19 +326,138 @@ def evaluate_data(model, x_test, y_test, input_size):
 def log(str):
     t = datetime.datetime.now().isoformat()
     with open('log', 'a') as logFile:
-        logFile.write('[{0}] {1}\n'.format(t, str))
+        logFile.write('[{0}][{1}] {2}\n'.format(t, getpid(), str))
+
+################################################################ START
+
+log('START: loading data form files')
+
+gridIntersection = loadIntersection(_GRID_INTERSECTION_FILENAME_)
+countiesData_temporal = loadCounties(_COUNTIES_DATA_TEMPORAL_)
+countiesData_fix = loadCounties(_COUNTIES_DATA_FIX_)
+
+init_hashCounties()
+init_days()
+
+################################################################ creating image array(CNN input) ### Binary Search
+
+log('START: creating image')
+
+# each row on imageArray include image data on day i
+imageArray = []
+
+for i in range(dayLen):
+    grid = []
+    for x in range(len(gridIntersection)):
+        gridRow = []
+        for y in range(len(gridIntersection[x])):
+            gridCell = calculateGridData(gridIntersection[x][y])
+            gridRow.append(gridCell)
+        grid.append(gridRow)
+    imageArray.append(grid)
+
+shape_imageArray = array(imageArray).shape
+
+################################################################ creating instances
+
+log('START: creating instances')
+
+# 6fix data, 4temporal data, 4D: number of instances, datas, grid row, grid column
+instance_shape = (dayLen - 28, shape_imageArray[1], shape_imageArray[2], 14 * 4 + 6)
+x_instances = zeros(instance_shape)
+y_instances = zeros((dayLen - 28, shape_imageArray[1], shape_imageArray[2]))
+
+for i in range(dayLen - 28):
+    for x in range(instance_shape[2]):
+        for y in range(instance_shape[3]):
+            features, result = parse_data_into_instance(imageArray[i:i+28, x, y, 0:10])
+            for j in range(len(features)):
+                x_instances[i][x][y][j] = features[j]
+                y_instances[i][x][y] = result
+
+log('START: saving instances into disk')
+
+save('x_' + _INSTANCES_FILENAME_, x_instances)
+save('y_' + _INSTANCES_FILENAME_, y_instances)
+
+################################################################ split imageArray into train, validation and test
+
+log('START: spliting data into train, validation and test')
+
+x_dataTrain = x_instances[:-42]
+y_dataTrain = y_instances[:-42]
+
+x_dataValidation = x_instances[-42:-21]
+y_dataValidation = y_instances[-42:-21]
+
+x_dataTest = x_instances[-21:]
+y_dataTest = y_instances[-21:]
+
+# Clear memory
+gridIntersection.clear()
+countiesData_temporal.clear()
+countiesData_fix.clear()
+
+################################################################ normalize data
+
+log('START: normalizing data')
+
+reshaped_x_dataTrain = x_dataTrain.reshape(instance_shape[0] * instance_shape[1] * instance_shape[2], instance_shape[3])
+reshaped_y_dataTrain = y_dataTrain.reshape(instance_shape[0] * instance_shape[1] * instance_shape[2])
+reshaped_x_dataValidation = x_dataValidation.reshape(instance_shape[0] * instance_shape[1] * instance_shape[2], instance_shape[3])
+reshaped_y_dataValidation = y_dataValidation.reshape(instance_shape[0] * instance_shape[1] * instance_shape[2])
+reshaped_x_dataTest = x_dataTest.reshape(instance_shape[0] * instance_shape[1] * instance_shape[2], instance_shape[3])
+reshaped_y_dataTest = y_dataTest.reshape(instance_shape[0] * instance_shape[1] * instance_shape[2])
+
+normal_x_dataTrain = zeros((instance_shape[0], instance_shape[1], instance_shape[2], instance_shape[3]))
+normal_x_dataValidation = zeros((instance_shape[0], instance_shape[1], instance_shape[2], instance_shape[3]))
+normal_x_dataTest = zeros((instance_shape[0], instance_shape[1], instance_shape[2], instance_shape[3]))
+
+# Normal X_data
+for i in range(14*4 + 6):
+    obj = MinMaxScaler()
+    x_normalizers.append(obj)
+
+    tempTrain = reshaped_x_dataTrain[:, i]
+    tempTrain = obj.fit_transform(tempTrain)
+    tempTrain = tempTrain.reshape(instance_shape[0], instance_shape[1], instance_shape[2])
+
+    tempValidation = reshaped_x_dataValidation[:, i]
+    tempValidation = obj.transform(tempValidation)
+    tempValidation = tempValidation.reshape(instance_shape[0], instance_shape[1], instance_shape[2])
+
+    tempTest = reshaped_x_dataTest[:, i]
+    tempTest = obj.transform(tempTest)
+    tempTest = tempTest.reshape(instance_shape[0], instance_shape[1], instance_shape[2])
+
+    for j in range(instance_shape[0]):
+        for k in range(instance_shape[1]):
+            for s in range(instance_shape[2]):
+                normal_x_dataTrain[j][k][s][i] = tempTrain[j][k][s]
+                normal_x_dataValidation[j][k][s][i] = tempValidation[j][k][s]
+                normal_x_dataTest[j][k][s][i] = tempTest[j][k][s]
+
+# Normal Y_data
+normal_y_dataTrain = y_normalizers.fit_transform(reshaped_y_dataTrain)
+normal_y_dataTrain = normal_y_dataTrain.reshape(instance_shape[0], instance_shape[1], instance_shape[2])
+
+normal_y_dataValidation = y_normalizers.transform(reshaped_y_dataValidation)
+normal_y_dataValidation = normal_y_dataValidation.reshape(instance_shape[0], instance_shape[1], instance_shape[2])
+
+normal_y_dataTest = y_normalizers.transform(reshaped_y_dataTest)
+normal_y_dataTest = normal_y_dataTest.reshape(instance_shape[0], instance_shape[1], instance_shape[2])
 
 ################################################################ systematic search for find best model
 # We change 5 parameters to find best model (for now, we can't change number of blocks(NO_blocks))
 # input_size = [3, 5, 15, 25] where image size is 300*300
-# hidden_dropout = [0, 0.1, 0.2, 0.3, 0.4, 0.5]
-# visible_dropout = [0, 0.1, 0.2, 0.3, 0.4, 0.5]
+# hidden_dropout = [0, 0.2, 0.3, 0.4]
+# visible_dropout = [0, 0.2, 0.3, 0.4]
 
 # NO_dense_layer = [1, 2, 3]
 # increase_filters = [0, 1]
 ################################################################
 
-print('\t|--Phase of testing models started...')
+log('START: Phase of testing models started')
 
 p1 = [3, 5, 15, 25]
 p2 = [0, 0.2, 0.3, 0.4]
@@ -521,8 +466,7 @@ p4 = [1, 2, 3]
 p5 = [0, 1]
 
 def evaluate_model(input_size):
-    pid = os.getpid()
-    log('Process started | pid: {0}, input_size: {1}'.format(pid, input_size))
+    log('Process started | input_size: {1}'.format(input_size))
     for hidden_dropout in p2:
         for visible_dropout in p3:
             for NO_dense_layer in p4:
@@ -530,12 +474,12 @@ def evaluate_model(input_size):
                     NO_blocks = floor(log2(input_size))
                     # print(input_size, hidden_dropout, visible_dropout, NO_blocks, NO_dense_layer, increase_filters)
                     # log this state
-                    log('pid: {6} | create_model({0}, {1}, {2}, {3}, {4}, {5})'.format(input_size, hidden_dropout, visible_dropout, NO_blocks, NO_dense_layer, increase_filters, pid))
+                    log('create_model({0}, {1}, {2}, {3}, {4}, {5})'.format(input_size, hidden_dropout, visible_dropout, NO_blocks, NO_dense_layer, increase_filters))
                     #
                     model = create_model(input_size, hidden_dropout, visible_dropout, NO_blocks, NO_dense_layer, increase_filters)
                     train_data(model, pad_data(x_dataTrain, input_size), pad_data(y_dataTrain, input_size), pad_data(x_dataValidation, input_size), pad_data(y_dataValidation, input_size), 2, input_size)
                     result = evaluate_data(model, pad_data(x_dataTest, input_size), pad_data(y_dataTest, input_size), input_size)
-                    log('pid: {3} | result, LOSS:{0}, ACC:{1}, r2score:{2}'.format(result[0], result[1], result[2], pid))
+                    log('result, LOSS:{0}, ACC:{1}, r2score:{2}'.format(result[0], result[1], result[2]))
 
 ################################################################ main 
 
