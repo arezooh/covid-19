@@ -29,6 +29,7 @@ _INSTANCES_FILENAME_ = 'instances.npy'
 _GRID_INTERSECTION_FILENAME_ = './map_intersection_square.json'
 _COUNTIES_DATA_FIX_ = '../final data/full-fixed-data.csv'
 _COUNTIES_DATA_TEMPORAL_ = '../final data/full-temporal-data.csv'
+_CONUTIES_FIPS_ = './full-data-county-fips.csv'
 
 ################################################################ Globals
 
@@ -71,7 +72,7 @@ def fromIsotoDataFormat(day):
     return day.strftime('%m/%d/%y')
 
 def init_hashCounties():
-    counties = loadCounties('./full-data-county-fips.csv')
+    counties = loadCounties(_CONUTIES_FIPS_)
     for i in range(len(counties)):
         hashCounties[int(counties[i]['county_fips'], 10)] = i
 
@@ -150,7 +151,7 @@ def calculateGridData(counties):
             longitude_sum += 1
             social_distancing_travel_distance_grade += float(countiesData_temporal[index_temporal]['social-distancing-travel-distance-grade']) * county['percent']
             social_distancing_travel_distance_grade_weightSum += county['percent']
-            daily_state_test += float(countiesData_temporal[index_temporal]['daily_state_test']) * county['percent']
+            daily_state_test += float(countiesData_temporal[index_temporal]['daily-state-test']) * county['percent']
             daily_state_test_weightSum += county['percent']
             # density
             houses += float(countiesData_fix[index_fix]['houses_density']) * float(countiesData_fix[index_fix]['area']) * county['percent']
@@ -357,6 +358,7 @@ for i in range(dayLen):
     imageArray.append(grid)
 
 shape_imageArray = array(imageArray).shape
+imageArray = array(imageArray)
 
 ################################################################ creating instances
 
@@ -402,33 +404,33 @@ countiesData_fix.clear()
 
 log('START: normalizing data')
 
-reshaped_x_dataTrain = x_dataTrain.reshape(instance_shape[0] * instance_shape[1] * instance_shape[2], instance_shape[3])
-reshaped_y_dataTrain = y_dataTrain.reshape(instance_shape[0] * instance_shape[1] * instance_shape[2])
-reshaped_x_dataValidation = x_dataValidation.reshape(instance_shape[0] * instance_shape[1] * instance_shape[2], instance_shape[3])
-reshaped_y_dataValidation = y_dataValidation.reshape(instance_shape[0] * instance_shape[1] * instance_shape[2])
-reshaped_x_dataTest = x_dataTest.reshape(instance_shape[0] * instance_shape[1] * instance_shape[2], instance_shape[3])
-reshaped_y_dataTest = y_dataTest.reshape(instance_shape[0] * instance_shape[1] * instance_shape[2])
+reshaped_x_dataTrain = x_dataTrain.reshape(x_dataTrain.shape[0] * instance_shape[1] * instance_shape[2], instance_shape[3])
+reshaped_y_dataTrain = y_dataTrain.reshape(y_dataTrain.shape[0] * instance_shape[1] * instance_shape[2])
+reshaped_x_dataValidation = x_dataValidation.reshape(x_dataValidation.shape[0] * instance_shape[1] * instance_shape[2], instance_shape[3])
+reshaped_y_dataValidation = y_dataValidation.reshape(y_dataValidation.shape[0] * instance_shape[1] * instance_shape[2])
+reshaped_x_dataTest = x_dataTest.reshape(x_dataTest.shape[0] * instance_shape[1] * instance_shape[2], instance_shape[3])
+reshaped_y_dataTest = y_dataTest.reshape(y_dataTest.shape[0] * instance_shape[1] * instance_shape[2])
 
-normal_x_dataTrain = zeros((instance_shape[0], instance_shape[1], instance_shape[2], instance_shape[3]))
-normal_x_dataValidation = zeros((instance_shape[0], instance_shape[1], instance_shape[2], instance_shape[3]))
-normal_x_dataTest = zeros((instance_shape[0], instance_shape[1], instance_shape[2], instance_shape[3]))
+normal_x_dataTrain = zeros((x_dataTrain.shape[0], instance_shape[1], instance_shape[2], instance_shape[3]))
+normal_x_dataValidation = zeros((x_dataValidation.shape[0], instance_shape[1], instance_shape[2], instance_shape[3]))
+normal_x_dataTest = zeros((x_dataTest.shape[0], instance_shape[1], instance_shape[2], instance_shape[3]))
 
 # Normal X_data
 for i in range(14*4 + 6):
     obj = MinMaxScaler()
     x_normalizers.append(obj)
 
-    tempTrain = reshaped_x_dataTrain[:, i]
+    tempTrain = reshaped_x_dataTrain[:, i:i+1]
     tempTrain = obj.fit_transform(tempTrain)
-    tempTrain = tempTrain.reshape(instance_shape[0], instance_shape[1], instance_shape[2])
+    tempTrain = tempTrain.reshape(x_dataTrain.shape[0], instance_shape[1], instance_shape[2])
 
-    tempValidation = reshaped_x_dataValidation[:, i]
+    tempValidation = reshaped_x_dataValidation[:, i:i+1]
     tempValidation = obj.transform(tempValidation)
-    tempValidation = tempValidation.reshape(instance_shape[0], instance_shape[1], instance_shape[2])
+    tempValidation = tempValidation.reshape(x_dataValidation.shape[0], instance_shape[1], instance_shape[2])
 
-    tempTest = reshaped_x_dataTest[:, i]
+    tempTest = reshaped_x_dataTest[:, i:i+1]
     tempTest = obj.transform(tempTest)
-    tempTest = tempTest.reshape(instance_shape[0], instance_shape[1], instance_shape[2])
+    tempTest = tempTest.reshape(x_dataTest.shape[0], instance_shape[1], instance_shape[2])
 
     for j in range(instance_shape[0]):
         for k in range(instance_shape[1]):
@@ -439,13 +441,13 @@ for i in range(14*4 + 6):
 
 # Normal Y_data
 normal_y_dataTrain = y_normalizers.fit_transform(reshaped_y_dataTrain)
-normal_y_dataTrain = normal_y_dataTrain.reshape(instance_shape[0], instance_shape[1], instance_shape[2])
+normal_y_dataTrain = normal_y_dataTrain.reshape(y_dataTrain.shape[0], instance_shape[1], instance_shape[2])
 
 normal_y_dataValidation = y_normalizers.transform(reshaped_y_dataValidation)
-normal_y_dataValidation = normal_y_dataValidation.reshape(instance_shape[0], instance_shape[1], instance_shape[2])
+normal_y_dataValidation = normal_y_dataValidation.reshape(y_dataValidation.shape[0], instance_shape[1], instance_shape[2])
 
 normal_y_dataTest = y_normalizers.transform(reshaped_y_dataTest)
-normal_y_dataTest = normal_y_dataTest.reshape(instance_shape[0], instance_shape[1], instance_shape[2])
+normal_y_dataTest = normal_y_dataTest.reshape(y_dataTest.shape[0], instance_shape[1], instance_shape[2])                 
 
 ################################################################ systematic search for find best model
 # We change 5 parameters to find best model (for now, we can't change number of blocks(NO_blocks))
@@ -487,6 +489,7 @@ if __name__ == "__main__":
     processes = []
     for i in range(len(p1)):
         processes.append(multiprocessing.Process(target=evaluate_model, args=(p1[i],)))
+        log('Process number {0} starting'.format(i))
         processes[i].start()
 
     for proc in processes:
