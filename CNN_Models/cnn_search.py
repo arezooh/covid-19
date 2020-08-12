@@ -271,7 +271,7 @@ print('\t|--start creating instances...')
 # time_instanceCreation = time.time()
 
 # 6fix data, 4temporal data, 4D: number of instances, datas, grid row, grid column
-instance_shape = (dayLen - 28, 14 * 4 + 6, shape_imageArray[1], shape_imageArray[2])
+instance_shape = (dayLen - 28, shape_imageArray[1], shape_imageArray[2], 14 * 4 + 6)
 x_instances = zeros(instance_shape)
 y_instances = zeros((dayLen - 28, shape_imageArray[1], shape_imageArray[2]))
 
@@ -280,7 +280,7 @@ for i in range(dayLen - 28):
         for y in range(instance_shape[3]):
             features, result = parse_data_into_instance(imageArray[i:i+28, x, y, 0:10])
             for j in range(len(features)):
-                x_instances[i][j][x][y] = features[j]
+                x_instances[i][x][y][j] = features[j]
                 y_instances[i][x][y] = result
 
 # # Show data
@@ -303,17 +303,14 @@ print('\t|--SUCCESS: instances saved into disk')
 
 print('\t|--start spliting data into train, validation and test...')
 
-# dataTrain = imageNormal[:-14]
-# dataTest = imageNormal[-28:]
-
 x_dataTrain = x_instances[:-42]
 y_dataTrain = y_instances[:-42]
 
-x_dataValidation = x_instances[-42:-28]
-y_dataValidation = y_instances[-42:-28]
+x_dataValidation = x_instances[-42:-21]
+y_dataValidation = y_instances[-42:-21]
 
-x_dataTest = x_instances[-28:]
-y_dataTest = y_instances[-28:]
+x_dataTest = x_instances[-21:]
+y_dataTest = y_instances[-21:]
 
 # Clear memory
 gridIntersection.clear()
@@ -330,7 +327,7 @@ print('\t|--start normalizing data...')
 
 # time_imageNormalization = time.time()
 
-imageNormal = []
+normalizers = []
 
 imageArray = array(imageArray).reshape(shape_imageArray[0] * shape_imageArray[1] * shape_imageArray[2], shape_imageArray[3])
 
