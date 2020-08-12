@@ -299,6 +299,31 @@ save('y_' + _INSTANCES_FILENAME_, y_instances)
 
 print('\t|--SUCCESS: instances saved into disk')
 
+################################################################ split imageArray into train, validation and test
+
+print('\t|--start spliting data into train, validation and test...')
+
+# dataTrain = imageNormal[:-14]
+# dataTest = imageNormal[-28:]
+
+x_dataTrain = x_instances[:-42]
+y_dataTrain = y_instances[:-42]
+
+x_dataValidation = x_instances[-42:-28]
+y_dataValidation = y_instances[-42:-28]
+
+x_dataTest = x_instances[-28:]
+y_dataTest = y_instances[-28:]
+
+# Clear memory
+gridIntersection.clear()
+countiesData_temporal.clear()
+countiesData_fix.clear()
+# imageArray.clear()
+# imageNormal.clear()
+
+print('\t|--SUCCESS: data splited into train, validation and test')
+
 ################################################################ normalize data
 
 print('\t|--start normalizing data...')
@@ -362,69 +387,6 @@ imageNormal = imageNormal.reshape(shape_imageArray[0], shape_imageArray[1], shap
 #     print('')
 
 print('\t|--SUCCESS: data normalized')
-
-################################################################ split imageArray into train Data(dataTrain) and test Data(dataTest)
-
-print('\t|--start spliting data into train, validation and test...')
-
-# dataTrain = imageNormal[:-14]
-# dataTest = imageNormal[-28:]
-
-data_shape = (shape_imageArray[1], shape_imageArray[2], shape_imageArray[3])
-
-x_dataTrain = imageNormal[:-28][:-14]
-y_dataTrain = imageNormal[:-28][14:]
-y_dataTrain_final = []
-for i in range(len(y_dataTrain)):
-    grid = []
-    for j in range(data_shape[0]):
-        gridRow = []
-        for k in range(data_shape[1]):
-            gridCell = [y_dataTrain[i][j][k][0]]
-            gridRow.append(gridCell)
-        grid.append(gridRow)
-    y_dataTrain_final.append(grid)
-
-y_dataTrain = array(y_dataTrain_final)
-
-x_dataValidation = imageNormal[-42:-14][:-14]
-y_dataValidation = imageNormal[-42:-14][14:]
-y_dataValidation_final = []
-for i in range(len(y_dataValidation)):
-    grid = []
-    for j in range(data_shape[0]):
-        gridRow = []
-        for k in range(data_shape[1]):
-            gridCell = [y_dataValidation[i][j][k][0]]
-            gridRow.append(gridCell)
-        grid.append(gridRow)
-    y_dataValidation_final.append(grid)
-
-y_dataValidation = array(y_dataValidation_final)
-
-x_dataTest = imageNormal[-28:][:-14]
-y_dataTest = imageNormal[-28:][14:]
-y_dataTest_final = []
-for i in range(len(y_dataTest)):
-    grid = []
-    for j in range(data_shape[0]):
-        gridRow = []
-        for k in range(data_shape[1]):
-            gridCell = [y_dataTest[i][j][k][0]]
-            gridRow.append(gridCell)
-        grid.append(gridRow)
-    y_dataTest_final.append(grid)
-
-y_dataTest = array(y_dataTest_final)
-
-# Clear memory
-gridIntersection.clear()
-countiesData_temporal.clear()
-countiesData_fix.clear()
-# imageArray.clear()
-# imageNormal.clear()
-
-print('\t|--SUCCESS: data splited into train, validation and test')
 
 ################################################################ print execution time
     
