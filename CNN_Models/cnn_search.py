@@ -231,7 +231,7 @@ def create_model(inputSize, hiddenDropout, visibleDropout, noBlocks, noDenseLaye
     model = keras.Sequential()
 
     # Layers before first block
-    model.add(tf.keras.layers.Conv2D(filters=noFilters, kernel_size = (3,3), padding='same', activation='relu', input_shape=(inputSize, inputSize, 10)))
+    model.add(tf.keras.layers.Conv2D(filters=noFilters, kernel_size = (3,3), padding='same', activation='relu', input_shape=(inputSize, inputSize, 62)))
     if (visibleDropout != 0):
         model.add(Dropout(visibleDropout))
 
@@ -276,11 +276,21 @@ def pad_data(data, input_size):
 # This function extract windows with "input_size" size from image, train model with the windows data
 def train_data(model, x_train, y_train, x_validation, y_validation, NO_epochs, input_size):
     data_shape = x_train.shape
-    y_noData = y_train.shape[-1]
-    for i in range(data_shape[1] - input_size + 1):
-        for j in range(data_shape[2] - input_size + 1):
+    y_shape = y_train.shape
+    
+    padded_x = []
+    padded_y = []
+
+    for i in range(data_shape[0]):
+        padded_x.append(pad_data(x_train[i], input_size))
+        padded_y.append(pad_data(y_train[i], input_size))
+
+    x_train = array(padded_x)
+    y_train = array(padded_y)
+    for i in range(data_shape[1]):
+        for j in range(data_shape[2]):
             subX_trian = x_train[0:data_shape[0], i:i+input_size, j:j+input_size, 0:data_shape[3]]
-            subY_train = y_train[0:data_shape[0], i:i+input_size, j:j+input_size, 0:y_noData]
+            subY_train = y_train[0:data_shape[0], i:i+input_size, j:j+input_size, 0:y_shape[3]]
 
             subX_validation = x_validation[0:data_shape[0], i:i+input_size, j:j+input_size, 0:data_shape[3]]
             subY_validation = y_validation[0:data_shape[0], i:i+input_size, j:j+input_size, 0:y_noData]
@@ -293,35 +303,44 @@ def evaluate_data(model, x_test, y_test, input_size):
     global x_normalizers
     data_shape = x_test.shape
     y_shape = y_test.shape
-    y_noData = y_test.shape[-1]
-    sum_loss = 0
-    sum_acc = 0
-    total = 0
-    y_predict = array([[[0]*y_test.shape[2]]*y_test.shape[1]]*14)
-    y_test_org = x_normalizers[0].inverse_transform(y_test.reshape(y_shape[0] * y_shape[1] * y_shape[2], y_shape[3]))
+    y_test_org = y_normalizers.inverse_transform(y_test.reshape(y_shape[0] * y_shape[1] * y_shape[2], y_shape[3]))
     y_test_org = y_test_org.reshape(y_shape[0], y_shape[1], y_shape[2], y_shape[3])
+    
+    padded_x = []
+    padded_y = []
+
+    for i in range(data_shape[0]):
+        padded_x.append(pad_data(x_test[i], input_size))
+        padded_y.append(pad_data(y_test[i], input_size))
+
+    x_test = array(padded_x)
+    y_test = array(padded_y)
+
+    sum_org = 0
+    sum_MAE = 0
+    sum_MAPE = 0
+    sum_MASE = 0
 
     for i in range(data_shape[1]):
         for j in range(data_shape[2]):
             subX_test = x_test[0:data_shape[0], i:i+input_size, j:j+input_size, 0:data_shape[3]]
-            subY_test = y_test[0:data_shape[0], i:i+input_size, j:j+input_size, 0:y_noData]
-
-            score = model.evaluate(subX_test, subY_test, verbose=0)
-            sum_loss += score[0]
-            sum_acc += score[1]
-            total += 1
 
             subY_predict_normal = model.predict(subX_test)
             pred_shape = subY_predict_normal.shape
-            subY_predict = x_normalizers[0].inverse_transform(subY_predict_normal.reshape(pred_shape[0] * pred_shape[1] * pred_shape[2], pred_shape[3]))
+            subY_predict = y_normalizers.inverse_transform(subY_predict_normal.reshape(pred_shape[0] * pred_shape[1] * pred_shape[2], pred_shape[3]))
             subY_predict = subY_predict.reshape(pred_shape[0], pred_shape[1], pred_shape[2], pred_shape[3])
 
             for k in range(pred_shape[0]):
-                y_predict[k][i][j] = subY_predict[k][0][0][0]
+                sum_org += y_test_org[k][i][j][0]
+                sum_MAE += abs(y_test_org[k][i][j][0] - subY_predict[k][0][0][0])
+                sum_MAPE += abs(y_test_org[k][i][j][0] - subY_predict[k][0][0][0])
+                sum_MASE += abs(y_test_org[k][i][j][0] - x_test[k][i][j][-4])
 
-    r2score = r2_score(y_test_org, y_predict)
+    MAE = sum_MAE / (data_shape[0] * data_shape[1] * data_shape[2])
+    MAPE = (sum_MAPE / sum_org) / (data_shape[0] * data_shape[1] * data_shape[2])
+    MASE = (sum_MASE / (data_shape[0] * data_shape[1] * data_shape[2])) / MAE
 
-    return (sum_loss / total, sum_acc / total, r2score)
+    return (MAE, MAPE, MASE)
 
 # Use this function to log states of code, helps to find bugs
 def log(str):
@@ -405,11 +424,11 @@ countiesData_fix.clear()
 log('START: normalizing data')
 
 reshaped_x_dataTrain = x_dataTrain.reshape(x_dataTrain.shape[0] * instance_shape[1] * instance_shape[2], instance_shape[3])
-reshaped_y_dataTrain = y_dataTrain.reshape(y_dataTrain.shape[0] * instance_shape[1] * instance_shape[2])
+reshaped_y_dataTrain = y_dataTrain.reshape(y_dataTrain.shape[0] * instance_shape[1] * instance_shape[2], 1)
 reshaped_x_dataValidation = x_dataValidation.reshape(x_dataValidation.shape[0] * instance_shape[1] * instance_shape[2], instance_shape[3])
-reshaped_y_dataValidation = y_dataValidation.reshape(y_dataValidation.shape[0] * instance_shape[1] * instance_shape[2])
+reshaped_y_dataValidation = y_dataValidation.reshape(y_dataValidation.shape[0] * instance_shape[1] * instance_shape[2], 1)
 reshaped_x_dataTest = x_dataTest.reshape(x_dataTest.shape[0] * instance_shape[1] * instance_shape[2], instance_shape[3])
-reshaped_y_dataTest = y_dataTest.reshape(y_dataTest.shape[0] * instance_shape[1] * instance_shape[2])
+reshaped_y_dataTest = y_dataTest.reshape(y_dataTest.shape[0] * instance_shape[1] * instance_shape[2], 1)
 
 normal_x_dataTrain = zeros((x_dataTrain.shape[0], instance_shape[1], instance_shape[2], instance_shape[3]))
 normal_x_dataValidation = zeros((x_dataValidation.shape[0], instance_shape[1], instance_shape[2], instance_shape[3]))
@@ -435,19 +454,22 @@ for i in range(14*4 + 6):
     for j in range(instance_shape[0]):
         for k in range(instance_shape[1]):
             for s in range(instance_shape[2]):
-                normal_x_dataTrain[j][k][s][i] = tempTrain[j][k][s]
-                normal_x_dataValidation[j][k][s][i] = tempValidation[j][k][s]
-                normal_x_dataTest[j][k][s][i] = tempTest[j][k][s]
+                if (j < x_dataTrain.shape[0]):
+                    normal_x_dataTrain[j][k][s][i] = tempTrain[j][k][s]
+                if (j < x_dataValidation.shape[0]):
+                    normal_x_dataValidation[j][k][s][i] = tempValidation[j][k][s]
+                if (j < x_dataTest.shape[0]):
+                    normal_x_dataTest[j][k][s][i] = tempTest[j][k][s]
 
 # Normal Y_data
 normal_y_dataTrain = y_normalizers.fit_transform(reshaped_y_dataTrain)
-normal_y_dataTrain = normal_y_dataTrain.reshape(y_dataTrain.shape[0], instance_shape[1], instance_shape[2])
+normal_y_dataTrain = normal_y_dataTrain.reshape(y_dataTrain.shape[0], instance_shape[1], instance_shape[2], 1)
 
 normal_y_dataValidation = y_normalizers.transform(reshaped_y_dataValidation)
-normal_y_dataValidation = normal_y_dataValidation.reshape(y_dataValidation.shape[0], instance_shape[1], instance_shape[2])
+normal_y_dataValidation = normal_y_dataValidation.reshape(y_dataValidation.shape[0], instance_shape[1], instance_shape[2], 1)
 
 normal_y_dataTest = y_normalizers.transform(reshaped_y_dataTest)
-normal_y_dataTest = normal_y_dataTest.reshape(y_dataTest.shape[0], instance_shape[1], instance_shape[2])                 
+normal_y_dataTest = normal_y_dataTest.reshape(y_dataTest.shape[0], instance_shape[1], instance_shape[2], 1)                 
 
 ################################################################ systematic search for find best model
 # We change 5 parameters to find best model (for now, we can't change number of blocks(NO_blocks))
