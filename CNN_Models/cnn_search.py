@@ -293,10 +293,9 @@ def train_data(model, x_train, y_train, x_validation, y_validation, NO_epochs, i
             subY_train = y_train[0:data_shape[0], i:i+input_size, j:j+input_size, 0:y_shape[3]]
 
             subX_validation = x_validation[0:data_shape[0], i:i+input_size, j:j+input_size, 0:data_shape[3]]
-            subY_validation = y_validation[0:data_shape[0], i:i+input_size, j:j+input_size, 0:y_noData]
+            subY_validation = y_validation[0:data_shape[0], i:i+input_size, j:j+input_size, 0:y_shape[3]]
 
             model.fit(subX_trian, subY_train, batch_size=32, epochs=NO_epochs, verbose=1, validation_data=(subX_validation, subY_validation))
-            # model.fit(x_dataTrain, y_dataTrain, batch_size=32, epochs=25, verbose=1, validation_data=(x_dataValidation, y_dataValidation))
 
 # This function extract windows with "input_size" size from image, evaluate model with the windows data
 def evaluate_data(model, x_test, y_test, input_size):
@@ -489,28 +488,28 @@ p3 = [0, 0.2, 0.3, 0.4]
 p4 = [1, 2, 3]
 p5 = [0, 1]
 
-def evaluate_model(input_size):
-    log('Process started | input_size: {1}'.format(input_size))
-    for hidden_dropout in p2:
-        for visible_dropout in p3:
-            for NO_dense_layer in p4:
-                for increase_filters in p5:
-                    NO_blocks = floor(log2(input_size))
-                    # print(input_size, hidden_dropout, visible_dropout, NO_blocks, NO_dense_layer, increase_filters)
-                    # log this state
-                    log('create_model({0}, {1}, {2}, {3}, {4}, {5})'.format(input_size, hidden_dropout, visible_dropout, NO_blocks, NO_dense_layer, increase_filters))
-                    #
-                    model = create_model(input_size, hidden_dropout, visible_dropout, NO_blocks, NO_dense_layer, increase_filters)
-                    train_data(model, pad_data(x_dataTrain, input_size), pad_data(y_dataTrain, input_size), pad_data(x_dataValidation, input_size), pad_data(y_dataValidation, input_size), 2, input_size)
-                    result = evaluate_data(model, pad_data(x_dataTest, input_size), pad_data(y_dataTest, input_size), input_size)
-                    log('result, LOSS:{0}, ACC:{1}, r2score:{2}'.format(result[0], result[1], result[2]))
+def evaluate_model(input_size, hidden_dropout, visible_dropout, NO_dense_layer, increase_filters):
+    NO_blocks = floor(log2(input_size))
+    log('Process started | parameters {0}'.format((input_size, hidden_dropout, visible_dropout, NO_dense_layer, increase_filters)))
+    model = create_model(input_size, hidden_dropout, visible_dropout, NO_blocks, NO_dense_layer, increase_filters)
+    train_data(model, normal_x_dataTrain, normal_y_dataTrain, normal_x_dataValidation, normal_y_dataValidation, 2, input_size)
+    result = evaluate_data(model, normal_x_dataTest, normal_y_dataTest, input_size)
+    log('result, MAE:{0}, MAPE:{1}, MASE:{2}'.format(result[0], result[1], result[2]))
 
 ################################################################ main 
 
 if __name__ == "__main__":
     processes = []
+    parameters = []
     for i in range(len(p1)):
-        processes.append(multiprocessing.Process(target=evaluate_model, args=(p1[i],)))
+        for i2 in range(len(p2)):
+            for i3 in range(len(p3)):
+                for i4 in range(len(p4)):
+                    for i5 in range(len(p5)):
+                        parameters.append((p1[i], p2[i2], p3[i3], p4[i4], p5[i5]))
+
+    for i in range(len(parameters)):
+        processes.append(multiprocessing.Process(target=evaluate_model, args=(parameters[i][0], parameters[i][1], parameters[i][2], parameters[i][3], parameters[i][4], )))
         log('Process number {0} starting'.format(i))
         processes[i].start()
 
