@@ -124,7 +124,7 @@ def preprocess(main_data, validationFlag):
 
 ################################ MASE_denominator
 def mase_denominator(r, h, target_name, target_mode ,numberOfSelectedCounties, spatial_mode):
-    
+
     if target_mode == 'weeklyaverage':
         data = makeHistoricalData(h, r, target_name, 'mrmr', spatial_mode, 'weeklyaverage', './')
     else:
@@ -548,8 +548,8 @@ def real_prediction_plot(df,r,target_name,target_mode,best_h,maxHistory,spatial_
             plt.plot(df_for_plot.loc[df_for_plot['county_fips']==county,'date'][:-(r-1)],df_for_plot.loc[df_for_plot['county_fips']==county,method].round()[:-(r-1)],label='Train prediction',linewidth=2.0)#,color='forestgreen'
             plt.plot(df_for_plot.loc[df_for_plot['county_fips']==county,'date'][-r:],df_for_plot.loc[df_for_plot['county_fips']==county,method].round()[-r:],label='Test prediction',linewidth=2.0)#,color='dodgerblue'
             plt.plot(df_for_plot.loc[df_for_plot['county_fips']==county,'date'],df_for_plot.loc[df_for_plot['county_fips']==county,'Target'].round(),label='Real values',color='black',linewidth=2.0)
-#             if target_mode != 'cumulative' :
-#                 plt.plot(df_for_plot.loc[df_for_plot['county_fips']==county,'date'][-r:],df_for_plot.loc[df_for_plot['county_fips']==county,'Target'].round()[-(2*r):-r],'-.',color='gray',label='Naive prediction',linewidth=2.0)
+            # if target_mode != 'cumulative' :
+            #     plt.plot(df_for_plot.loc[df_for_plot['county_fips']==county,'date'][-r:],df_for_plot.loc[df_for_plot['county_fips']==county,'Target'][-(2*r):-r],'-.',color='gray',label='Naive prediction',linewidth=2.0)
             plt.xticks(rotation=65)
             fig.subplots_adjust(hspace=0.4)
             plt.ylabel('Number of deaths')
@@ -560,8 +560,6 @@ def real_prediction_plot(df,r,target_name,target_mode,best_h,maxHistory,spatial_
         plt.xlabel('Date')
         plt.savefig(address + str(method) + ' real_prediction_values.pdf')
         plt.close()
-
-
 
 ########################################################### get errors for each model in each h and c
 def get_errors(h, c, method, y_prediction, y_prediction_train, y_test_date, y_train_date, MASE_denominator, numberOfSelectedCounties, target_name, mode):
@@ -584,9 +582,9 @@ def get_errors(h, c, method, y_prediction, y_prediction_train, y_test_date, y_tr
         reverse_dates = cumulative_data['date of day t'].unique()[-(r+1):][::-1]
         for index in range(len(reverse_dates)):
             date=reverse_dates[index]
-            print(date)
+            # print(date)
             past_date=reverse_dates[index+1]
-            print(past_date)
+            # print(past_date)
             cumulative_data.loc[cumulative_data['date of day t']==date,'Target']=list(np.array(cumulative_data.loc[cumulative_data['date of day t']==date,'Target'])-np.array(cumulative_data.loc[cumulative_data['date of day t']==past_date,'Target']))
             cumulative_data.loc[cumulative_data['date of day t']==date,'prediction']=list(np.array(cumulative_data.loc[cumulative_data['date of day t']==date,'prediction'])-np.array(cumulative_data.loc[cumulative_data['date of day t']==past_date,'prediction']))
             if index == len(reverse_dates)-2:
@@ -600,7 +598,7 @@ def get_errors(h, c, method, y_prediction, y_prediction_train, y_test_date, y_tr
     if target_mode == 'logarithmic':
         y_test = np.array(np.exp(y_test)-1).reshape(-1)
         y_prediction = np.array(np.exp(y_prediction)-1).reshape(-1)
-        
+
 
     # if target mode is moving average we need to return the target variable to its original state
     if target_mode == 'weeklymovingaverage':
@@ -620,8 +618,7 @@ def get_errors(h, c, method, y_prediction, y_prediction_train, y_test_date, y_tr
             
         regular_real_predicted_target = regular_real_predicted_target.sort_values(by=['date of day t','county_fips'])
         regular_real_predicted_target=regular_real_predicted_target.tail((r+6)*numberOfSelectedCounties)
-#         print('regular_real_predicted_target')
-#         print(regular_real_predicted_target)
+
         dates = regular_real_predicted_target['date of day t'].unique()
         for index in range(len(dates)):
             ind=index+6
@@ -632,8 +629,6 @@ def get_errors(h, c, method, y_prediction, y_prediction_train, y_test_date, y_tr
                 regular_real_predicted_target.loc[regular_real_predicted_target['date of day t']==date,'prediction']=list(np.array(regular_real_predicted_target.loc[regular_real_predicted_target['date of day t']==date,'prediction'])-np.array(regular_real_predicted_target.loc[regular_real_predicted_target['date of day t']==past_date,'prediction']))
             if ind == len(dates)-1:
                 break
-#         print('regular_real_predicted_target')
-#         print(regular_real_predicted_target)
         y_test = np.array(regular_real_predicted_target.tail(r*numberOfSelectedCounties)['Target']).reshape(-1)
         y_prediction = np.array(regular_real_predicted_target.tail(r*numberOfSelectedCounties)['prediction']).reshape(-1)
         
@@ -655,18 +650,16 @@ def get_errors(h, c, method, y_prediction, y_prediction_train, y_test_date, y_tr
             
         regular_real_predicted_target = regular_real_predicted_target.sort_values(by=['date of day t','county_fips'])
         regular_real_predicted_target=regular_real_predicted_target.tail((r+1)*numberOfSelectedCounties)
-        print('regular_real_predicted_target before')
-        print(regular_real_predicted_target)
+        
         dates = regular_real_predicted_target['date of day t'].unique()
         for index in range(len(dates)):
             date=dates[index+1]
             past_date=dates[index]
-#             cumulative_data.loc[cumulative_data['date']==date,'Target']=list(np.array(cumulative_data.loc[cumulative_data['date']==date,'Target'])-np.array(cumulative_data.loc[cumulative_data['date']==past_date,'Target']))
+
             regular_real_predicted_target.loc[regular_real_predicted_target['date of day t']==date,'prediction']=list(np.array(regular_real_predicted_target.loc[regular_real_predicted_target['date of day t']==date,'prediction'])+np.array(regular_real_predicted_target.loc[regular_real_predicted_target['date of day t']==past_date,'prediction']))
             if index == len(dates)-2:
                 break
-        print('regular_real_predicted_target after')
-        print(regular_real_predicted_target)
+        
         y_test = np.array(regular_real_predicted_target.tail(r*numberOfSelectedCounties)['Target']).reshape(-1)
         y_prediction = np.array(regular_real_predicted_target.tail(r*numberOfSelectedCounties)['prediction']).reshape(-1)
             
@@ -762,6 +755,7 @@ def get_errors(h, c, method, y_prediction, y_prediction_train, y_test_date, y_tr
         sys.stdout = orig_stdout
         f.close()
     return meanAbsoluteError, percentageOfAbsoluteError, adj_r_squared, second_error, MASE
+
 
 
 ########################################################### push results to github
@@ -900,7 +894,6 @@ def main(maxHistory):
     minError = {method: {error: int(1e10) for error in error_names} for method in methods}
     best_h = {method: {error: 0 for error in error_names} for method in methods}
     best_c = {method: {error: 0 for error in error_names} for method in methods}
-
     # best_loss = {method: None for method in ['GBM', 'NN', 'MM_NN']}
     best_loss = {'GBM': 'poisson', 'MM_NN': 'poisson', 'NN': 'MeanAbsoluteError'}
 
@@ -939,7 +932,6 @@ def main(maxHistory):
         none_mixed_methods = ['GBM', 'GLM', 'KNN', 'NN']
         mixed_methods = ['MM_GLM', 'MM_NN']
 
-        
         df_for_prediction_plot = {method : None for method in methods}
         y_prediction = {}
         y_prediction_train = {}
@@ -962,7 +954,7 @@ def main(maxHistory):
             table_data.append([best_h[method]['MAPE'], best_c[method]['MAPE'],  round(meanAbsoluteError, 2),
                                 round(percentageOfAbsoluteError, 2), round(adj_r_squared, 2), round(second_error, 2), round(meanAbsoluteScaledError, 2)])
 
-#         push('a new table added')
+        # push('a new table added')
 
         for method in none_mixed_methods:
           prediction=list(y_prediction_train[method])+list(y_prediction[method])
@@ -1052,7 +1044,7 @@ def main(maxHistory):
 
         table_name = 'table_of_best_test_results'
         plot_table(table_data, columns_table_t, methods, table_name, mode='test')
-#         push('a new table added')
+        # push('a new table added')
 
         for method in mixed_methods:
           prediction=list(y_prediction_train[method])+list(y_prediction[method])
@@ -1079,18 +1071,21 @@ def main(maxHistory):
 
 
     #############################################################
-
+    
+    
     for h in history:
         data = makeHistoricalData(h, r, target_name, 'mrmr', spatial_mode, target_mode, './')
+        # pre-process and split the data, 'date's have dates info
         data = clean_data(data, numberOfSelectedCounties)
 
-        # pre-process and split the data, 'date's have dates info
+
         X_train_train_to_use = {method: None for method in methods}
         X_train_val_to_use = {method: None for method in methods}
         X_test_to_use = {method: None for method in methods}
         X_train_train, X_train_val, X_test, y_train_train_date, y_train_val_date, y_test_date = preprocess(data, 1)
 
         train_val_MASE_denominator[h], val_test_MASE_denominator[h], train_lag_MASE_denominator[h] = mase_denominator(r, h, target_name, target_mode, numberOfSelectedCounties, spatial_mode)
+
 
         for method in methods:
             X_train_train_to_use[method] = X_train_train.copy()
@@ -1113,7 +1108,7 @@ def main(maxHistory):
                         X_train_val_to_use[method][covar] = np.log((X_train_val_to_use[method][covar] + 1).astype(float))
                         X_test_to_use[method][covar] = np.log((X_test_to_use[method][covar] + 1).astype(float))
 
-      
+
         y_train_date = (pd.DataFrame(y_train_train_date).append(pd.DataFrame(y_train_val_date))).reset_index(drop=True)
         y_train_train = np.array(y_train_train_date['Target']).reshape(-1)
         y_train_val = np.array(y_train_val_date['Target']).reshape(-1)
@@ -1121,7 +1116,7 @@ def main(maxHistory):
         y_train = np.array((pd.DataFrame(y_train_train).append(pd.DataFrame(y_train_val))).reset_index(drop=True)).reshape(-1)
 
 
-        
+
 
         # find best loss
         if (h==1):
@@ -1129,17 +1124,17 @@ def main(maxHistory):
                                       y_train_train,y_train_val,None,None,data.columns.drop(['Target','date of day t','county_fips']),\
                                         numberOfCovariates,maxC)
 
-        
+
         covariates_list = []
         # covariates are sorted by their correlation with Target. We start from the first important covariate and
         # in each loop we add the next important one
         # the first covariate is Target, we start from the second one
         # initiate loom for parallel processing
 
-        
-        
+
+
         loom = ProcessLoom(max_runner_cap=len(base_data.columns) * len(none_mixed_methods) + 5)
-        
+
         indx_c = 0
         for c in covariates_names:  # iterate through sorted covariates
             indx_c += 1
@@ -1147,20 +1142,20 @@ def main(maxHistory):
             for covariate in data.columns:  # add all historical covariates of this covariate and create a feature
                 if c.split(' ')[0] in covariate:
                     covariates_list.append(covariate)
-            
+
             for method in none_mixed_methods:
                 X_train_train_temp = X_train_train_to_use[method][covariates_list]
                 X_train_val_temp = X_train_val_to_use[method][covariates_list]
-                
+
                 loom.add_function(parallel_run, [method, X_train_train_temp, X_train_val_temp, y_train_train, y_train_val, best_loss, indx_c])
-                
-              
+
+
             if indx_c == maxC:
                             break  
         # run the processes in parallel
 
         parallel_outputs['non_mixed'] = loom.execute()
-        
+
         ind = 0
         for c in range(1, numberOfCovariates + 1):
             for method in none_mixed_methods:
@@ -1168,7 +1163,7 @@ def main(maxHistory):
                 ind += 1
             if c == maxC:
               break
-            
+
         # save the entire session for each h and c
         filename = env_address + 'validation.out'
         my_shelf = shelve.open(filename, 'n')  # 'n' for new
@@ -1178,7 +1173,7 @@ def main(maxHistory):
             except:
                 print('ERROR shelving: {0}'.format(key))
         my_shelf.close()
-        
+
 
         # find best loss
         if h == 1 :
@@ -1202,7 +1197,7 @@ def main(maxHistory):
                                             y_prediction_train['KNN'][(h, c)], y_prediction_train['NN'][(h, c)]])
                 y_prediction_train_np = np.array(y_predictions_train).reshape(len(y_predictions_train), -1)
                 X_train_mixedModel = pd.DataFrame(y_prediction_train_np.transpose())
-            
+
 
                 loom.add_function(mixed_parallel_run, [mixed_method, X_train_mixedModel, X_test_mixedModel, y_train_train, y_train_val, best_loss])
             if c == maxC:
@@ -1292,8 +1287,8 @@ def main(maxHistory):
                 print('ERROR shelving: {0}'.format(key))
         my_shelf.close()
 
-#         # push the file of outputs
-#         push('logs of h=' + str(h) + ' added')
+        # push the file of outputs
+        push('logs of h=' + str(h) + ' added')
 
         # we run test if none of models have improved in curent h or if we passed half of maxhistory 
         if (number_of_improved_methods == 0) or (h == maxHistory//2) :###########################
@@ -1320,9 +1315,9 @@ def main(maxHistory):
     # mail the validation results
     selected_for_email = [validation_address]
     zip_file_name = 'validation results for h =' + str(maxHistory) + ' #counties=' + str(numberOfSelectedCountiesname)
-#     make_zip(selected_for_email, zip_file_name)
-#     send_email(zip_file_name + '.zip')
-#     push('plots added')
+    make_zip(selected_for_email, zip_file_name)
+    send_email(zip_file_name + '.zip')
+    # push('plots added')
     ################################################################################################################# test zone
     test_process(h, r, target_name,spatial_mode, target_mode,best_h,best_c,historical_X_train,\
                     historical_X_test, historical_y_train_date, historical_y_test_date, best_loss,\
@@ -1333,7 +1328,7 @@ def main(maxHistory):
 if __name__ == "__main__":
 
     begin = time.time()
-    maxHistory = 14
+    maxHistory = 2
     maxC = 100
     
     # make directories for saving the results
@@ -1350,9 +1345,9 @@ if __name__ == "__main__":
         os.makedirs(validation_address)
     if not os.path.exists(env_address):
         os.makedirs(env_address)
-#     push('new folders added')
+    # push('new folders added')
     models_to_log = ['NN', 'GLM', 'GBM'] # models we want to make the features logarithmic for them, we remove KNN
     main(maxHistory)
     end = time.time()
-#     push('final results added')
+    # push('final results added')
     print("The total time of execution in minutes: ", round((end - begin) / 60, 2))
