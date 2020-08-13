@@ -17,7 +17,7 @@ def makeHistoricalData(h, r, target, feature_selection, spatial_mode, target_mod
 
     independantOfTimeData = pd.read_csv(address + 'fixed-data.csv')
     timeDeapandantData = pd.read_csv(address + 'temporal-data.csv')
-
+    
     # impute missing values for tests in first days with min
     timeDeapandantData.loc[timeDeapandantData['daily-state-test']<0,'daily-state-test']=abs(timeDeapandantData.loc[timeDeapandantData['daily-state-test']<0,'daily-state-test'])
 
@@ -61,7 +61,8 @@ def makeHistoricalData(h, r, target, feature_selection, spatial_mode, target_mod
         timeDeapandantData=timeDeapandantData[~timeDeapandantData['county_fips'].isin(nullind)]
         independantOfTimeData=independantOfTimeData[~independantOfTimeData['county_fips'].isin(nullind)]
 
-
+    timeDeapandantData = timeDeapandantData.drop(['daily-state-test'],axis=1)
+    independantOfTimeData = independantOfTimeData.drop(['total_population'],axis=1)
     ##################################################################### cumulative mode
     
     
@@ -129,22 +130,14 @@ def makeHistoricalData(h, r, target, feature_selection, spatial_mode, target_mod
 
             return(weeklydata)
         timeDeapandantData=make_moving_weekly_average(timeDeapandantData)
-        
-        
-    ###################################################################### differential target mode   
-
-    if target_mode == 'differential': # make target differential
-        reverse_dates=timeDeapandantData['date'].unique()[::-1]
-        for index in range(len(reverse_dates)):
-            date=reverse_dates[index]
-            past_date=reverse_dates[index+1]
-            timeDeapandantData.loc[timeDeapandantData['date']==date,target]=list(np.array(timeDeapandantData.loc[timeDeapandantData['date']==date,target])-np.array(timeDeapandantData.loc[timeDeapandantData['date']==past_date,target]))
-            if index == len(reverse_dates)-2:
-                break
-        timeDeapandantData.loc[timeDeapandantData[target]<0,target]=0
-        
-    ##################################################################
+    ###################################################################### logarithmic target mode
     
+    
+    if target_mode == 'logarithmic': # make target logarithmic
+        timeDeapandantData[target] = np.log((timeDeapandantData[target] + 1).astype(float))
+    
+    ##################################################################
+
 
     allData = pd.merge(independantOfTimeData, timeDeapandantData, on='county_fips')
     allData = allData.sort_values(by=['date', 'county_fips'])
@@ -231,13 +224,6 @@ def makeHistoricalData(h, r, target, feature_selection, spatial_mode, target_mod
             result.rename(columns={i: i[:-2]}, inplace=True)
 
     result.dropna(inplace=True)
-    
-    ###################################################################### logarithmic target mode
-
-    if target_mode == 'logarithmic': # make target logarithmic
-        result['Target'] = np.log((result['Target'] + 1).astype(float))
-        
-    ######################################################################
 
     result=result.sort_values(by=['county_fips','date of day t']).reset_index(drop=True)
     totalNumberOfDays=len(result['date of day t'].unique())
