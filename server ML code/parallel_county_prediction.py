@@ -135,7 +135,7 @@ def preprocess(main_data, spatial_mode, validationFlag):
 ################################ MASE_denominator
 def mase_denominator(r, h, target_name, target_mode ,numberOfSelectedCounties, spatial_mode):
 
-    if target_mode = 'weeklyaverage':
+    if target_mode == 'weeklyaverage':
         data = makeHistoricalData(h, r, target_name, 'mrmr', spatial_mode, 'weeklyaverage', './')
     else:
         data = makeHistoricalData(h, r, target_name, 'mrmr', spatial_mode, 'regular', './')
