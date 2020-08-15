@@ -44,6 +44,7 @@ numberOfSelectedCounties = -1
 target_mode = 'weeklymovingaverage'
 spatial_mode = 'county'
 numberOfSelectedCountiesname = 1535
+push_flag = 0
 
 ######################################################### split data to train, val, test
 def splitData(numberOfCounties, main_data, target, spatial_mode, mode ):
@@ -851,16 +852,17 @@ def get_errors(h, c, method, y_prediction, y_prediction_train, y_test_date, y_tr
 
 ########################################################### push results to github
 def push(message):
-    try:
-        cmd.run("git pull", check=True, shell=True)
-        print("everything has been pulled")
-        cmd.run("git add .", check=True, shell=True)
-        cmd.run(f"git commit -m '{message}'", check=True, shell=True)
-        cmd.run("git push", check=True, shell=True)
-        print('pushed.')
+    if push_flag == 1:
+        try:
+            cmd.run("git pull", check=True, shell=True)
+            print("everything has been pulled")
+            cmd.run("git add .", check=True, shell=True)
+            cmd.run(f"git commit -m '{message}'", check=True, shell=True)
+            cmd.run("git push", check=True, shell=True)
+            print('pushed.')
 
-    except:
-        print('could not push')
+        except:
+            print('could not push')
 
 
 ########################################################### zip some of the results
