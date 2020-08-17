@@ -1318,14 +1318,14 @@ def validation_process(all_data,spatial_mode,covariates_names,best_loss,target_n
             if indx_c == maxC:
                 break
 
-            filename = env_address + 'validation.out'
-            my_shelf = shelve.open(filename, 'n')
-            for key in dir():
-                try:
-                    my_shelf[key] = locals()[key]
-                except:
-                    print('ERROR shelving: {0}'.format(key))
-            my_shelf.close()
+#             filename = env_address + 'validation.out'
+#             my_shelf = shelve.open(filename, 'n')
+#             for key in dir():
+#                 try:
+#                     my_shelf[key] = locals()[key]
+#                 except:
+#                     print('ERROR shelving: {0}'.format(key))
+#             my_shelf.close()
 
 #         # find best loss
 #         if h == 1 :
@@ -1360,14 +1360,14 @@ def validation_process(all_data,spatial_mode,covariates_names,best_loss,target_n
             if indx_c == maxC:
                 break
         
-            filename = env_address + 'validation.out'
-            my_shelf = shelve.open(filename, 'n')
-            for key in dir():
-                try:
-                    my_shelf[key] = locals()[key]
-                except:
-                    print('ERROR shelving: {0}'.format(key))
-            my_shelf.close()
+#             filename = env_address + 'validation.out'
+#             my_shelf = shelve.open(filename, 'n')
+#             for key in dir():
+#                 try:
+#                     my_shelf[key] = locals()[key]
+#                 except:
+#                     print('ERROR shelving: {0}'.format(key))
+#             my_shelf.close()
 
 
         return fips_X_train_train_to_use, fips_X_train_val_to_use ,fips_X_test_to_use ,\
