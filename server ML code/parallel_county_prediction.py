@@ -1327,11 +1327,11 @@ def validation_process(all_data,spatial_mode,covariates_names,best_loss,target_n
 #                     print('ERROR shelving: {0}'.format(key))
 #             my_shelf.close()
 
-        # find best loss
-        if h == 1 :
-          best_loss = update_best_loss('mixed_model', spatial_mode, county_fips,best_loss,None,None,y_train_train,\
-                    y_train_val,fips_y_prediction_train,fips_y_prediction,None,\
-                    numberOfCovariates,maxC)
+#         # find best loss
+#         if h == 1 :
+#           best_loss = update_best_loss('mixed_model', spatial_mode, county_fips,best_loss,None,None,y_train_train,\
+#                     y_train_val,fips_y_prediction_train,fips_y_prediction,None,\
+#                     numberOfCovariates,maxC)
 
 
         indx_c = 0
