@@ -1138,13 +1138,9 @@ def test_process(h, r, target_name,spatial_mode, target_mode,best_h,best_c,histo
         if parallel_output[index][0] != None:
           y_prediction[state_fips]['MM_GLM']=parallel_output[index][0][0]
           y_prediction_train[state_fips]['MM_GLM']=parallel_output[index][0][1]
-          print('MM_GLM',state_fips,'y_prediction',y_prediction[state_fips]['MM_GLM'].shape)
-          print('MM_GLM',state_fips,'y_prediction_train',y_prediction_train[state_fips]['MM_GLM'].shape)
         if parallel_output[index][1] != None:
           y_prediction[state_fips]['MM_NN']=parallel_output[index][1][0]
           y_prediction_train[state_fips]['MM_NN']=parallel_output[index][1][1]
-          print('MM_NN',state_fips,'y_prediction',y_prediction[state_fips]['MM_GLM'].shape)
-          print('MM_NN',state_fips,'y_prediction_train',y_prediction_train[state_fips]['MM_GLM'].shape)
 
     run_mixed_models_Pool.close()
     gc.collect()
