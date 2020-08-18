@@ -9,7 +9,7 @@ fixed-data.csv:
 				Total population of each county
 		female-percent:
 				percent of female residents in each county
-				source: https://data.ers.usda.gov/reports.aspx?ID=17829 (Data from census)
+				source: https://www2.census.gov/programs-surveys/popest/datasets/2010-2018/counties/asrh/cc-est2018-alldata.csv
 		area:
 				This is land area in Miles^2
 				source: https://www2.census.gov/library/publications/2011/compendia/usa-counties/excel/LND01.xls (Data from census)
@@ -38,8 +38,12 @@ fixed-data.csv:
 				gross domestic product per capita for each county (economic measure)
 				source: https://ssti.org/blog/useful-stats-10-year-changes-real-gdp-county-and-industry-2009-2018
 					https://www.bea.gov/data/gdp/gdp-county-metro-and-other-areas
+		number_of_houses:
+				source: https://www2.census.gov/programs-surveys/popest/tables/2010-2018/housing/totals/PEP_2018_PEPANNHU_counties.zip
 		houses_density:
 				Calculated as "number of houses" / "land area"
+		education_level:
+				source: https://www.ers.usda.gov/webdocs/DataFiles/48747/Education.xls?v=568.3
 		total_college_population:
 				Total number of students and staff of universities and colleges devided by total population in each county
 				source: https://nces.ed.gov/ipeds/use-the-data
