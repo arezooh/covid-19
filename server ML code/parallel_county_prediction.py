@@ -44,6 +44,7 @@ numberOfSelectedCounties = -1
 target_mode = 'weeklymovingaverage'
 spatial_mode = 'county'
 numberOfSelectedCountiesname = 1535
+push_flag = 0
 
 ######################################################### split data to train, val, test
 def splitData(numberOfCounties, main_data, target, spatial_mode, mode ):
@@ -134,7 +135,7 @@ def preprocess(main_data, spatial_mode, validationFlag):
 ################################ MASE_denominator
 def mase_denominator(r, h, target_name, target_mode ,numberOfSelectedCounties, spatial_mode):
 
-    if target_mode = 'weeklyaverage':
+    if target_mode == 'weeklyaverage':
         data = makeHistoricalData(h, r, target_name, 'mrmr', spatial_mode, 'weeklyaverage', './')
     else:
         data = makeHistoricalData(h, r, target_name, 'mrmr', spatial_mode, 'regular', './')
@@ -851,16 +852,17 @@ def get_errors(h, c, method, y_prediction, y_prediction_train, y_test_date, y_tr
 
 ########################################################### push results to github
 def push(message):
-    try:
-        cmd.run("git pull", check=True, shell=True)
-        print("everything has been pulled")
-        cmd.run("git add .", check=True, shell=True)
-        cmd.run(f"git commit -m '{message}'", check=True, shell=True)
-        cmd.run("git push", check=True, shell=True)
-        print('pushed.')
+    if push_flag == 1:
+        try:
+            cmd.run("git pull", check=True, shell=True)
+            print("everything has been pulled")
+            cmd.run("git add .", check=True, shell=True)
+            cmd.run(f"git commit -m '{message}'", check=True, shell=True)
+            cmd.run("git push", check=True, shell=True)
+            print('pushed.')
 
-    except:
-        print('could not push')
+        except:
+            print('could not push')
 
 
 ########################################################### zip some of the results
@@ -1325,11 +1327,11 @@ def validation_process(all_data,spatial_mode,covariates_names,best_loss,target_n
 #                     print('ERROR shelving: {0}'.format(key))
 #             my_shelf.close()
 
-        # find best loss
-        if h == 1 :
-          best_loss = update_best_loss('mixed_model', spatial_mode, county_fips,best_loss,None,None,y_train_train,\
-                    y_train_val,fips_y_prediction_train,fips_y_prediction,None,\
-                    numberOfCovariates,maxC)
+#         # find best loss
+#         if h == 1 :
+#           best_loss = update_best_loss('mixed_model', spatial_mode, county_fips,best_loss,None,None,y_train_train,\
+#                     y_train_val,fips_y_prediction_train,fips_y_prediction,None,\
+#                     numberOfCovariates,maxC)
 
 
         indx_c = 0
