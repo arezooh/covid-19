@@ -1,15 +1,14 @@
 import pandas as pd
 import numpy as np
 import datetime
-from sklearn.impute import SimpleImputer
 import time
-import multiprocessing
-from pexecute.process import ProcessLoom
+from sklearn.impute import SimpleImputer
 
 # h is the number of days before day (t)
 # r indicates how many days after day (t) --> target-day = day(t+r)
 # target could be number of deaths or number of confirmed 
 def makeHistoricalData(h, r, target, feature_selection, spatial_mode, target_mode, address):
+    
     ''' in this code when h is 1, it means there is no history and we have just one column for each covariate
     so when h is 0, we put h equal to 1, because when h is 0 that means there no history (as when h is 1) '''
     if h == 0:
@@ -40,6 +39,7 @@ def makeHistoricalData(h, r, target, feature_selection, spatial_mode, target_mod
         nullind=timeDeapandantData.loc[pd.isnull(timeDeapandantData[i]),'county_fips'].unique()
         timeDeapandantData=timeDeapandantData[~timeDeapandantData['county_fips'].isin(nullind)]
         independantOfTimeData=independantOfTimeData[~independantOfTimeData['county_fips'].isin(nullind)]
+
 
     ##################################################################### cumulative mode
     
@@ -123,6 +123,7 @@ def makeHistoricalData(h, r, target, feature_selection, spatial_mode, target_mod
         timeDeapandantData.loc[timeDeapandantData[target]<0,target]=0
         
     ##################################################################
+    
 
     allData = pd.merge(independantOfTimeData, timeDeapandantData, on='county_fips')
     allData = allData.sort_values(by=['date', 'county_fips'])
@@ -156,7 +157,6 @@ def makeHistoricalData(h, r, target, feature_selection, spatial_mode, target_mod
     else:
         ix = allData.corr().abs().sort_values(target, ascending=False).index
 
-    
     allData = allData.loc[:, ix]
     allData = pd.concat([allData, notNumericlData], axis=1)
 
@@ -166,7 +166,7 @@ def makeHistoricalData(h, r, target, feature_selection, spatial_mode, target_mod
     result = pd.DataFrame()  # we store historical data in this dataframe
     totalNumberOfCounties = len(allData['county_fips'].unique())
     totalNumberOfDays = len(allData['date'].unique())
-    
+
     # in this loop we make historical data
     for name in nameOfAllCovariates:
         # if covariate is time dependant
@@ -189,7 +189,7 @@ def makeHistoricalData(h, r, target, feature_selection, spatial_mode, target_mod
               temporalDataFrame = allData[[name]]
               temp = temporalDataFrame.head((totalNumberOfDays-h-r+1)*totalNumberOfCounties).copy().reset_index(drop=True)
               result = pd.concat([result, temp], axis=1)
-    
+
     # next 3 lines is for adding FIPS code to final dataframe
     temporalDataFrame = allData[['county_fips']]
     temp = temporalDataFrame.head((totalNumberOfDays-h-r+1)*totalNumberOfCounties).copy().reset_index(drop=True)
@@ -217,57 +217,34 @@ def makeHistoricalData(h, r, target, feature_selection, spatial_mode, target_mod
         result['Target'] = np.log((result['Target'] + 1).astype(float))
         
     ######################################################################
-    
+
     result=result.sort_values(by=['county_fips','date of day t']).reset_index(drop=True)
     totalNumberOfDays=len(result['date of day t'].unique())
-    totalNumberOfCounties=len(result['county_fips'].unique())
     county_end_index=0
     overall_non_zero_index=list()
-    Number_of_cpu = multiprocessing.cpu_count()
-    
-    # remove first days with zero confirmed (or death) from each county data
-    def zero_removing(data):
-        partial_non_zero_index = list()
-        for county_fips in data['county_fips'].unique():
-            county_data = data[data['county_fips']==county_fips]#.reset_index(drop=True)
-            county_end_index = county_data.index[-1]+1
+    for i in result['county_fips'].unique():
+        county_data = result[result['county_fips']==i]#.reset_index(drop=True)
+        county_end_index = county_end_index+len(result[result['county_fips']==i])
 
-            # we dont use counties with zero values for target variable in all history dates
-            if (county_data[target+' t'].sum()>0):
-                if h==1:
-                    # find first row index with non_zero values for target variable in all history dates when history length<7 
-                    first_non_zero_date_index = county_data[target+' t'].ne(0).idxmax()
-                elif h<7:
-                    # find first row index with non_zero values for target variable in all history dates when history length<7 
-                    first_non_zero_date_index = county_data[target+' t-'+str(h-1)].ne(0).idxmax()
-                else:
-                    # find first row index with non_zero values for target variable in 7 last days of history when history length>7 
-                    first_non_zero_date_index = county_data[target+' t'].ne(0).idxmax()+7
+        # we dont use counties with zero values for target variable in all history dates
+        if (county_data[target+' t'].sum()>0):
+            if h==1:
+                # find first row index with non_zero values for target variable in all history dates when history length<7 
+                first_non_zero_date_index = county_data[target+' t'].ne(0).idxmax()
+            elif h<7:
+                # find first row index with non_zero values for target variable in all history dates when history length<7 
+                first_non_zero_date_index = county_data[target+' t-'+str(h-1)].ne(0).idxmax()
+            else:
+                # find first row index with non_zero values for target variable in 7 last days of history when history length>7 
+                first_non_zero_date_index = county_data[target+' t'].ne(0).idxmax()+7
 
-                zero_removed_county_index=[i for i in range(first_non_zero_date_index,county_end_index)]
+            zero_removed_county_index=[i for i in range(first_non_zero_date_index,county_end_index)]
+            
+            # we choose r days for test and r days for validation so at least we must have r days for train -> 3*r
+            if len(zero_removed_county_index) >= 3*r:
+                    overall_non_zero_index = overall_non_zero_index + zero_removed_county_index
+   
 
-                # we choose r days for test and r days for validation so at least we must have r days for train -> 3*r
-                if len(zero_removed_county_index) >= 3*r:
-                    partial_non_zero_index += zero_removed_county_index
-        return partial_non_zero_index
-
-    # run zero removing process in parallel
-    # we divide counties by the number of cores and run function on the resulting chunks in parallel    
-    chunk_size = (totalNumberOfCounties//Number_of_cpu)+1
-    loom = ProcessLoom(max_runner_cap=Number_of_cpu)
-    
-    for i in range(Number_of_cpu):
-        begin = chunk_size*(i)
-        end = chunk_size*(i+1)
-        chunk_county_fips_list = result['county_fips'].unique()[begin:end]
-        chunk = result[result['county_fips'].isin(chunk_county_fips_list)]
-        # add the functions to the multiprocessing object, loom
-        loom.add_function(zero_removing, [chunk], {})
-    # run the processes in parallel
-    output = loom.execute()
-    
-    for i in range(Number_of_cpu):
-        overall_non_zero_index = overall_non_zero_index + output[i]['output']
     
     zero_removed_data=result.loc[overall_non_zero_index,:]
     result=result.reset_index()
@@ -276,6 +253,8 @@ def makeHistoricalData(h, r, target, feature_selection, spatial_mode, target_mod
     zero_removed_data=zero_removed_data.drop(['index'],axis=1)
     result = zero_removed_data
 
+
+    
     return result
 
 
