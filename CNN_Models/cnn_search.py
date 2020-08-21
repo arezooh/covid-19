@@ -491,7 +491,7 @@ def create_instances():
 
 ################################################################ split imageArray into train, validation and test
 
-def process_function(process_number, visible_dropout, NO_dense_layer, increase_filters):
+def process_function(visible_dropout, NO_dense_layer, increase_filters, process_number):
     log('Process {1} started | parameters {0}'.format((visible_dropout, NO_dense_layer, increase_filters), process_number))
 
     x_instances = load('x_' + _INSTANCES_FILENAME_)
@@ -590,6 +590,13 @@ def process_function(process_number, visible_dropout, NO_dense_layer, increase_f
 ################################################################ main
 
 if __name__ == "__main__":
+    # Check if instances are ready
+    if (os.path.exists('x_' + _INSTANCES_FILENAME_) and os.path.exists('y_' + _INSTANCES_FILENAME_)):
+        log('instances found')
+    else:
+        log('creating instances')
+        create_instances()
+
     processes = []
     parameters = []
     for i3 in range(len(p3)):
@@ -605,7 +612,7 @@ if __name__ == "__main__":
         log('Process number {0} starting'.format(i))
         processes[i].start()
 
-    # Wait till 1 processes done, then start next one
+    # Wait till 1 processes done, then start the next one
     for i in range(len(processes) - 8):
         processes[i].join()
         processes[i + 8].start()
