@@ -21,6 +21,16 @@ from numpy import array, zeros, save, load
 import multiprocessing
 from os import getpid
 
+import email
+import smtplib
+import ssl
+from email import encoders
+from email.mime.base import MIMEBase
+from email.mime.multipart import MIMEMultipart
+from email.mime.text import MIMEText
+import mimetypes
+import os
+
 ################################################################ Defines
 
 _CSV_Directory_ = ''
@@ -30,6 +40,8 @@ _GRID_INTERSECTION_FILENAME_ = './map_intersection_square.json'
 _COUNTIES_DATA_FIX_ = '../final data/full-fixed-data.csv'
 _COUNTIES_DATA_TEMPORAL_ = '../final data/full-temporal-data.csv'
 _CONUTIES_FIPS_ = './full-data-county-fips.csv'
+
+_NO_PARALLEL_PROCESS_ = 8
 
 ################################################################ Globals
 
@@ -43,6 +55,25 @@ countiesData_fix = {}
 
 x_normalizers = []
 y_normalizers = MinMaxScaler()
+
+gridIntersection = []
+countiesData_temporal = []
+countiesData_fix = []
+
+################################################################
+# We change 5 parameters to find best model (for now, we can't change number of blocks(NO_blocks))
+# input_size = [3, 5, 15, 25] where image size is 300*300
+# hidden_dropout = [0, 0.2, 0.3, 0.4]
+# visible_dropout = [0, 0.2, 0.3, 0.4]
+# NO_dense_layer = [1, 2, 3]
+# increase_filters = [0, 1]
+################################################################
+
+p1 = [3, 5, 15, 25]
+p2 = [0, 0.2, 0.3, 0.4]
+p3 = [0, 0.2, 0.3, 0.4]
+p4 = [1, 2, 3]
+p5 = [0, 1]
 
 ################################################################ Functions
 
@@ -347,174 +378,246 @@ def log(str):
     with open('log', 'a') as logFile:
         logFile.write('[{0}][{1}] {2}\n'.format(t, getpid(), str))
 
+def save_process_result(process_number, parameters, result):
+    t = datetime.datetime.now().isoformat()
+    with open('process{0}.txt'.format(process_number), 'a') as resultFile:
+        append_string = '[{0}][{1}]\n\t--model parameteres: {2}\n\t--result: MAE:{3}, MAPE:{4}, MASE:{5}\n'.format(t, getpid(), parameters, result[0], result[1], result[2])
+        resultFile.write(append_string)
+
+def send_result(process_number):
+    filename = 'process{0}.txt'.format(process_number)
+    send_email(filename)
+
+# From prediction.py file
+def send_email(*attachments):
+    subject = "Server results"
+    body = " "
+    sender_email = "covidserver1@gmail.com"
+    receiver_email = ["hadifazelinia78@gmail.com", "arezo.h1371@yahoo.com"]#
+    CC_email = ["p.ramazi@gmail.com"]#
+    password = "S.123456.S"
+
+    # Create a multipart message and set headers
+    message = MIMEMultipart()
+    message["From"] = sender_email
+    message["To"] = ','.join(receiver_email)#receiver_email
+    message["Subject"] = subject
+    message["CC"] = ','.join(CC_email) # Recommended for mass emails
+
+    # Add body to email
+    message.attach(MIMEText(body, "plain"))
+
+    # Add attachments
+    for file_name in attachments:
+            f = open(file_name, 'rb')
+            ctype, encoding = mimetypes.guess_type(file_name)
+            if ctype is None or encoding is not None:
+                ctype = 'application/octet-stream'
+            maintype, subtype = ctype.split('/', 1)
+            # in case of a text file
+            if maintype == 'text':
+                part = MIMEText(f.read(), _subtype=subtype)
+            # any other file
+            else:
+                part = MIMEBase(maintype, subtype)
+                part.set_payload(f.read())
+            encoders.encode_base64(part)
+            part.add_header('Content-Disposition', 'attachment; filename="%s"' % os.path.basename(file_name))
+            message.attach(part)
+            f.close()
+            text = message.as_string()
+
+    # Log in to server using secure context and send email
+    context = ssl.create_default_context()
+    with smtplib.SMTP_SSL("smtp.gmail.com", 465, context=context) as server:
+        server.login(sender_email, password)
+        server.sendmail(sender_email, receiver_email+CC_email , text)
+
 ################################################################ START
 
-log('START: loading data form files')
+def create_instances():
+    log('START: loading data form files')
 
-gridIntersection = loadIntersection(_GRID_INTERSECTION_FILENAME_)
-countiesData_temporal = loadCounties(_COUNTIES_DATA_TEMPORAL_)
-countiesData_fix = loadCounties(_COUNTIES_DATA_FIX_)
+    global gridIntersection, countiesData_temporal, countiesData_fix
 
-init_hashCounties()
-init_days()
+    gridIntersection = loadIntersection(_GRID_INTERSECTION_FILENAME_)
+    countiesData_temporal = loadCounties(_COUNTIES_DATA_TEMPORAL_)
+    countiesData_fix = loadCounties(_COUNTIES_DATA_FIX_)
 
-################################################################ creating image array(CNN input) ### Binary Search
+    init_hashCounties()
+    init_days()
 
-log('START: creating image')
+    ################################################################ creating image array(CNN input) ### Binary Search
 
-# each row on imageArray include image data on day i
-imageArray = []
+    log('START: creating image')
 
-for i in range(dayLen):
-    grid = []
-    for x in range(len(gridIntersection)):
-        gridRow = []
-        for y in range(len(gridIntersection[x])):
-            gridCell = calculateGridData(gridIntersection[x][y])
-            gridRow.append(gridCell)
-        grid.append(gridRow)
-    imageArray.append(grid)
+    # each row on imageArray include image data on day i
+    imageArray = []
 
-shape_imageArray = array(imageArray).shape
-imageArray = array(imageArray)
+    for i in range(dayLen):
+        grid = []
+        for x in range(len(gridIntersection)):
+            gridRow = []
+            for y in range(len(gridIntersection[x])):
+                gridCell = calculateGridData(gridIntersection[x][y])
+                gridRow.append(gridCell)
+            grid.append(gridRow)
+        imageArray.append(grid)
 
-################################################################ creating instances
+    shape_imageArray = array(imageArray).shape
+    imageArray = array(imageArray)
 
-log('START: creating instances')
+    ################################################################ creating instances
 
-# 6fix data, 4temporal data, 4D: number of instances, datas, grid row, grid column
-instance_shape = (dayLen - 28, shape_imageArray[1], shape_imageArray[2], 14 * 4 + 6)
-x_instances = zeros(instance_shape)
-y_instances = zeros((dayLen - 28, shape_imageArray[1], shape_imageArray[2]))
+    log('START: creating instances')
 
-for i in range(dayLen - 28):
-    for x in range(instance_shape[2]):
-        for y in range(instance_shape[3]):
-            features, result = parse_data_into_instance(imageArray[i:i+28, x, y, 0:10])
-            for j in range(len(features)):
-                x_instances[i][x][y][j] = features[j]
-                y_instances[i][x][y] = result
+    # 6fix data, 4temporal data, 4D: number of instances, datas, grid row, grid column
+    instance_shape = (dayLen - 28, shape_imageArray[1], shape_imageArray[2], 14 * 4 + 6)
+    x_instances = zeros(instance_shape)
+    y_instances = zeros((dayLen - 28, shape_imageArray[1], shape_imageArray[2]))
 
-log('START: saving instances into disk')
+    for i in range(dayLen - 28):
+        for x in range(instance_shape[2]):
+            for y in range(instance_shape[3]):
+                features, result = parse_data_into_instance(imageArray[i:i+28, x, y, 0:10])
+                for j in range(len(features)):
+                    x_instances[i][x][y][j] = features[j]
+                    y_instances[i][x][y] = result
 
-save('x_' + _INSTANCES_FILENAME_, x_instances)
-save('y_' + _INSTANCES_FILENAME_, y_instances)
+    log('START: saving instances into disk')
+
+    save('x_' + _INSTANCES_FILENAME_, x_instances)
+    save('y_' + _INSTANCES_FILENAME_, y_instances)
 
 ################################################################ split imageArray into train, validation and test
 
-log('START: spliting data into train, validation and test')
+def process_function(process_number, visible_dropout, NO_dense_layer, increase_filters):
+    log('Process {1} started | parameters {0}'.format((visible_dropout, NO_dense_layer, increase_filters), process_number))
 
-x_dataTrain = x_instances[:-42]
-y_dataTrain = y_instances[:-42]
+    x_instances = load('x_' + _INSTANCES_FILENAME_)
+    y_instances = load('y_' + _INSTANCES_FILENAME_)
+    instance_shape = x_instances.shape
 
-x_dataValidation = x_instances[-42:-21]
-y_dataValidation = y_instances[-42:-21]
+    log('START: spliting data into train, validation and test')
 
-x_dataTest = x_instances[-21:]
-y_dataTest = y_instances[-21:]
+    x_dataTrain = x_instances[:-42]
+    y_dataTrain = y_instances[:-42]
 
-# Clear memory
-gridIntersection.clear()
-countiesData_temporal.clear()
-countiesData_fix.clear()
+    x_dataValidation = x_instances[-42:-21]
+    y_dataValidation = y_instances[-42:-21]
 
-################################################################ normalize data
+    x_dataTest = x_instances[-21:]
+    y_dataTest = y_instances[-21:]
 
-log('START: normalizing data')
+    ################################################################ normalize data
 
-reshaped_x_dataTrain = x_dataTrain.reshape(x_dataTrain.shape[0] * instance_shape[1] * instance_shape[2], instance_shape[3])
-reshaped_y_dataTrain = y_dataTrain.reshape(y_dataTrain.shape[0] * instance_shape[1] * instance_shape[2], 1)
-reshaped_x_dataValidation = x_dataValidation.reshape(x_dataValidation.shape[0] * instance_shape[1] * instance_shape[2], instance_shape[3])
-reshaped_y_dataValidation = y_dataValidation.reshape(y_dataValidation.shape[0] * instance_shape[1] * instance_shape[2], 1)
-reshaped_x_dataTest = x_dataTest.reshape(x_dataTest.shape[0] * instance_shape[1] * instance_shape[2], instance_shape[3])
-reshaped_y_dataTest = y_dataTest.reshape(y_dataTest.shape[0] * instance_shape[1] * instance_shape[2], 1)
+    log('START: normalizing data')
 
-normal_x_dataTrain = zeros((x_dataTrain.shape[0], instance_shape[1], instance_shape[2], instance_shape[3]))
-normal_x_dataValidation = zeros((x_dataValidation.shape[0], instance_shape[1], instance_shape[2], instance_shape[3]))
-normal_x_dataTest = zeros((x_dataTest.shape[0], instance_shape[1], instance_shape[2], instance_shape[3]))
+    reshaped_x_dataTrain = x_dataTrain.reshape(x_dataTrain.shape[0] * instance_shape[1] * instance_shape[2], instance_shape[3])
+    reshaped_y_dataTrain = y_dataTrain.reshape(y_dataTrain.shape[0] * instance_shape[1] * instance_shape[2], 1)
+    reshaped_x_dataValidation = x_dataValidation.reshape(x_dataValidation.shape[0] * instance_shape[1] * instance_shape[2], instance_shape[3])
+    reshaped_y_dataValidation = y_dataValidation.reshape(y_dataValidation.shape[0] * instance_shape[1] * instance_shape[2], 1)
+    reshaped_x_dataTest = x_dataTest.reshape(x_dataTest.shape[0] * instance_shape[1] * instance_shape[2], instance_shape[3])
+    reshaped_y_dataTest = y_dataTest.reshape(y_dataTest.shape[0] * instance_shape[1] * instance_shape[2], 1)
 
-# Normal X_data
-for i in range(14*4 + 6):
-    obj = MinMaxScaler()
-    x_normalizers.append(obj)
+    normal_x_dataTrain = zeros((x_dataTrain.shape[0], instance_shape[1], instance_shape[2], instance_shape[3]))
+    normal_x_dataValidation = zeros((x_dataValidation.shape[0], instance_shape[1], instance_shape[2], instance_shape[3]))
+    normal_x_dataTest = zeros((x_dataTest.shape[0], instance_shape[1], instance_shape[2], instance_shape[3]))
 
-    tempTrain = reshaped_x_dataTrain[:, i:i+1]
-    tempTrain = obj.fit_transform(tempTrain)
-    tempTrain = tempTrain.reshape(x_dataTrain.shape[0], instance_shape[1], instance_shape[2])
+    # Normal X_data
+    for i in range(14*4 + 6):
+        obj = MinMaxScaler()
+        x_normalizers.append(obj)
 
-    tempValidation = reshaped_x_dataValidation[:, i:i+1]
-    tempValidation = obj.transform(tempValidation)
-    tempValidation = tempValidation.reshape(x_dataValidation.shape[0], instance_shape[1], instance_shape[2])
+        tempTrain = reshaped_x_dataTrain[:, i:i+1]
+        tempTrain = obj.fit_transform(tempTrain)
+        tempTrain = tempTrain.reshape(x_dataTrain.shape[0], instance_shape[1], instance_shape[2])
 
-    tempTest = reshaped_x_dataTest[:, i:i+1]
-    tempTest = obj.transform(tempTest)
-    tempTest = tempTest.reshape(x_dataTest.shape[0], instance_shape[1], instance_shape[2])
+        tempValidation = reshaped_x_dataValidation[:, i:i+1]
+        tempValidation = obj.transform(tempValidation)
+        tempValidation = tempValidation.reshape(x_dataValidation.shape[0], instance_shape[1], instance_shape[2])
 
-    for j in range(instance_shape[0]):
-        for k in range(instance_shape[1]):
-            for s in range(instance_shape[2]):
-                if (j < x_dataTrain.shape[0]):
-                    normal_x_dataTrain[j][k][s][i] = tempTrain[j][k][s]
-                if (j < x_dataValidation.shape[0]):
-                    normal_x_dataValidation[j][k][s][i] = tempValidation[j][k][s]
-                if (j < x_dataTest.shape[0]):
-                    normal_x_dataTest[j][k][s][i] = tempTest[j][k][s]
+        tempTest = reshaped_x_dataTest[:, i:i+1]
+        tempTest = obj.transform(tempTest)
+        tempTest = tempTest.reshape(x_dataTest.shape[0], instance_shape[1], instance_shape[2])
 
-# Normal Y_data
-normal_y_dataTrain = y_normalizers.fit_transform(reshaped_y_dataTrain)
-normal_y_dataTrain = normal_y_dataTrain.reshape(y_dataTrain.shape[0], instance_shape[1], instance_shape[2], 1)
+        for j in range(instance_shape[0]):
+            for k in range(instance_shape[1]):
+                for s in range(instance_shape[2]):
+                    if (j < x_dataTrain.shape[0]):
+                        normal_x_dataTrain[j][k][s][i] = tempTrain[j][k][s]
+                    if (j < x_dataValidation.shape[0]):
+                        normal_x_dataValidation[j][k][s][i] = tempValidation[j][k][s]
+                    if (j < x_dataTest.shape[0]):
+                        normal_x_dataTest[j][k][s][i] = tempTest[j][k][s]
 
-normal_y_dataValidation = y_normalizers.transform(reshaped_y_dataValidation)
-normal_y_dataValidation = normal_y_dataValidation.reshape(y_dataValidation.shape[0], instance_shape[1], instance_shape[2], 1)
+    # Normal Y_data
+    normal_y_dataTrain = y_normalizers.fit_transform(reshaped_y_dataTrain)
+    normal_y_dataTrain = normal_y_dataTrain.reshape(y_dataTrain.shape[0], instance_shape[1], instance_shape[2], 1)
 
-normal_y_dataTest = y_normalizers.transform(reshaped_y_dataTest)
-normal_y_dataTest = normal_y_dataTest.reshape(y_dataTest.shape[0], instance_shape[1], instance_shape[2], 1)                 
+    normal_y_dataValidation = y_normalizers.transform(reshaped_y_dataValidation)
+    normal_y_dataValidation = normal_y_dataValidation.reshape(y_dataValidation.shape[0], instance_shape[1], instance_shape[2], 1)
 
-################################################################ systematic search for find best model
-# We change 5 parameters to find best model (for now, we can't change number of blocks(NO_blocks))
-# input_size = [3, 5, 15, 25] where image size is 300*300
-# hidden_dropout = [0, 0.2, 0.3, 0.4]
-# visible_dropout = [0, 0.2, 0.3, 0.4]
+    normal_y_dataTest = y_normalizers.transform(reshaped_y_dataTest)
+    normal_y_dataTest = normal_y_dataTest.reshape(y_dataTest.shape[0], instance_shape[1], instance_shape[2], 1)
 
-# NO_dense_layer = [1, 2, 3]
-# increase_filters = [0, 1]
-################################################################
+    ################################################################ evaluate_models
 
-log('START: Phase of testing models started')
+    log('START: Phase of testing models started')
 
-p1 = [3, 5, 15, 25]
-p2 = [0, 0.2, 0.3, 0.4]
-p3 = [0, 0.2, 0.3, 0.4]
-p4 = [1, 2, 3]
-p5 = [0, 1]
+    for i in range(len(p1)):
+        for i2 in range(len(p2)):
+            input_size = p1[i]
+            hidden_dropout = p2[i2]
 
-def evaluate_model(input_size, hidden_dropout, visible_dropout, NO_dense_layer, increase_filters):
-    NO_blocks = floor(log2(input_size))
-    log('Process started | parameters {0}'.format((input_size, hidden_dropout, visible_dropout, NO_dense_layer, increase_filters)))
-    model = create_model(input_size, hidden_dropout, visible_dropout, NO_blocks, NO_dense_layer, increase_filters)
-    train_data(model, normal_x_dataTrain, normal_y_dataTrain, normal_x_dataValidation, normal_y_dataValidation, 2, input_size)
-    result = evaluate_data(model, normal_x_dataTest, normal_y_dataTest, input_size)
-    log('result, MAE:{0}, MAPE:{1}, MASE:{2}'.format(result[0], result[1], result[2]))
+            log('Model testing with parameters {0}'.format((input_size, hidden_dropout, visible_dropout, NO_dense_layer, increase_filters)))
 
-################################################################ main 
+            NO_blocks = floor(log2(input_size))
+            model = create_model(input_size, hidden_dropout, visible_dropout, NO_blocks, NO_dense_layer, increase_filters)
+            train_data(model, normal_x_dataTrain, normal_y_dataTrain, normal_x_dataValidation, normal_y_dataValidation, 2, input_size)
+            result = evaluate_data(model, normal_x_dataTest, normal_y_dataTest, input_size)
+
+            log('result, MAE:{0}, MAPE:{1}, MASE:{2}'.format(result[0], result[1], result[2]))
+            save_process_result(process_number, (input_size, hidden_dropout, visible_dropout, NO_dense_layer, increase_filters), result)
+
+    log('Process {0} done'.format(process_number))
+    try:
+        send_result(process_number)
+    except Exception as e:
+        log('sending result via email failed')
+        raise Exception(e)
+
+################################################################ main
 
 if __name__ == "__main__":
     processes = []
     parameters = []
-    for i in range(len(p1)):
-        for i2 in range(len(p2)):
-            for i3 in range(len(p3)):
-                for i4 in range(len(p4)):
-                    for i5 in range(len(p5)):
-                        parameters.append((p1[i], p2[i2], p3[i3], p4[i4], p5[i5]))
+    for i3 in range(len(p3)):
+        for i4 in range(len(p4)):
+            for i5 in range(len(p5)):
+                parameters.append((p3[i3], p4[i4], p5[i5]))
 
     for i in range(len(parameters)):
-        processes.append(multiprocessing.Process(target=evaluate_model, args=(parameters[i][0], parameters[i][1], parameters[i][2], parameters[i][3], parameters[i][4], )))
+        processes.append(multiprocessing.Process(target=process_function, args=(parameters[i][0], parameters[i][1], parameters[i][2], i, )))
+
+    # Start parallel processes
+    for i in range(_NO_PARALLEL_PROCESS_):
         log('Process number {0} starting'.format(i))
         processes[i].start()
 
-    for proc in processes:
-        proc.join()
+    # Wait till 1 processes done, then start next one
+    for i in range(len(processes) - 8):
+        processes[i].join()
+        processes[i + 8].start()
 
-    log('|--END OF MAIN CODE--|')
+    # Wait for all processes done
+    for i in range(_NO_PARALLEL_PROCESS_):
+        processes[len(processes) - 8 + i].join()
+
+    log('All processes done')
+    try:
+        send_email('log')
+    except Exception as e:
+        log('sending log file via email failed')
+        raise Exception(e)
                         
