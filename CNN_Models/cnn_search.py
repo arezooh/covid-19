@@ -37,9 +37,9 @@ _CSV_Directory_ = ''
 _JSON_Directory_ = ''
 _INSTANCES_FILENAME_ = 'instances.npy'
 _GRID_INTERSECTION_FILENAME_ = './map_intersection_square.json'
-_COUNTIES_DATA_FIX_ = '../final data/full-fixed-data.csv'
-_COUNTIES_DATA_TEMPORAL_ = '../final data/full-temporal-data.csv'
-_CONUTIES_FIPS_ = './full-data-county-fips.csv'
+_COUNTIES_DATA_FIX_ = '../csvFiles/full-fixed-data.csv'
+_COUNTIES_DATA_TEMPORAL_ = '../csvFiles/full-temporal-data.csv'
+_CONUTIES_FIPS_ = '../csvFiles/full-data-county-fips.csv'
 
 _NO_PARALLEL_PROCESS_ = 8
 
@@ -384,10 +384,6 @@ def save_process_result(process_number, parameters, result):
         append_string = '[{0}][{1}]\n\t--model parameteres: {2}\n\t--result: MAE:{3}, MAPE:{4}, MASE:{5}\n'.format(t, getpid(), parameters, result[0], result[1], result[2])
         resultFile.write(append_string)
 
-def send_result(process_number):
-    filename = 'process{0}.txt'.format(process_number)
-    send_email(filename)
-
 # From prediction.py file
 def send_email(*attachments):
     subject = "Server results"
@@ -432,6 +428,10 @@ def send_email(*attachments):
     with smtplib.SMTP_SSL("smtp.gmail.com", 465, context=context) as server:
         server.login(sender_email, password)
         server.sendmail(sender_email, receiver_email+CC_email , text)
+
+def send_result(process_number):
+    filename = 'process{0}.txt'.format(process_number)
+    send_email(filename)
 
 ################################################################ START
 
