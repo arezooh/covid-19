@@ -41,7 +41,7 @@ _COUNTIES_DATA_FIX_ = '../csvFiles/full-fixed-data.csv'
 _COUNTIES_DATA_TEMPORAL_ = '../csvFiles/full-temporal-data.csv'
 _CONUTIES_FIPS_ = '../csvFiles/full-data-county-fips.csv'
 
-_NO_PARALLEL_PROCESS_ = 8
+_NO_PARALLEL_PROCESS_ = 4
 
 ################################################################ Globals
 
@@ -151,7 +151,7 @@ def calculateIndex(target_fips, target_date):
     else:
         return (-1, target_countiesFromStart)
 
-def calculateGridData(counties):
+def calculateGridData(counties, i):
     global countiesData_temporal, countiesData_fix
     death = 0
     confirmed = 0
@@ -459,7 +459,7 @@ def create_instances():
         for x in range(len(gridIntersection)):
             gridRow = []
             for y in range(len(gridIntersection[x])):
-                gridCell = calculateGridData(gridIntersection[x][y])
+                gridCell = calculateGridData(gridIntersection[x][y], i)
                 gridRow.append(gridCell)
             grid.append(gridRow)
         imageArray.append(grid)
@@ -488,6 +488,14 @@ def create_instances():
 
     save('x_' + _INSTANCES_FILENAME_, x_instances)
     save('y_' + _INSTANCES_FILENAME_, y_instances)
+
+    # Clear memory
+    del x_instances
+    del y_instances
+    del gridIntersection
+    del countiesData_temporal
+    del countiesData_fix
+    del imageArray
 
 ################################################################ split imageArray into train, validation and test
 
@@ -560,6 +568,17 @@ def process_function(visible_dropout, NO_dense_layer, increase_filters, process_
 
     normal_y_dataTest = y_normalizers.transform(reshaped_y_dataTest)
     normal_y_dataTest = normal_y_dataTest.reshape(y_dataTest.shape[0], instance_shape[1], instance_shape[2], 1)
+
+    ################################################################ clearing memory
+
+    del x_instances
+    del y_instances
+    del x_dataTrain
+    del y_dataTrain
+    del x_dataValidation
+    del y_dataValidation
+    del x_dataTest
+    del y_dataTest
 
     ################################################################ evaluate_models
 
