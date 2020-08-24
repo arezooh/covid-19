@@ -367,7 +367,7 @@ def evaluate_data(model, x_test, y_test, input_size):
                 sum_MASE += abs(y_test_org[k][i][j][0] - x_test[k][i][j][-4])
 
     MAE = sum_MAE / (data_shape[0] * data_shape[1] * data_shape[2])
-    MAPE = (sum_MAPE / sum_org) / (data_shape[0] * data_shape[1] * data_shape[2])
+    MAPE = sum_MAPE / sum_org
     MASE = (sum_MASE / (data_shape[0] * data_shape[1] * data_shape[2])) / MAE
 
     return (MAE, MAPE, MASE)
