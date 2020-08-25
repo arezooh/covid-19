@@ -7,7 +7,7 @@ import datetime
 import time
 from datetime import date
 from datetime import timedelta
-from math import log2, floor
+from math import log2, floor, ceil
 
 import pandas as pd
 import tensorflow as tf
@@ -16,7 +16,7 @@ from tensorflow.keras.layers import Conv2D, Dense, BatchNormalization, MaxPoolin
 
 from sklearn.preprocessing import MinMaxScaler
 from sklearn.metrics import r2_score
-from numpy import array, zeros, save, load
+from numpy import array, zeros, save, load, copyto
 
 import multiprocessing
 from os import getpid
@@ -31,6 +31,8 @@ from email.mime.text import MIMEText
 import mimetypes
 import os
 
+import sharedmem
+
 ################################################################ Defines
 
 _CSV_Directory_ = ''
@@ -41,7 +43,8 @@ _COUNTIES_DATA_FIX_ = '../csvFiles/full-fixed-data.csv'
 _COUNTIES_DATA_TEMPORAL_ = '../csvFiles/full-temporal-data.csv'
 _CONUTIES_FIPS_ = '../csvFiles/full-data-county-fips.csv'
 
-_NO_PARALLEL_PROCESS_ = 4
+_NO_PARALLEL_PROCESSES_ = 4
+_NO_PROCESSES_ = 80
 
 ################################################################ Globals
 
@@ -360,7 +363,6 @@ def train_data(model, x_train, y_train, x_validation, y_validation, NO_epochs, i
 # This function extract windows with "input_size" size from image, evaluate model with the windows data
 def evaluate_data(model, x_test, y_test, input_size, normal_min, normal_max):
     data_shape = x_test.shape
-    y_shape = y_test.shape
     y_test_org = inverse_normal_y(y_test, normal_min, normal_max)
     
     padded_x = []
@@ -542,6 +544,15 @@ def inverse_normal_y(normal_data, min, max):
 
     return data
 
+# This function init number of parallel processes with number of cpu
+def init_no_processes():
+    global _NO_PARALLEL_PROCESSES_
+    _NO_PARALLEL_PROCESSES_ = multiprocessing.cpu_count()
+
+def save_last_process(process_number):
+    with open('last_process.txt', 'w') as fd:
+        fd.write(str(process_number))
+
 ################################################################ START
 
 def create_instances():
@@ -606,14 +617,62 @@ def create_instances():
     del countiesData_fix
     del imageArray
 
-################################################################ split imageArray into train, validation and test
+################################################################ evaluate_models
 
-def process_function(visible_dropout, NO_dense_layer, increase_filters, process_number):
-    log('Process {1} started | parameters {0}'.format((visible_dropout, NO_dense_layer, increase_filters), process_number))
+def process_function(parameters, 
+            process_number, 
+            start, 
+            end, 
+            normal_min, 
+            normal_max, 
+            shared_x_train, 
+            shared_y_train, 
+            shared_x_validation, 
+            shared_y_validation, 
+            shared_x_test, 
+            shared_y_test, 
+            shared_x_final_test, 
+            shared_y_final_test, ):
+    log('Process {1} started | parameters {0}'.format((start, end), process_number))
+
+    input_size = parameters[i][0]
+    hidden_dropout = parameters[i][1] 
+    visible_dropout = parameters[i][2] 
+    NO_dense_layer = parameters[i][3]
+    increase_filters = parameters[i][4]
+
+    log('Model testing with parameters {0}'.format((input_size, hidden_dropout, visible_dropout, NO_dense_layer, increase_filters)))
+    NO_blocks = floor(log2(input_size))
+    model = create_model(input_size, hidden_dropout, visible_dropout, NO_blocks, NO_dense_layer, increase_filters)
+    train_data(model, normal_x_dataTrain, normal_y_dataTrain, normal_x_dataValidation, normal_y_dataValidation, 2, input_size)
+    result = evaluate_data(model, normal_x_dataTest, normal_y_dataTest, input_size, normal_min, normal_max)
+
+    log('result, MAE:{0}, MAPE:{1}, MASE:{2}'.format(result[0], result[1], result[2]))
+    save_process_result(process_number, (input_size, hidden_dropout, visible_dropout, NO_dense_layer, increase_filters), result)
+
+    log('Process {0} done'.format(process_number))
+    try:
+        send_result(process_number)
+    except Exception as e:
+        log('sending result via email failed')
+        raise Exception(e)
+
+################################################################ main
+
+if __name__ == "__main__":
+    init_no_processes()
+
+    # Check if instances are ready
+    if (os.path.exists('x_' + _INSTANCES_FILENAME_) and os.path.exists('y_' + _INSTANCES_FILENAME_)):
+        log('instances found')
+    else:
+        log('creating instances')
+        create_instances()
 
     x_instances = load('x_' + _INSTANCES_FILENAME_)
     y_instances = load('y_' + _INSTANCES_FILENAME_)
-    instance_shape = x_instances.shape
+
+    ################################################################ split imageArray into train, validation and test
 
     log('START: spliting data into train, validation and test')
 
@@ -638,74 +697,90 @@ def process_function(visible_dropout, NO_dense_layer, increase_filters, process_
 
     ################################################################ clearing memory
 
-    del x_instances
-    del y_instances
-    del x_dataTrain
-    del y_dataTrain
-    del x_dataValidation
-    del y_dataValidation
-    del x_dataTest
-    del y_dataTest
+    del x_instances, x_dataTrain, x_dataValidation, x_dataTest, x_dataFinalTest
+    del y_instances, y_dataTrain, y_dataValidation, y_dataTest, y_dataFinalTest
 
-    ################################################################ evaluate_models
+    ################################################################ copy data to shared memory
+
+    shared_x_train = sharedmem.empty(normal_x_dataTrain.shap)
+    shared_y_train = sharedmem.empty(normal_y_dataTrain.shap)
+    shared_x_validation = sharedmem.empty(normal_x_dataValidation.shap)
+    shared_y_validation = sharedmem.empty(normal_y_dataValidation.shap)
+    shared_x_test = sharedmem.empty(normal_x_dataTest.shap)
+    shared_y_test = sharedmem.empty(normal_y_dataTest.shap)
+    shared_x_final_test = sharedmem.empty(normal_x_dataFinalTest.shap)
+    shared_y_final_test = sharedmem.empty(normal_y_dataFinalTest.shap)
+
+    copyto(shared_x_train, normal_x_dataTrain)
+    copyto(shared_y_train, normal_y_dataTrain)
+    copyto(shared_x_validation, normal_x_dataValidation)
+    copyto(shared_y_validation, normal_y_dataValidation)
+    copyto(shared_x_test, normal_x_dataTest)
+    copyto(shared_y_test, normal_y_dataTest)
+    copyto(shared_x_final_test, normal_x_dataFinalTest)
+    copyto(shared_y_final_test, normal_y_dataFinalTest)
+
+    ################################################################ clearing memory
+
+    del normal_x_dataTrain, normal_x_dataValidation, normal_x_dataTest, normal_x_dataFinalTest
+    del normal_y_dataTrain, normal_y_dataValidation, normal_y_dataTest, normal_y_dataFinalTest
 
     log('START: Phase of testing models started')
 
+    ################################################################ creating parameters
+
+    parameters = []
+
     for i in range(len(p1)):
         for i2 in range(len(p2)):
-            input_size = p1[i]
-            hidden_dropout = p2[i2]
+            for i3 in range(len(p3)):
+                for i4 in range(len(p4)):
+                    for i5 in range(len(p5)):
+                        parameters.append((p1[i], p2[i2], p3[i3], p4[i4], p5[i5]))
 
-            log('Model testing with parameters {0}'.format((input_size, hidden_dropout, visible_dropout, NO_dense_layer, increase_filters)))
-
-            NO_blocks = floor(log2(input_size))
-            model = create_model(input_size, hidden_dropout, visible_dropout, NO_blocks, NO_dense_layer, increase_filters)
-            train_data(model, normal_x_dataTrain, normal_y_dataTrain, normal_x_dataValidation, normal_y_dataValidation, 2, input_size)
-            result = evaluate_data(model, normal_x_dataTest, normal_y_dataTest, input_size)
-
-            log('result, MAE:{0}, MAPE:{1}, MASE:{2}'.format(result[0], result[1], result[2]))
-            save_process_result(process_number, (input_size, hidden_dropout, visible_dropout, NO_dense_layer, increase_filters), result)
-
-    log('Process {0} done'.format(process_number))
-    try:
-        send_result(process_number)
-    except Exception as e:
-        log('sending result via email failed')
-        raise Exception(e)
-
-################################################################ main
-
-if __name__ == "__main__":
-    # Check if instances are ready
-    if (os.path.exists('x_' + _INSTANCES_FILENAME_) and os.path.exists('y_' + _INSTANCES_FILENAME_)):
-        log('instances found')
-    else:
-        log('creating instances')
-        create_instances()
+    ################################################################ creating processes
 
     processes = []
-    parameters = []
-    for i3 in range(len(p3)):
-        for i4 in range(len(p4)):
-            for i5 in range(len(p5)):
-                parameters.append((p3[i3], p4[i4], p5[i5]))
+    model_per_process = ceil(len(parameters) / _NO_PROCESSES_)
 
-    for i in range(len(parameters)):
-        processes.append(multiprocessing.Process(target=process_function, args=(parameters[i][0], parameters[i][1], parameters[i][2], i, )))
+    for i in range(_NO_PROCESSES_):
+        processes.append(multiprocessing.Process(target=process_function, args=(
+            parameters, 
+            i, 
+            i * model_per_process, 
+            min((i + 1) * model_per_process, len(parameters)), 
+            normal_min, 
+            normal_max, 
+            shared_x_train, 
+            shared_y_train, 
+            shared_x_validation, 
+            shared_y_validation, 
+            shared_x_test, 
+            shared_y_test, 
+            shared_x_final_test, 
+            shared_y_final_test, )))
+
+    start_process = 0
+    try:
+        with open('last_process.txt', 'r') as fd:
+            start_process = int(fd.read(), 10) + 1
+    except:
+        start_process = 0
 
     # Start parallel processes
-    for i in range(_NO_PARALLEL_PROCESS_):
+    for i in range(_NO_PARALLEL_PROCESSES_):
         log('Process number {0} starting'.format(i))
-        processes[i].start()
+        processes[i + start_process].start()
 
-    # Wait till 1 processes done, then start the next one
-    for i in range(len(processes) - 8):
-        processes[i].join()
-        processes[i + 8].start()
+    # Wait till 1 process done, then start the next one
+    for i in range(len(processes) - start_process - _NO_PARALLEL_PROCESSES_):
+        processes[i + start_process].join()
+        save_last_process(i + start_process)
+        processes[i + start_process + _NO_PARALLEL_PROCESSES_].start()
 
     # Wait for all processes done
-    for i in range(_NO_PARALLEL_PROCESS_):
-        processes[len(processes) - 8 + i].join()
+    for i in range(_NO_PARALLEL_PROCESSES_):
+        processes[len(processes) - _NO_PARALLEL_PROCESSES_ + i].join()
 
     log('All processes done')
     try:
@@ -713,4 +788,3 @@ if __name__ == "__main__":
     except Exception as e:
         log('sending log file via email failed')
         raise Exception(e)
-                        
