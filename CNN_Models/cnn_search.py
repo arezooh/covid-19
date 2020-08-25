@@ -368,7 +368,7 @@ def evaluate_data(model, x_test, y_test, input_size):
 
     MAE = sum_MAE / (data_shape[0] * data_shape[1] * data_shape[2])
     MAPE = sum_MAPE / sum_org
-    MASE = (sum_MASE / (data_shape[0] * data_shape[1] * data_shape[2])) / MAE
+    MASE = MAE / (sum_MASE / (data_shape[0] * data_shape[1] * data_shape[2]))
 
     return (MAE, MAPE, MASE)
 
@@ -432,6 +432,16 @@ def send_email(*attachments):
 def send_result(process_number):
     filename = 'process{0}.txt'.format(process_number)
     send_email(filename)
+
+# get a 4D numpy array and normilize it
+def normal_fit_transfrom(data):
+    data_shape = data.shape
+
+def normal_transform(data, min, max):
+    data_shape = data.shape
+
+def normal_inverse_transform(data, min, max):
+    data_shape = data.shape
 
 ################################################################ START
 
