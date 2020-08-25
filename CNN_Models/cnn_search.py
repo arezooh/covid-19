@@ -53,9 +53,6 @@ hashCounties = [-1] * 78031     #78030 is biggest county fips
 countiesData_temporal = {}
 countiesData_fix = {}
 
-x_normalizers = []
-y_normalizers = MinMaxScaler()
-
 gridIntersection = []
 countiesData_temporal = []
 countiesData_fix = []
@@ -361,12 +358,10 @@ def train_data(model, x_train, y_train, x_validation, y_validation, NO_epochs, i
             model.fit(subX_trian, subY_train, batch_size=32, epochs=NO_epochs, verbose=1, validation_data=(subX_validation, subY_validation))
 
 # This function extract windows with "input_size" size from image, evaluate model with the windows data
-def evaluate_data(model, x_test, y_test, input_size):
-    global x_normalizers
+def evaluate_data(model, x_test, y_test, input_size, normal_min, normal_max):
     data_shape = x_test.shape
     y_shape = y_test.shape
-    y_test_org = y_normalizers.inverse_transform(y_test.reshape(y_shape[0] * y_shape[1] * y_shape[2], y_shape[3]))
-    y_test_org = y_test_org.reshape(y_shape[0], y_shape[1], y_shape[2], y_shape[3])
+    y_test_org = inverse_normal_y(y_test, normal_min, normal_max)
     
     padded_x = []
     padded_y = []
@@ -389,8 +384,7 @@ def evaluate_data(model, x_test, y_test, input_size):
 
             subY_predict_normal = model.predict(subX_test)
             pred_shape = subY_predict_normal.shape
-            subY_predict = y_normalizers.inverse_transform(subY_predict_normal.reshape(pred_shape[0] * pred_shape[1] * pred_shape[2], pred_shape[3]))
-            subY_predict = subY_predict.reshape(pred_shape[0], pred_shape[1], pred_shape[2], pred_shape[3])
+            subY_predict = inverse_normal_y(subY_predict_normal, normal_min, normal_max)
 
             for k in range(pred_shape[0]):
                 sum_org += y_test_org[k][i][j][0]
@@ -639,53 +633,8 @@ def process_function(visible_dropout, NO_dense_layer, increase_filters, process_
 
     log('START: normalizing data')
 
-    reshaped_x_dataTrain = x_dataTrain.reshape(x_dataTrain.shape[0] * instance_shape[1] * instance_shape[2], instance_shape[3])
-    reshaped_y_dataTrain = y_dataTrain.reshape(y_dataTrain.shape[0] * instance_shape[1] * instance_shape[2], 1)
-    reshaped_x_dataValidation = x_dataValidation.reshape(x_dataValidation.shape[0] * instance_shape[1] * instance_shape[2], instance_shape[3])
-    reshaped_y_dataValidation = y_dataValidation.reshape(y_dataValidation.shape[0] * instance_shape[1] * instance_shape[2], 1)
-    reshaped_x_dataTest = x_dataTest.reshape(x_dataTest.shape[0] * instance_shape[1] * instance_shape[2], instance_shape[3])
-    reshaped_y_dataTest = y_dataTest.reshape(y_dataTest.shape[0] * instance_shape[1] * instance_shape[2], 1)
-
-    normal_x_dataTrain = zeros((x_dataTrain.shape[0], instance_shape[1], instance_shape[2], instance_shape[3]))
-    normal_x_dataValidation = zeros((x_dataValidation.shape[0], instance_shape[1], instance_shape[2], instance_shape[3]))
-    normal_x_dataTest = zeros((x_dataTest.shape[0], instance_shape[1], instance_shape[2], instance_shape[3]))
-
-    # Normal X_data
-    for i in range(14*4 + 6):
-        obj = MinMaxScaler()
-        x_normalizers.append(obj)
-
-        tempTrain = reshaped_x_dataTrain[:, i:i+1]
-        tempTrain = obj.fit_transform(tempTrain)
-        tempTrain = tempTrain.reshape(x_dataTrain.shape[0], instance_shape[1], instance_shape[2])
-
-        tempValidation = reshaped_x_dataValidation[:, i:i+1]
-        tempValidation = obj.transform(tempValidation)
-        tempValidation = tempValidation.reshape(x_dataValidation.shape[0], instance_shape[1], instance_shape[2])
-
-        tempTest = reshaped_x_dataTest[:, i:i+1]
-        tempTest = obj.transform(tempTest)
-        tempTest = tempTest.reshape(x_dataTest.shape[0], instance_shape[1], instance_shape[2])
-
-        for j in range(instance_shape[0]):
-            for k in range(instance_shape[1]):
-                for s in range(instance_shape[2]):
-                    if (j < x_dataTrain.shape[0]):
-                        normal_x_dataTrain[j][k][s][i] = tempTrain[j][k][s]
-                    if (j < x_dataValidation.shape[0]):
-                        normal_x_dataValidation[j][k][s][i] = tempValidation[j][k][s]
-                    if (j < x_dataTest.shape[0]):
-                        normal_x_dataTest[j][k][s][i] = tempTest[j][k][s]
-
-    # Normal Y_data
-    normal_y_dataTrain = y_normalizers.fit_transform(reshaped_y_dataTrain)
-    normal_y_dataTrain = normal_y_dataTrain.reshape(y_dataTrain.shape[0], instance_shape[1], instance_shape[2], 1)
-
-    normal_y_dataValidation = y_normalizers.transform(reshaped_y_dataValidation)
-    normal_y_dataValidation = normal_y_dataValidation.reshape(y_dataValidation.shape[0], instance_shape[1], instance_shape[2], 1)
-
-    normal_y_dataTest = y_normalizers.transform(reshaped_y_dataTest)
-    normal_y_dataTest = normal_y_dataTest.reshape(y_dataTest.shape[0], instance_shape[1], instance_shape[2], 1)
+    normal_x_dataTrain, normal_x_dataValidation, normal_x_dataTest, normal_x_dataFinalTest = normal_x(x_dataTrain, x_dataValidation, x_dataTest, x_dataFinalTest)
+    normal_y_dataTrain, normal_y_dataValidation, normal_y_dataTest, normal_y_dataFinalTest, normal_min, normal_max = normal_y(y_dataTrain, y_dataValidation, y_dataTest, y_dataFinalTest)
 
     ################################################################ clearing memory
 
