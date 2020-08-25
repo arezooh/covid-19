@@ -75,6 +75,38 @@ p3 = [0, 0.2, 0.3, 0.4]
 p4 = [1, 2, 3]
 p5 = [0, 1]
 
+################################################################ Classes
+
+class normalizer:
+
+    def __init__(self):
+        self.min = -1
+        self.max = -1
+
+    def update(self, value):
+        if self.min == -1 and self.max == -1:
+            self.min = value
+            self.max = value
+
+        elif value < self.min:
+            self.min = value
+
+        elif value > self.max:
+            self.max = value
+
+    def normal(self, value):
+        return (value - self.min) / (self.max - self.min)
+
+    def get_min_max(self):
+        return (self.min, self.max)
+
+    def set_min_max(self, min, max):
+        self.min = min
+        self.max = max
+
+    def inverse_normal(self, value):
+        return (value * (self.max - self.min)) + self.min
+
 ################################################################ Functions
 
 def loadIntersection(jsonFilename):
@@ -293,13 +325,13 @@ def pad_data(data, input_size):
     n = input_size // 2
 
     padded_data = list(data)
-    for j in range(n):
+    for _ in range(n):
         padded_data.insert(0, padded_data[0])
         padded_data.append(padded_data[-1])
 
     for i in range(len(padded_data)):
         padded_data[i] = list(padded_data[i])
-        for j in range(n):
+        for _ in range(n):
             padded_data[i].insert(0, padded_data[i][0])
             padded_data[i].append(padded_data[i][-1])
     return array(padded_data)
@@ -433,15 +465,88 @@ def send_result(process_number):
     filename = 'process{0}.txt'.format(process_number)
     send_email(filename)
 
-# get a 4D numpy array and normilize it
-def normal_fit_transfrom(data):
-    data_shape = data.shape
+# get a 4D numpy array and normalize it
+def normal_x(train, validation, test, final_test):
+    data_shape = train.shape
+    no_validation = validation.shape[0]
+    no_test = test.shape[0]
+    no_final_test = test.shape[0]
 
-def normal_transform(data, min, max):
-    data_shape = data.shape
+    normalizers = []
+    for _ in range(data_shape[3]):
+        normalizers.append(normalizer())
 
-def normal_inverse_transform(data, min, max):
-    data_shape = data.shape
+    for i in range(data_shape[0]):
+        for j in range(data_shape[1]):
+            for a in range(data_shape[2]):
+                for b in range(data_shape[3]):
+                    normalizers[b].update(train[i][j][a][b])
+
+    normal_train = zeros((data_shape[0], data_shape[1], data_shape[2], data_shape[3]))
+    normal_validation = zeros((no_validation[0], data_shape[1], data_shape[2], data_shape[3]))
+    normal_test = zeros((no_test[0], data_shape[1], data_shape[2], data_shape[3]))
+    normal_final_test = zeros((no_final_test[0], data_shape[1], data_shape[2], data_shape[3]))
+
+    for i in range(data_shape[0]):
+        for j in range(data_shape[1]):
+            for a in range(data_shape[2]):
+                for b in range(data_shape[3]):
+                    normal_train[i][j][a][b] = normalizers[b].normal(train[i][j][a][b])
+                    if (i < no_validation):
+                        normal_validation[i][j][a][b] = normalizers[b].normal(validation[i][j][a][b])
+                    if (i < no_test):
+                        normal_test[i][j][a][b] = normalizers[b].normal(test[i][j][a][b])
+                    if (i < no_final_test):
+                        normal_final_test[i][j][a][b] = normalizers[b].normal(final_test[i][j][a][b])
+
+    return (normal_train, normal_validation, normal_test, normal_final_test)
+
+def normal_y(train, validation, test, final_test):
+    data_shape = train.shape
+    no_validation = validation.shape[0]
+    no_test = test.shape[0]
+    no_final_test = test.shape[0]
+
+    obj_normalizer = normalizer()
+    
+    for i in range(data_shape[0]):
+        for j in range(data_shape[1]):
+            for a in range(data_shape[2]):
+                obj_normalizer.update(train[i][j][a])
+
+    normal_train = zeros((data_shape[0], data_shape[1], data_shape[2], 1))
+    normal_validation = zeros((no_validation[0], data_shape[1], data_shape[2], 1))
+    normal_test = zeros((no_test[0], data_shape[1], data_shape[2], 1))
+    normal_final_test = zeros((no_final_test[0], data_shape[1], data_shape[2], 1))
+
+    for i in range(data_shape[0]):
+        for j in range(data_shape[1]):
+            for a in range(data_shape[2]):
+                normal_train[i][j][a][0] = obj_normalizer.normal(train[i][j][a])
+                if (i < no_validation):
+                    normal_validation[i][j][a][0] = obj_normalizer.normal(validation[i][j][a])
+                if (i < no_test):
+                    normal_test[i][j][a][0] = obj_normalizer.normal(test[i][j][a])
+                if (i < no_final_test):
+                    normal_final_test[i][j][a][0] = obj_normalizer.normal(final_test[i][j][a])
+
+    return (normal_train, normal_validation, normal_test, normal_final_test, min, max)
+
+def inverse_normal_y(normal_data, min, max):
+    data_shape = normal_data.shape
+
+    obj_normalizer = normalizer()
+    obj_normalizer.set_min_max(min, max)
+
+    data = zeros(data_shape)
+
+    for i in range(data_shape[0]):
+        for j in range(data_shape[1]):
+            for a in range(data_shape[2]):
+                for b in range(data_shape[3]):
+                    data[i][j][a][b] = obj_normalizer.inverse_normal(normal_data[i][j][a][b])
+
+    return data
 
 ################################################################ START
 
@@ -518,14 +623,17 @@ def process_function(visible_dropout, NO_dense_layer, increase_filters, process_
 
     log('START: spliting data into train, validation and test')
 
-    x_dataTrain = x_instances[:-42]
-    y_dataTrain = y_instances[:-42]
+    x_dataTrain = x_instances[:-63]
+    y_dataTrain = y_instances[:-63]
 
-    x_dataValidation = x_instances[-42:-21]
-    y_dataValidation = y_instances[-42:-21]
+    x_dataValidation = x_instances[-63:-42]
+    y_dataValidation = y_instances[-63:-42]
 
-    x_dataTest = x_instances[-21:]
-    y_dataTest = y_instances[-21:]
+    x_dataTest = x_instances[-42:-21]
+    y_dataTest = y_instances[-42:-21]
+
+    x_dataFinalTest = x_instances[-21:]
+    y_dataFinalTest = y_instances[-21:]
 
     ################################################################ normalize data
 
