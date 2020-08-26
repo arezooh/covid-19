@@ -475,9 +475,21 @@ def send_email(*attachments):
         server.login(sender_email, password)
         server.sendmail(sender_email, receiver_email+CC_email , text)
 
-def send_result(process_number):
-    filename = 'process{0}.txt'.format(process_number)
-    send_email(filename)
+def send_result(process_numbers):
+    for process_number in process_numbers:
+        try:
+            filename = 'process{0}.txt'.format(process_number)
+            send_email(filename)
+        except Exception as e:
+            log('sending result of process {0} via email failed'.format(process_number))
+            raise Exception(e)
+
+def send_log():
+    try:
+        send_email('log')
+    except Exception as e:
+        log('sending log file via email failed')
+        raise Exception(e)
 
 # get a 4D numpy array and normalize it
 def normal_x(train, validation, test, final_test):
@@ -566,6 +578,7 @@ def inverse_normal_y(normal_data, min, max):
 def init_no_processes():
     global _NO_PARALLEL_PROCESSES_
     _NO_PARALLEL_PROCESSES_ = multiprocessing.cpu_count()
+    log('_NO_PARALLEL_PROCESSES_ set to {0}'.format(_NO_PARALLEL_PROCESSES_))
 
 def save_last_process(process_number):
     with open('last_process.txt', 'w') as fd:
@@ -686,11 +699,6 @@ def process_function(parameters,
 
     log('Process {0} done'.format(process_number))
     save_best_result(process_number, parameters[pixel_best_model], pixel_best_result, parameters[country_best_model], country_best_result)
-    try:
-        send_result(process_number)
-    except Exception as e:
-        log('sending result via email failed')
-        raise Exception(e)
 
 ################################################################ main
 
@@ -813,13 +821,12 @@ if __name__ == "__main__":
         save_last_process(i + start_process)
         processes[i + start_process + _NO_PARALLEL_PROCESSES_].start()
 
+        if ((i + start_process) % 20 == 0 and i != 0):
+            send_result(range(max(start_process, i + start_process - 20), i + start_process))
+
     # Wait for all processes done
     for i in range(_NO_PARALLEL_PROCESSES_):
         processes[len(processes) - _NO_PARALLEL_PROCESSES_ + i].join()
 
     log('All processes done')
-    try:
-        send_email('log')
-    except Exception as e:
-        log('sending log file via email failed')
-        raise Exception(e)
+    send_log()
