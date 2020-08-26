@@ -418,9 +418,17 @@ def save_process_result(process_number, parameters, result):
     t = datetime.datetime.now().isoformat()
     with open('process{0}.txt'.format(process_number), 'a') as resultFile:
         str_parameters = '[{0}][{1}]\n\t--model parameters: {2}\n\t'.format(t, getpid(), parameters)
-        str_result_pixel = '--result for Pixels: MAE:{3}, MAPE:{4}, MASE:{5}\n\t'.format(result[0], result[1], result[2]) 
+        str_result_pixel = '--result for Pixels: MAE:{0}, MAPE:{1}, MASE:{2}\n\t'.format(result[0], result[1], result[2]) 
         str_result_country = '--result for Country, MAE:{0}, MAPE:{1}, MASE:{2}\n'.format(result[3], result[4], result[5])
         resultFile.write(str_parameters + str_result_pixel + str_result_country)
+
+def save_best_result(process_number, parameters_pixel, result_pixel, parameters_country, result_country):
+    with open('process{0}.txt'.format(process_number), 'a') as resultFile:
+        str_parameters_pixel = 'Best Pixel result\n\t--model parameters: {0}\n\t'.format(parameters)
+        str_result_pixel = '--result for Pixels: MAE:{0}, MAPE:{1}, MASE:{2}\n\t'.format(result_pixel[0], result_pixel[1], result_pixel[2]) 
+        str_parameters_country = 'Best Country result\n\t--model parameters: {0}\n\t'.format(parameters)
+        str_result_country = '--result for Country, MAE:{0}, MAPE:{1}, MASE:{2}\n'.format(result_country[0], result_country[1], result_country[2]) 
+        resultFile.write(str_parameters_pixel + str_result_pixel + str_parameters_country + str_result_country)
 
 # From prediction.py file
 def send_email(*attachments):
@@ -645,6 +653,12 @@ def process_function(parameters,
             shared_y_final_test, ):
     log('Process {1} started | parameters {0}'.format((start, end), process_number))
 
+    pixel_best_model = -1
+    pixel_best_result = (-1, -1, -1)
+
+    country_best_model = -1
+    country_best_result = (-1, -1, -1)
+
     for i in range(start, end):
         input_size = parameters[i][0]
         hidden_dropout = parameters[i][1] 
@@ -662,7 +676,16 @@ def process_function(parameters,
         log('result for Country, MAE:{0}, MAPE:{1}, MASE:{2}'.format(result[3], result[4], result[5]))
         save_process_result(process_number, (input_size, hidden_dropout, visible_dropout, NO_dense_layer, increase_filters), result)
 
+        if (pixel_best_model == -1 or result[2] < pixel_best_result[2]):
+            pixel_best_model = i
+            pixel_best_result = (result[0], result[1], result[2])
+
+        if (country_best_model == -1 or result[5] < country_best_result[2]):
+            country_best_model = i
+            country_best_result = (result[3], result[4], result[5])
+
     log('Process {0} done'.format(process_number))
+    save_best_result(process_number, parameters[pixel_best_model], pixel_best_result, parameters[country_best_model], country_best_result)
     try:
         send_result(process_number)
     except Exception as e:
