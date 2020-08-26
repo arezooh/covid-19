@@ -376,6 +376,8 @@ def evaluate_data(model, x_test, y_test, input_size, normal_min, normal_max):
     y_test = array(padded_y)
 
     sum_org = 0
+    sum_predict = 0
+    sum_simple = 0
     sum_MAE = 0
     sum_MAPE = 0
     sum_MASE = 0
@@ -390,15 +392,21 @@ def evaluate_data(model, x_test, y_test, input_size, normal_min, normal_max):
 
             for k in range(pred_shape[0]):
                 sum_org += y_test_org[k][i][j][0]
+                sum_predict += subY_predict[k][0][0][0]
+                sum_simple += x_test[k][i][j][-4]
                 sum_MAE += abs(y_test_org[k][i][j][0] - subY_predict[k][0][0][0])
                 sum_MAPE += abs(y_test_org[k][i][j][0] - subY_predict[k][0][0][0])
                 sum_MASE += abs(y_test_org[k][i][j][0] - x_test[k][i][j][-4])
 
-    MAE = sum_MAE / (data_shape[0] * data_shape[1] * data_shape[2])
-    MAPE = sum_MAPE / sum_org
-    MASE = MAE / (sum_MASE / (data_shape[0] * data_shape[1] * data_shape[2]))
+    MAE_pixel = sum_MAE / (data_shape[0] * data_shape[1] * data_shape[2])
+    MAPE_pixel = sum_MAPE / sum_org
+    MASE_pixel = MAE_pixel / (sum_MASE / (data_shape[0] * data_shape[1] * data_shape[2]))
 
-    return (MAE, MAPE, MASE)
+    MAE_country = sum_org - sum_predict
+    MAPE_country = (sum_org - sum_predict) / sum_org
+    MASE_country = MAE_country / (sum_simple - sum_predict)
+
+    return (MAE_pixel, MAPE_pixel, MASE_pixel, MAE_country, MAPE_country, MASE_country)
 
 # Use this function to log states of code, helps to find bugs
 def log(str):
@@ -409,8 +417,10 @@ def log(str):
 def save_process_result(process_number, parameters, result):
     t = datetime.datetime.now().isoformat()
     with open('process{0}.txt'.format(process_number), 'a') as resultFile:
-        append_string = '[{0}][{1}]\n\t--model parameteres: {2}\n\t--result: MAE:{3}, MAPE:{4}, MASE:{5}\n'.format(t, getpid(), parameters, result[0], result[1], result[2])
-        resultFile.write(append_string)
+        str_parameters = '[{0}][{1}]\n\t--model parameters: {2}\n\t'.format(t, getpid(), parameters)
+        str_result_pixel = '--result for Pixels: MAE:{3}, MAPE:{4}, MASE:{5}\n\t'.format(result[0], result[1], result[2]) 
+        str_result_country = '--result for Country, MAE:{0}, MAPE:{1}, MASE:{2}\n'.format(result[3], result[4], result[5])
+        resultFile.write(str_parameters + str_result_pixel + str_result_country)
 
 # From prediction.py file
 def send_email(*attachments):
@@ -635,11 +645,11 @@ def process_function(parameters,
             shared_y_final_test, ):
     log('Process {1} started | parameters {0}'.format((start, end), process_number))
 
-    input_size = parameters[i][0]
-    hidden_dropout = parameters[i][1] 
-    visible_dropout = parameters[i][2] 
-    NO_dense_layer = parameters[i][3]
-    increase_filters = parameters[i][4]
+    input_size = parameters[process_number][0]
+    hidden_dropout = parameters[process_number][1] 
+    visible_dropout = parameters[process_number][2] 
+    NO_dense_layer = parameters[process_number][3]
+    increase_filters = parameters[process_number][4]
 
     log('Model testing with parameters {0}'.format((input_size, hidden_dropout, visible_dropout, NO_dense_layer, increase_filters)))
     NO_blocks = floor(log2(input_size))
@@ -647,7 +657,8 @@ def process_function(parameters,
     train_data(model, normal_x_dataTrain, normal_y_dataTrain, normal_x_dataValidation, normal_y_dataValidation, 2, input_size)
     result = evaluate_data(model, normal_x_dataTest, normal_y_dataTest, input_size, normal_min, normal_max)
 
-    log('result, MAE:{0}, MAPE:{1}, MASE:{2}'.format(result[0], result[1], result[2]))
+    log('result for Pixels, MAE:{0}, MAPE:{1}, MASE:{2}'.format(result[0], result[1], result[2]))
+    log('result for Country, MAE:{0}, MAPE:{1}, MASE:{2}'.format(result[3], result[4], result[5]))
     save_process_result(process_number, (input_size, hidden_dropout, visible_dropout, NO_dense_layer, increase_filters), result)
 
     log('Process {0} done'.format(process_number))
