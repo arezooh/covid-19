@@ -489,9 +489,9 @@ def normal_x(train, validation, test, final_test):
                     normalizers[b].update(train[i][j][a][b])
 
     normal_train = zeros((data_shape[0], data_shape[1], data_shape[2], data_shape[3]))
-    normal_validation = zeros((no_validation[0], data_shape[1], data_shape[2], data_shape[3]))
-    normal_test = zeros((no_test[0], data_shape[1], data_shape[2], data_shape[3]))
-    normal_final_test = zeros((no_final_test[0], data_shape[1], data_shape[2], data_shape[3]))
+    normal_validation = zeros((no_validation, data_shape[1], data_shape[2], data_shape[3]))
+    normal_test = zeros((no_test, data_shape[1], data_shape[2], data_shape[3]))
+    normal_final_test = zeros((no_final_test, data_shape[1], data_shape[2], data_shape[3]))
 
     for i in range(data_shape[0]):
         for j in range(data_shape[1]):
@@ -521,9 +521,9 @@ def normal_y(train, validation, test, final_test):
                 obj_normalizer.update(train[i][j][a])
 
     normal_train = zeros((data_shape[0], data_shape[1], data_shape[2], 1))
-    normal_validation = zeros((no_validation[0], data_shape[1], data_shape[2], 1))
-    normal_test = zeros((no_test[0], data_shape[1], data_shape[2], 1))
-    normal_final_test = zeros((no_final_test[0], data_shape[1], data_shape[2], 1))
+    normal_validation = zeros((no_validation, data_shape[1], data_shape[2], 1))
+    normal_test = zeros((no_test, data_shape[1], data_shape[2], 1))
+    normal_final_test = zeros((no_final_test, data_shape[1], data_shape[2], 1))
 
     for i in range(data_shape[0]):
         for j in range(data_shape[1]):
@@ -645,21 +645,22 @@ def process_function(parameters,
             shared_y_final_test, ):
     log('Process {1} started | parameters {0}'.format((start, end), process_number))
 
-    input_size = parameters[process_number][0]
-    hidden_dropout = parameters[process_number][1] 
-    visible_dropout = parameters[process_number][2] 
-    NO_dense_layer = parameters[process_number][3]
-    increase_filters = parameters[process_number][4]
+    for i in range(start, end):
+        input_size = parameters[i][0]
+        hidden_dropout = parameters[i][1] 
+        visible_dropout = parameters[i][2] 
+        NO_dense_layer = parameters[i][3]
+        increase_filters = parameters[i][4]
 
-    log('Model testing with parameters {0}'.format((input_size, hidden_dropout, visible_dropout, NO_dense_layer, increase_filters)))
-    NO_blocks = floor(log2(input_size))
-    model = create_model(input_size, hidden_dropout, visible_dropout, NO_blocks, NO_dense_layer, increase_filters)
-    train_data(model, normal_x_dataTrain, normal_y_dataTrain, normal_x_dataValidation, normal_y_dataValidation, 2, input_size)
-    result = evaluate_data(model, normal_x_dataTest, normal_y_dataTest, input_size, normal_min, normal_max)
+        log('Model testing with parameters {0}'.format((input_size, hidden_dropout, visible_dropout, NO_dense_layer, increase_filters)))
+        NO_blocks = floor(log2(input_size))
+        model = create_model(input_size, hidden_dropout, visible_dropout, NO_blocks, NO_dense_layer, increase_filters)
+        train_data(model, normal_x_dataTrain, normal_y_dataTrain, normal_x_dataValidation, normal_y_dataValidation, 2, input_size)
+        result = evaluate_data(model, normal_x_dataTest, normal_y_dataTest, input_size, normal_min, normal_max)
 
-    log('result for Pixels, MAE:{0}, MAPE:{1}, MASE:{2}'.format(result[0], result[1], result[2]))
-    log('result for Country, MAE:{0}, MAPE:{1}, MASE:{2}'.format(result[3], result[4], result[5]))
-    save_process_result(process_number, (input_size, hidden_dropout, visible_dropout, NO_dense_layer, increase_filters), result)
+        log('result for Pixels, MAE:{0}, MAPE:{1}, MASE:{2}'.format(result[0], result[1], result[2]))
+        log('result for Country, MAE:{0}, MAPE:{1}, MASE:{2}'.format(result[3], result[4], result[5]))
+        save_process_result(process_number, (input_size, hidden_dropout, visible_dropout, NO_dense_layer, increase_filters), result)
 
     log('Process {0} done'.format(process_number))
     try:
