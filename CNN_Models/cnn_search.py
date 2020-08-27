@@ -682,8 +682,8 @@ def process_function(parameters,
         log('Model testing with parameters {0}'.format((input_size, hidden_dropout, visible_dropout, NO_dense_layer, increase_filters)))
         NO_blocks = floor(log2(input_size))
         model = create_model(input_size, hidden_dropout, visible_dropout, NO_blocks, NO_dense_layer, increase_filters)
-        train_data(model, normal_x_dataTrain, normal_y_dataTrain, normal_x_dataValidation, normal_y_dataValidation, 2, input_size)
-        result = evaluate_data(model, normal_x_dataTest, normal_y_dataTest, input_size, normal_min, normal_max)
+        train_data(model, shared_x_train, shared_y_train, shared_x_validation, shared_y_validation, 2, input_size)
+        result = evaluate_data(model, shared_x_test, shared_y_test, input_size, normal_min, normal_max)
 
         log('result for Pixels, MAE:{0}, MAPE:{1}, MASE:{2}'.format(result[0], result[1], result[2]))
         log('result for Country, MAE:{0}, MAPE:{1}, MASE:{2}'.format(result[3], result[4], result[5]))
@@ -748,27 +748,36 @@ if __name__ == "__main__":
     log('START: copying data to shared memory')
 
     shared_x_train = sharedmem.empty(normal_x_dataTrain.shape)
-    shared_y_train = sharedmem.empty(normal_y_dataTrain.shape)
-    shared_x_validation = sharedmem.empty(normal_x_dataValidation.shape)
-    shared_y_validation = sharedmem.empty(normal_y_dataValidation.shape)
-    shared_x_test = sharedmem.empty(normal_x_dataTest.shape)
-    shared_y_test = sharedmem.empty(normal_y_dataTest.shape)
-    shared_x_final_test = sharedmem.empty(normal_x_dataFinalTest.shape)
-    shared_y_final_test = sharedmem.empty(normal_y_dataFinalTest.shape)
-
     copyto(shared_x_train, normal_x_dataTrain)
+    del normal_x_dataTrain
+
+    shared_y_train = sharedmem.empty(normal_y_dataTrain.shape)
     copyto(shared_y_train, normal_y_dataTrain)
+    del normal_y_dataTrain
+
+    shared_x_validation = sharedmem.empty(normal_x_dataValidation.shape)
     copyto(shared_x_validation, normal_x_dataValidation)
+    del normal_x_dataValidation
+
+    shared_y_validation = sharedmem.empty(normal_y_dataValidation.shape)
     copyto(shared_y_validation, normal_y_dataValidation)
+    del normal_y_dataValidation
+
+    shared_x_test = sharedmem.empty(normal_x_dataTest.shape)
     copyto(shared_x_test, normal_x_dataTest)
+    del normal_x_dataTest
+
+    shared_y_test = sharedmem.empty(normal_y_dataTest.shape)
     copyto(shared_y_test, normal_y_dataTest)
+    del normal_y_dataTest
+
+    shared_x_final_test = sharedmem.empty(normal_x_dataFinalTest.shape)
     copyto(shared_x_final_test, normal_x_dataFinalTest)
+    del normal_x_dataFinalTest
+
+    shared_y_final_test = sharedmem.empty(normal_y_dataFinalTest.shape)
     copyto(shared_y_final_test, normal_y_dataFinalTest)
-
-    ################################################################ clearing memory
-
-    del normal_x_dataTrain, normal_x_dataValidation, normal_x_dataTest, normal_x_dataFinalTest
-    del normal_y_dataTrain, normal_y_dataValidation, normal_y_dataTest, normal_y_dataFinalTest
+    del normal_y_dataFinalTest
 
     log('START: Phase of testing models started')
 
