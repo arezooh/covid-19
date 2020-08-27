@@ -43,6 +43,7 @@ numberOfSelectedCounties = -1
 target_mode = 'regular'
 spatial_mode = 'state'
 numberOfSelectedCountiesname = 1535
+push_flag = 0
 
 ######################################################### split data to train, val, test
 def splitData(numberOfCounties, main_data, target, spatial_mode, mode ):
@@ -136,7 +137,10 @@ def preprocess(main_data, spatial_mode, validationFlag):
 ################################ MASE_denominator
 def mase_denominator(r, h, target_name, target_mode ,numberOfSelectedCounties, spatial_mode):
 
-    data = makeHistoricalData(h, r, target_name, 'mrmr', spatial_mode, target_mode, './')
+    if target_mode == 'weeklyaverage':
+        data = makeHistoricalData(h, r, target_name, 'mrmr', spatial_mode, 'weeklyaverage', './')
+    else:
+        data = makeHistoricalData(h, r, target_name, 'mrmr', spatial_mode, 'regular', './')
     if numberOfSelectedCounties == -1 :
       numberOfSelectedCounties = len(data['county_fips'].unique())
     data = clean_data(data, numberOfSelectedCounties, spatial_mode)
@@ -627,9 +631,9 @@ def real_prediction_plot(df,r,target_name,target_mode, best_h, maxHistory,spatia
             
             plt.plot(df_for_plot.loc[df_for_plot['county_fips']==county,'date'][:-(r-1)],df_for_plot.loc[df_for_plot['county_fips']==county,method].round()[:-(r-1)],label='Train prediction',color='forestgreen',linewidth=2.0)
             plt.plot(df_for_plot.loc[df_for_plot['county_fips']==county,'date'][-r:],df_for_plot.loc[df_for_plot['county_fips']==county,method].round()[-r:],label='Test prediction',color='dodgerblue',linewidth=2.0)
-            plt.plot(df_for_plot.loc[df_for_plot['county_fips']==county,'date'],df_for_plot.loc[df_for_plot['county_fips']==county,'Target'],label='Real values',color='black',linewidth=2.0)
+            plt.plot(df_for_plot.loc[df_for_plot['county_fips']==county,'date'],df_for_plot.loc[df_for_plot['county_fips']==county,'Target'].round(),label='Real values',color='black',linewidth=2.0)
             if target_mode != 'cumulative':
-                plt.plot(df_for_plot.loc[df_for_plot['county_fips']==county,'date'][-r:],df_for_plot.loc[df_for_plot['county_fips']==county,'Target'][-(2*r):-r],'-.',color='gray',label='Naive prediction',linewidth=2.0)
+                plt.plot(df_for_plot.loc[df_for_plot['county_fips']==county,'date'][-r:],df_for_plot.loc[df_for_plot['county_fips']==county,'Target'].round()[-(2*r):-r],'-.',color='gray',label='Naive prediction',linewidth=2.0)
             
             plt.xticks(rotation=65)
             fig.subplots_adjust(hspace=0.4)
@@ -848,16 +852,17 @@ def get_errors(h, c, method, y_prediction, y_prediction_train, y_test_date, y_tr
 
 ########################################################### push results to github
 def push(message):
-    try:
-        cmd.run("git pull", check=True, shell=True)
-        print("everything has been pulled")
-        cmd.run("git add .", check=True, shell=True)
-        cmd.run(f"git commit -m '{message}'", check=True, shell=True)
-        cmd.run("git push", check=True, shell=True)
-        print('pushed.')
+    if push_flag == 1:
+        try:
+            cmd.run("git pull", check=True, shell=True)
+            print("everything has been pulled")
+            cmd.run("git add .", check=True, shell=True)
+            cmd.run(f"git commit -m '{message}'", check=True, shell=True)
+            cmd.run("git push", check=True, shell=True)
+            print('pushed.')
 
-    except:
-        print('could not push')
+        except:
+            print('could not push')
 
 
 ########################################################### zip some of the results
@@ -1133,13 +1138,9 @@ def test_process(h, r, target_name,spatial_mode, target_mode,best_h,best_c,histo
         if parallel_output[index][0] != None:
           y_prediction[state_fips]['MM_GLM']=parallel_output[index][0][0]
           y_prediction_train[state_fips]['MM_GLM']=parallel_output[index][0][1]
-          print('MM_GLM',state_fips,'y_prediction',y_prediction[state_fips]['MM_GLM'].shape)
-          print('MM_GLM',state_fips,'y_prediction_train',y_prediction_train[state_fips]['MM_GLM'].shape)
         if parallel_output[index][1] != None:
           y_prediction[state_fips]['MM_NN']=parallel_output[index][1][0]
           y_prediction_train[state_fips]['MM_NN']=parallel_output[index][1][1]
-          print('MM_NN',state_fips,'y_prediction',y_prediction[state_fips]['MM_GLM'].shape)
-          print('MM_NN',state_fips,'y_prediction_train',y_prediction_train[state_fips]['MM_GLM'].shape)
 
     run_mixed_models_Pool.close()
     gc.collect()
@@ -1317,14 +1318,14 @@ def validation_process(all_data,spatial_mode,covariates_names,best_loss,target_n
             if indx_c == maxC:
                 break
 
-            filename = env_address + 'validation.out'
-            my_shelf = shelve.open(filename, 'n')
-            for key in dir():
-                try:
-                    my_shelf[key] = locals()[key]
-                except:
-                    print('ERROR shelving: {0}'.format(key))
-            my_shelf.close()
+#             filename = env_address + 'validation.out'
+#             my_shelf = shelve.open(filename, 'n')
+#             for key in dir():
+#                 try:
+#                     my_shelf[key] = locals()[key]
+#                 except:
+#                     print('ERROR shelving: {0}'.format(key))
+#             my_shelf.close()
 
 #         # find best loss
 #         if h == 1 :
@@ -1359,14 +1360,14 @@ def validation_process(all_data,spatial_mode,covariates_names,best_loss,target_n
             if indx_c == maxC:
                 break
         
-            filename = env_address + 'validation.out'
-            my_shelf = shelve.open(filename, 'n')
-            for key in dir():
-                try:
-                    my_shelf[key] = locals()[key]
-                except:
-                    print('ERROR shelving: {0}'.format(key))
-            my_shelf.close()
+#             filename = env_address + 'validation.out'
+#             my_shelf = shelve.open(filename, 'n')
+#             for key in dir():
+#                 try:
+#                     my_shelf[key] = locals()[key]
+#                 except:
+#                     print('ERROR shelving: {0}'.format(key))
+#             my_shelf.close()
 
 
         return fips_X_train_train_to_use, fips_X_train_val_to_use ,fips_X_test_to_use ,\
