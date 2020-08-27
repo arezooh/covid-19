@@ -1,12 +1,14 @@
 import pandas as pd
 import numpy as np
 import datetime
+import time
 from sklearn.impute import SimpleImputer
 
 # h is the number of days before day (t)
 # r indicates how many days after day (t) --> target-day = day(t+r)
 # target could be number of deaths or number of confirmed 
 def makeHistoricalData(h, r, target, feature_selection, spatial_mode, target_mode, address):
+    
     ''' in this code when h is 1, it means there is no history and we have just one column for each covariate
     so when h is 0, we put h equal to 1, because when h is 0 that means there no history (as when h is 1) '''
     if h == 0:
@@ -20,29 +22,6 @@ def makeHistoricalData(h, r, target, feature_selection, spatial_mode, target_mod
 
     # impute missing values for tests in first days with min
     timeDeapandantData.loc[timeDeapandantData['daily-state-test']<0,'daily-state-test']=abs(timeDeapandantData.loc[timeDeapandantData['daily-state-test']<0,'daily-state-test'])
-
-    if spatial_mode=='country':
-
-        # Next 3 lines create dataframe contains only daily-state-test to impute this feature
-        temp=pd.DataFrame(index=timeDeapandantData['county_fips'].unique().tolist(),columns=timeDeapandantData['date'].unique().tolist())
-        for i in timeDeapandantData['date'].unique():
-            temp[i]=timeDeapandantData.loc[timeDeapandantData['date']==i,'daily-state-test'].tolist()
-
-        # Next line find min daily-state-test performed in each county for impute first days missing values with min
-        county_min_test=temp.replace(0,np.NaN).T.min()
-
-        # impute missing tests for first days with min test performed in each county
-        for i in temp.columns:
-            temp.loc[pd.isna(temp[i]),i]=county_min_test[pd.isna(temp[i])]
-
-        #replace imputed values in timeDeapandantData
-        for i in timeDeapandantData['date'].unique():
-            timeDeapandantData.loc[timeDeapandantData['date']==i,'daily-state-test']=temp[i].tolist()
-
-    else:
-        # for state and county mode we dont impute daily-state-test
-        timeDeapandantData=timeDeapandantData#[~(pd.isna(timeDeapandantData['daily-state-test']))]
-
 
 
     #Next 12 lines remove counties with all missing values for some features (counties with partly missing values have been imputed)
@@ -275,7 +254,7 @@ def makeHistoricalData(h, r, target, feature_selection, spatial_mode, target_mod
     result = zero_removed_data
 
 
-
+    
     return result
 
 

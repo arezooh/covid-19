@@ -1,8 +1,0 @@
-Notice that this files can be ran on google colab.
-
-First upload this three files on your google drive:
-    1. full-fixed-data.csv
-    2. full-temporal-data.csv
-    3. makeHistoricalData.py
-    
-Then you can easily run the code :)
