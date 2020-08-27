@@ -745,14 +745,16 @@ if __name__ == "__main__":
 
     ################################################################ copy data to shared memory
 
-    shared_x_train = sharedmem.empty(normal_x_dataTrain.shap)
-    shared_y_train = sharedmem.empty(normal_y_dataTrain.shap)
-    shared_x_validation = sharedmem.empty(normal_x_dataValidation.shap)
-    shared_y_validation = sharedmem.empty(normal_y_dataValidation.shap)
-    shared_x_test = sharedmem.empty(normal_x_dataTest.shap)
-    shared_y_test = sharedmem.empty(normal_y_dataTest.shap)
-    shared_x_final_test = sharedmem.empty(normal_x_dataFinalTest.shap)
-    shared_y_final_test = sharedmem.empty(normal_y_dataFinalTest.shap)
+    log('START: copying data to shared memory')
+
+    shared_x_train = sharedmem.empty(normal_x_dataTrain.shape)
+    shared_y_train = sharedmem.empty(normal_y_dataTrain.shape)
+    shared_x_validation = sharedmem.empty(normal_x_dataValidation.shape)
+    shared_y_validation = sharedmem.empty(normal_y_dataValidation.shape)
+    shared_x_test = sharedmem.empty(normal_x_dataTest.shape)
+    shared_y_test = sharedmem.empty(normal_y_dataTest.shape)
+    shared_x_final_test = sharedmem.empty(normal_x_dataFinalTest.shape)
+    shared_y_final_test = sharedmem.empty(normal_y_dataFinalTest.shape)
 
     copyto(shared_x_train, normal_x_dataTrain)
     copyto(shared_y_train, normal_y_dataTrain)
