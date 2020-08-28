@@ -80,32 +80,32 @@ p5 = [0, 1]
 class normalizer:
 
     def __init__(self):
-        self.min = -1
-        self.max = -1
+        self.minV = -1
+        self.maxV = -1
 
     def update(self, value):
-        if self.min == -1 and self.max == -1:
-            self.min = value
-            self.max = value
+        if self.minV == -1 and self.maxV == -1:
+            self.minV = value
+            self.maxV = value
 
-        elif value < self.min:
-            self.min = value
+        elif value < self.minV:
+            self.minV = value
 
-        elif value > self.max:
-            self.max = value
+        elif value > self.maxV:
+            self.maxV = value
 
     def normal(self, value):
-        return (value - self.min) / (self.max - self.min)
+        return (value - self.minV) / (self.maxV - self.minV)
 
     def get_min_max(self):
-        return (self.min, self.max)
+        return (self.minV, self.maxV)
 
-    def set_min_max(self, min, max):
-        self.min = min
-        self.max = max
+    def set_min_max(self, minV, maxV):
+        self.minV = minV
+        self.maxV = maxV
 
     def inverse_normal(self, value):
-        return (value * (self.max - self.min)) + self.min
+        return (value * (self.maxV - self.minV)) + self.minV
 
 ################################################################ Functions
 
@@ -579,6 +579,8 @@ def init_no_processes():
     global _NO_PARALLEL_PROCESSES_
     _NO_PARALLEL_PROCESSES_ = multiprocessing.cpu_count()
     log('_NO_PARALLEL_PROCESSES_ set to {0}'.format(_NO_PARALLEL_PROCESSES_))
+    # Debug
+    _NO_PARALLEL_PROCESSES_ = 2
 
 def save_last_process(process_number):
     with open('last_process.txt', 'w') as fd:
