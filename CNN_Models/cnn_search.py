@@ -424,9 +424,9 @@ def save_process_result(process_number, parameters, result):
 
 def save_best_result(process_number, parameters_pixel, result_pixel, parameters_country, result_country):
     with open('process{0}.txt'.format(process_number), 'a') as resultFile:
-        str_parameters_pixel = 'Best Pixel result\n\t--model parameters: {0}\n\t'.format(parameters)
+        str_parameters_pixel = 'Best Pixel result\n\t--model parameters: {0}\n\t'.format(parameters_pixel)
         str_result_pixel = '--result for Pixels: MAE:{0}, MAPE:{1}, MASE:{2}\n\t'.format(result_pixel[0], result_pixel[1], result_pixel[2]) 
-        str_parameters_country = 'Best Country result\n\t--model parameters: {0}\n\t'.format(parameters)
+        str_parameters_country = 'Best Country result\n\t--model parameters: {0}\n\t'.format(parameters_country)
         str_result_country = '--result for Country, MAE:{0}, MAPE:{1}, MASE:{2}\n'.format(result_country[0], result_country[1], result_country[2]) 
         resultFile.write(str_parameters_pixel + str_result_pixel + str_parameters_country + str_result_country)
 
