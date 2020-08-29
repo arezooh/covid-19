@@ -95,7 +95,10 @@ class normalizer:
             self.maxV = value
 
     def normal(self, value):
-        return (value - self.minV) / (self.maxV - self.minV)
+        if (self.maxV > self.minV):
+            return (value - self.minV) / (self.maxV - self.minV)
+        else:
+            return self.maxV
 
     def get_min_max(self):
         return (self.minV, self.maxV)
@@ -560,11 +563,11 @@ def normal_y(train, validation, test, final_test):
 
     return (normal_train, normal_validation, normal_test, normal_final_test, normal_min, normal_max)
 
-def inverse_normal_y(normal_data, min, max):
+def inverse_normal_y(normal_data, normal_min, normal_max):
     data_shape = normal_data.shape
 
     obj_normalizer = normalizer()
-    obj_normalizer.set_min_max(min, max)
+    obj_normalizer.set_min_max(normal_min, normal_max)
 
     data = zeros(data_shape)
 
