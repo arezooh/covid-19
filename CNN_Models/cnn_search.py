@@ -556,7 +556,9 @@ def normal_y(train, validation, test, final_test):
                 if (i < no_final_test):
                     normal_final_test[i][j][a][0] = obj_normalizer.normal(final_test[i][j][a])
 
-    return (normal_train, normal_validation, normal_test, normal_final_test, min, max)
+    normal_min, normal_max = obj_normalizer.get_min_max()
+
+    return (normal_train, normal_validation, normal_test, normal_final_test, normal_min, normal_max)
 
 def inverse_normal_y(normal_data, min, max):
     data_shape = normal_data.shape
