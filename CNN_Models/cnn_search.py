@@ -7,7 +7,7 @@ import datetime
 import time
 from datetime import date
 from datetime import timedelta
-from math import log2, floor, ceil
+from math import log2, floor, ceil, sqrt
 
 import pandas as pd
 import tensorflow as tf
@@ -109,6 +109,38 @@ class normalizer:
 
     def inverse_normal(self, value):
         return (value * (self.maxV - self.minV)) + self.minV
+
+class standardizer:
+
+    def __init__(self):
+        self.sum = 0
+        self.sum_deviation = 0
+        self.count = 0
+        self.mean = 0
+        self.deviation = 0
+
+    def update_mean(self, value):
+        self.sum += value
+        self.count += 1
+
+    def calculate_mean(self):
+        if (self.count != 0):
+            self.mean = self.sum / self.count
+
+    def update_deviation(self, value):
+        self.sum_deviation += pow(value - self.mean, 2)
+
+    def calculate_deviation(self):
+        if (self.count != 0):
+            self.deviation = sqrt(self.sum_deviation / self.count)
+
+    def standardize(self, value):
+        if (self.deviation == 0):
+            raise Exception('deviation is zero, divide by zero error will trigger')
+        return (value - self.mean) / self.deviation
+
+    def inverse_standardize(self, value):
+        return (value * self.deviation) + self.mean
 
 ################################################################ Functions
 
