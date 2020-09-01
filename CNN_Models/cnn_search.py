@@ -444,7 +444,7 @@ def evaluate_data(model, x_test, y_test, input_size, normal_min, normal_max):
     MAPE_pixel = sum_MAPE / sum_org
     MASE_pixel = MAE_pixel / (sum_MASE / (data_shape[0] * data_shape[1] * data_shape[2]))
 
-    MAE_country = sum_org - sum_predict
+    MAE_country = abs(sum_org - sum_predict)
     MAPE_country = abs(sum_org - sum_predict) / sum_org
     MASE_country = MAE_country / abs(sum_simple - sum_predict)
 
