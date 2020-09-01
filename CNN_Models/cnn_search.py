@@ -136,7 +136,7 @@ class standardizer:
 
     def standardize(self, value):
         if (self.deviation == 0):
-            raise Exception('deviation is zero, divide by zero error will trigger')
+            raise Exception('deviation is zero, divide by zero error will trigger sum:{0}, sum_deviation:{1}, count:{2}, mean:{3}'.format(self.sum, self.sum_deviation, self.count, self.mean))
         return (value - self.mean) / self.deviation
 
     def inverse_standardize(self, value):
