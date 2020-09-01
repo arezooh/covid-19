@@ -659,7 +659,7 @@ def inverse_normal_y(normal_data, standard_mean, standard_deviation):
         for j in range(data_shape[1]):
             for a in range(data_shape[2]):
                 for b in range(data_shape[3]):
-                    data[i][j][a][b] = obj_normalizer.inverse_standardize(normal_data[i][j][a][b])
+                    data[i][j][a][b] = round(obj_normalizer.inverse_standardize(normal_data[i][j][a][b]))
 
     return data
 
