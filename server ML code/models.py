@@ -24,6 +24,9 @@ from tensorflow import keras
 from tensorflow.keras import layers
 from tensorflow.keras.callbacks import EarlyStopping
 import os
+from numpy.random import seed
+seed(1)
+tf.random.set_seed(1)
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
 
 
