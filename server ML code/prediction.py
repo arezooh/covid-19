@@ -32,6 +32,10 @@ import matplotlib.pyplot as plt
 import random
 import datetime
 import statistics
+import tensorflow as tf
+from numpy.random import seed
+seed(1)
+tf.random.set_seed(1)
 
 plt.rcParams.update({'figure.max_open_warning': 0})
 
