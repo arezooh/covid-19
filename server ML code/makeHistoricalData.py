@@ -7,13 +7,16 @@ from sklearn.impute import SimpleImputer
 # h is the number of days before day (t)
 # r indicates how many days after day (t) --> target-day = day(t+r)
 # target could be number of deaths or number of confirmed 
-def makeHistoricalData(h, r, target, feature_selection, spatial_mode, target_mode, address):
+def makeHistoricalData(h, r, test_size, target, feature_selection, spatial_mode, target_mode, address, future_features):
     
     ''' in this code when h is 1, it means there is no history and we have just one column for each covariate
     so when h is 0, we put h equal to 1, because when h is 0 that means there no history (as when h is 1) '''
     if h == 0:
         h = 1
-
+    future_mode = False
+    # for r >= 28 we add some new features informing about the future
+    future_limit = 4 if target_mode == 'weeklyaverage' else 28
+    if r >= future_limit: future_mode = True
 
     ##################################################################### imputation
 
@@ -108,8 +111,42 @@ def makeHistoricalData(h, r, target, feature_selection, spatial_mode, target_mod
 
             return(weeklydata)
         timeDeapandantData=make_moving_weekly_average(timeDeapandantData)
-        
-        
+
+        ######################################################################
+
+    if future_mode == True:
+        def add_future_features(dailydata):
+            # dailydata['date'] = dailydata['date'].apply(lambda x: datetime.datetime.strptime(x, '%m/%d/%y'))
+            dailydata.sort_values(by=['date', 'county_fips'], inplace=True)
+            dailydata = dailydata.reset_index(drop=True)
+            numberofcounties = len(dailydata['county_fips'].unique())
+            numberofdays = len(dailydata['date'].unique())
+            new_data = pd.DataFrame(columns=dailydata.columns)
+            futureDays = 2 if target_mode == 'weeklyaverage' else 14
+
+            while numberofdays >= futureDays:
+                # select the first day of all the counties
+                current_day_data = dailydata.head(numberofcounties).copy()
+                # select the next two weeks to compute their social-distancing average
+                next2weeks_data = dailydata.iloc[numberofcounties: numberofcounties * (futureDays + 1), :].copy()
+                # compute the average and round it
+                next2weeks_data = next2weeks_data.groupby(['county_fips']).mean().round()
+                # add the average of social-distancing of the next two weeks to the current day data
+                for temporal_feature in future_features:
+                    future_feature = 'future-' + temporal_feature
+                    current_day_data[future_feature] = next2weeks_data[temporal_feature].copy().tolist()
+
+                new_data = new_data.append(current_day_data.copy())
+                # remove first day for all counties from daily data
+                dailydata = dailydata.iloc[numberofcounties:].copy()
+                numberofdays = numberofdays - 1
+
+            new_data = new_data.sort_values(by=['county_fips', 'date'])
+            # new_data['date'] = new_data['date'].apply(lambda x: datetime.datetime.strftime(x, '%m/%d/%y'))
+
+            return (new_data)
+
+        timeDeapandantData = add_future_features(timeDeapandantData)
     ###################################################################### differential target mode   
 
     if target_mode == 'differential': # make target differential
@@ -159,14 +196,13 @@ def makeHistoricalData(h, r, target, feature_selection, spatial_mode, target_mod
 
     allData = allData.loc[:, ix]
     allData = pd.concat([allData, notNumericlData], axis=1)
-
     nameOfTimeDependantCovariates = timeDeapandantData.columns.values.tolist()
     nameOfAllCovariates = allData.columns.values.tolist()
 
     result = pd.DataFrame()  # we store historical data in this dataframe
     totalNumberOfCounties = len(allData['county_fips'].unique())
     totalNumberOfDays = len(allData['date'].unique())
-
+    
     # in this loop we make historical data
     for name in nameOfAllCovariates:
         # if covariate is time dependant
@@ -174,13 +210,20 @@ def makeHistoricalData(h, r, target, feature_selection, spatial_mode, target_mod
             temporalDataFrame = allData[[name]] # selecting column of the covariate that is being processed
             threshold = 0
             while threshold != h:
+                # we dont want history for future features
+                if 'future-' in name and name[7:] in future_features:
+                    threshold = h-1
                 # get value of covariate that is being processed in first (totalNumberOfDays-h-r+1) days
                 temp = temporalDataFrame.head((totalNumberOfDays-h-r+1)*totalNumberOfCounties).copy().reset_index(drop=True)
-                temp.rename(columns={name: (name + ' t-' + str(h-threshold-1))}, inplace=True) # renaming column
+                
+                # we dont want date suffix for future features
+                if 'future-' not in name or name[7:] not in future_features: 
+                    temp.rename(columns={name: (name + ' t-' + str(h-threshold-1))}, inplace=True) # renaming column  
                 result = pd.concat([result, temp], axis=1)
                 # deleting the values in first day in temporalDataFrame dataframe (similiar to shift)
                 temporalDataFrame = temporalDataFrame.iloc[totalNumberOfCounties:]
                 threshold += 1
+                
         # if covariate is independant of time
         elif name not in nameOfTimeDependantCovariates and name not in ['date', 'county_fips']:
             # we dont need covariates that is fixed for each county in county mode
@@ -239,10 +282,14 @@ def makeHistoricalData(h, r, target, feature_selection, spatial_mode, target_mod
                 first_non_zero_date_index = county_data[target+' t'].ne(0).idxmax()+7
 
             zero_removed_county_index=[i for i in range(first_non_zero_date_index,county_end_index)]
-            
+
+            # in future mode we have more limited data, so we choose at least test_size days for test, validation and train sets
+            if future_mode and len(zero_removed_county_index) >= 3 * test_size:
+                overall_non_zero_index += zero_removed_county_index
+
             # we choose r days for test and r days for validation so at least we must have r days for train -> 3*r
-            if len(zero_removed_county_index) >= 3*r:
-                    overall_non_zero_index = overall_non_zero_index + zero_removed_county_index
+            elif len(zero_removed_county_index) >= 3*r:
+                overall_non_zero_index = overall_non_zero_index + zero_removed_county_index
    
 
     
