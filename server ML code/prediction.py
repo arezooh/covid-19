@@ -757,8 +757,7 @@ def get_errors(h, c, method, y_prediction, y_prediction_train, y_test_date, y_tr
     SS_Residual = sum((y_test_country - y_prediction_country.reshape(-1)) ** 2)
     SS_Total = sum((y_test_country - np.mean(y_test_country)) ** 2)
     r_squared = 1 - (float(SS_Residual)) / SS_Total
-    print('len(y_test_country)',len(y_test_country),'C',c)
-    if len(y_test_country) - c - 1>0 :
+    if len(y_test_country) - c - 1 > 0 :
       country_errors['adj_r_squared'] = 1 - (1 - r_squared) * (len(y_test_country) - 1) / (len(y_test_country) - c - 1)
     else:
       country_errors['adj_r_squared'] = 1
