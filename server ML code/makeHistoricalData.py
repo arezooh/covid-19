@@ -111,8 +111,20 @@ def makeHistoricalData(h, r, test_size, target, feature_selection, spatial_mode,
 
             return(weeklydata)
         timeDeapandantData=make_moving_weekly_average(timeDeapandantData)
+        
+    ###################################################################### differential target mode   
 
-        ######################################################################
+    if target_mode == 'differential': # make target differential
+        reverse_dates=timeDeapandantData['date'].unique()[::-1]
+        for index in range(len(reverse_dates)):
+            date=reverse_dates[index]
+            past_date=reverse_dates[index+1]
+            timeDeapandantData.loc[timeDeapandantData['date']==date,target]=list(np.array(timeDeapandantData.loc[timeDeapandantData['date']==date,target])-np.array(timeDeapandantData.loc[timeDeapandantData['date']==past_date,target]))
+            if index == len(reverse_dates)-2:
+                break
+        timeDeapandantData.loc[timeDeapandantData[target]<0,target]=0
+        
+    ###################################################################### add future features
 
     if future_mode == True:
         def add_future_features(dailydata):
@@ -147,17 +159,8 @@ def makeHistoricalData(h, r, test_size, target, feature_selection, spatial_mode,
             return (new_data)
 
         timeDeapandantData = add_future_features(timeDeapandantData)
-    ###################################################################### differential target mode   
-
-    if target_mode == 'differential': # make target differential
-        reverse_dates=timeDeapandantData['date'].unique()[::-1]
-        for index in range(len(reverse_dates)):
-            date=reverse_dates[index]
-            past_date=reverse_dates[index+1]
-            timeDeapandantData.loc[timeDeapandantData['date']==date,target]=list(np.array(timeDeapandantData.loc[timeDeapandantData['date']==date,target])-np.array(timeDeapandantData.loc[timeDeapandantData['date']==past_date,target]))
-            if index == len(reverse_dates)-2:
-                break
-        timeDeapandantData.loc[timeDeapandantData[target]<0,target]=0
+        
+        future_features = ["{}{}".format('future-',i) for i in future_features]
         
     ##################################################################
     
@@ -168,6 +171,9 @@ def makeHistoricalData(h, r, test_size, target, feature_selection, spatial_mode,
     # this columns are not numercal and wouldn't be included in correlation matrix, we store them to concatenate them later
     notNumericlData = allData[['county_name', 'state_name', 'county_fips', 'state_fips', 'date']]
     allData=allData.drop(['county_name', 'state_name', 'county_fips', 'state_fips', 'date'],axis=1)
+    if future_mode == True:
+        futureData = allData[future_features]
+        allData=allData.drop(future_features,axis=1)
 
     # next 19 lines ranking columns with mRMR
     cor=allData.corr().abs()
@@ -193,9 +199,14 @@ def makeHistoricalData(h, r, test_size, target, feature_selection, spatial_mode,
         ix=final_rank
     else:
         ix = allData.corr().abs().sort_values(target, ascending=False).index
+        
+
+    #################################################################### making historical data 
 
     allData = allData.loc[:, ix]
     allData = pd.concat([allData, notNumericlData], axis=1)
+    if future_mode == True:
+        allData = pd.concat([allData, futureData], axis=1)
     nameOfTimeDependantCovariates = timeDeapandantData.columns.values.tolist()
     nameOfAllCovariates = allData.columns.values.tolist()
 
@@ -211,13 +222,13 @@ def makeHistoricalData(h, r, test_size, target, feature_selection, spatial_mode,
             threshold = 0
             while threshold != h:
                 # we dont want history for future features
-                if 'future-' in name and name[7:] in future_features:
+                if name in future_features:
                     threshold = h-1
                 # get value of covariate that is being processed in first (totalNumberOfDays-h-r+1) days
                 temp = temporalDataFrame.head((totalNumberOfDays-h-r+1)*totalNumberOfCounties).copy().reset_index(drop=True)
                 
                 # we dont want date suffix for future features
-                if 'future-' not in name or name[7:] not in future_features: 
+                if name not in future_features: 
                     temp.rename(columns={name: (name + ' t-' + str(h-threshold-1))}, inplace=True) # renaming column  
                 result = pd.concat([result, temp], axis=1)
                 # deleting the values in first day in temporalDataFrame dataframe (similiar to shift)
