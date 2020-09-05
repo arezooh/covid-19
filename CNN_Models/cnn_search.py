@@ -42,6 +42,7 @@ _GRID_INTERSECTION_FILENAME_ = './map_intersection_square.json'
 _COUNTIES_DATA_FIX_ = '../csvFiles/full-fixed-data.csv'
 _COUNTIES_DATA_TEMPORAL_ = '../csvFiles/full-temporal-data.csv'
 _CONUTIES_FIPS_ = '../csvFiles/full-data-county-fips.csv'
+_DISTRIBUTION_FILENAME_ = './distribution.json'
 
 _NO_PARALLEL_PROCESSES_ = 4
 _NO_PROCESSES_ = 80
@@ -151,7 +152,7 @@ class standardizer:
 
 ################################################################ Functions
 
-def loadIntersection(jsonFilename):
+def loadJsonFile(jsonFilename):
     jsonMetaData = []
     with open(_JSON_Directory_ + jsonFilename) as jsonFile:
         jsonMetaData = json.load(jsonFile)
@@ -261,6 +262,16 @@ def calculateGridData(counties, i):
             # density
             houses += float(countiesData_fix[index_fix]['houses_density']) * float(countiesData_fix[index_fix]['area']) * county['percent']
             area += float(countiesData_fix[index_fix]['area']) * county['percent']
+
+    counties_dist = []
+    for county in counties:
+        index_temporal, index_fix = calculateIndex(county['fips'], (startDay + timedelta(days=i)).isoformat())
+        if (index_temporal != -1):
+            county_confirmed = round(float(countiesData_temporal[index_temporal]['confirmed']) * county['percent'])
+            if (county_confirmed != 0):
+                counties_dist.append({'fips': county['fips'], 'percent': county_confirmed / confirmed})
+            else:
+                counties_dist.append({'fips': county['fips'], 'percent': 0})
 
     if daily_state_test_weightSum != 0:
         daily_state_test = round(daily_state_test / daily_state_test_weightSum, 2)
@@ -424,6 +435,22 @@ def evaluate_data(model, x_test, y_test, input_size, normal_min, normal_max):
     sum_MAPE = 0
     sum_MASE = 0
 
+    # init counties_predict array
+    counties_predict = []
+    counties_predict_per_day = {}
+    counties = loadCounties(_CONUTIES_FIPS_)
+    for county in counties:
+        counties_predict_per_day[county['county_fips']] = 0
+
+    for _ in range(21):
+        counties_predict.append(counties_predict_per_day.copy())
+
+    # load distribution
+    distribution = loadJsonFile(_DISTRIBUTION_FILENAME_)
+    distribution_no_days = len(distribution)
+    # get only test data distribution 
+    distribution = distribution[distribution_no_days - 14 - 21 - 20: distribution_no_days - 14 - 20]
+
     for i in range(data_shape[1]):
         for j in range(data_shape[2]):
             subX_test = x_test[0:data_shape[0], i:i+input_size, j:j+input_size, 0:data_shape[3]]
@@ -440,6 +467,11 @@ def evaluate_data(model, x_test, y_test, input_size, normal_min, normal_max):
                 sum_MAPE += abs(y_test_org[k][i][j][0] - subY_predict[k][0][0][0])
                 sum_MASE += abs(y_test_org[k][i][j][0] - x_test[k][i][j][-4])
 
+                for county in distribution[k][i][j]:
+                    counties_predict[k][str(county['fips'])] += round(subY_predict[k][0][0][0] * county['percent'])
+
+    MAE_county, MAPE_county, MASE_county = calculate_county_error(distribution_no_days - 21 - 20, counties_predict)
+
     MAE_pixel = sum_MAE / (data_shape[0] * data_shape[1] * data_shape[2])
     MAPE_pixel = sum_MAPE / sum_org
     MASE_pixel = MAE_pixel / (sum_MASE / (data_shape[0] * data_shape[1] * data_shape[2]))
@@ -448,7 +480,7 @@ def evaluate_data(model, x_test, y_test, input_size, normal_min, normal_max):
     MAPE_country = abs(sum_org - sum_predict) / sum_org
     MASE_country = MAE_country / abs(sum_simple - sum_predict)
 
-    return (MAE_pixel, MAPE_pixel, MASE_pixel, MAE_country, MAPE_country, MASE_country)
+    return (MAE_pixel, MAPE_pixel, MASE_pixel, MAE_country, MAPE_country, MASE_country, MAE_county, MAPE_county, MASE_county)
 
 # Use this function to log states of code, helps to find bugs
 def log(str):
@@ -675,6 +707,33 @@ def save_last_process(process_number):
     with open('last_process.txt', 'w') as fd:
         fd.write(str(process_number))
 
+def calculate_county_error(test_start_day, predictions):
+    countiesData_temporal = loadCounties(_COUNTIES_DATA_TEMPORAL_)
+
+    sum_org = 0
+    sum_predict = 0
+    sum_MAE = 0
+    sum_MASE = 0
+
+    for county in predictions[0]:
+        index_temporal, index_fix = calculateIndex(county['fips'], (startDay + timedelta(days=i)).isoformat())
+        if (index_temporal != -1):
+            for k in range(21):
+                orginal_death = float(countiesData_temporal[index_temporal + k]['death'])
+                prediction_death = predictions[k][county['fips']]
+                simple_death = float(countiesData_temporal[index_temporal + k - 14]['death'])
+                
+                sum_org += orginal_death
+                sum_predict += prediction_death
+                sum_MAE += abs(orginal_death - prediction_death)
+                sum_MASE += abs(orginal_death - simple_death)
+
+    MAE = sum_MAE / (21 * len(predictions[0]))
+    MAPE = sum_MAE / sum_org
+    MASE = MAE / (sum_MASE / (21 * len(predictions[0])))
+
+    return (MAE, MAPE, MASE)
+
 ################################################################ START
 
 def create_instances():
@@ -682,7 +741,7 @@ def create_instances():
 
     global gridIntersection, countiesData_temporal, countiesData_fix
 
-    gridIntersection = loadIntersection(_GRID_INTERSECTION_FILENAME_)
+    gridIntersection = loadJsonFile(_GRID_INTERSECTION_FILENAME_)
     countiesData_temporal = loadCounties(_COUNTIES_DATA_TEMPORAL_)
     countiesData_fix = loadCounties(_COUNTIES_DATA_FIX_)
 
