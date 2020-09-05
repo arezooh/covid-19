@@ -713,7 +713,7 @@ def calculate_county_error(test_start_day, predictions):
     sum_MASE = 0
 
     for county in predictions[0]:
-        index_temporal, index_fix = calculateIndex(county['fips'], (startDay + timedelta(days=i)).isoformat())
+        index_temporal, index_fix = calculateIndex(county['fips'], (test_start_day).isoformat())
         if (index_temporal != -1):
             for k in range(21):
                 orginal_death = float(countiesData_temporal[index_temporal + k]['death'])
