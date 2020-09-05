@@ -493,13 +493,15 @@ def save_process_result(process_number, parameters, result):
         str_result_country = '--result for Country, MAE:{0}, MAPE:{1}, MASE:{2}\n'.format(result[3], result[4], result[5])
         resultFile.write(str_parameters + str_result_pixel + str_result_country)
 
-def save_best_result(process_number, parameters_pixel, result_pixel, parameters_country, result_country):
+def save_best_result(process_number, parameters_pixel, result_pixel, parameters_country, result_country, parameters_county, result_county):
     with open('process{0}.txt'.format(process_number), 'a') as resultFile:
         str_parameters_pixel = 'Best Pixel result\n\t--model parameters: {0}\n\t'.format(parameters_pixel)
         str_result_pixel = '--result for Pixels: MAE:{0}, MAPE:{1}, MASE:{2}\n\t'.format(result_pixel[0], result_pixel[1], result_pixel[2]) 
         str_parameters_country = 'Best Country result\n\t--model parameters: {0}\n\t'.format(parameters_country)
         str_result_country = '--result for Country, MAE:{0}, MAPE:{1}, MASE:{2}\n'.format(result_country[0], result_country[1], result_country[2]) 
-        resultFile.write(str_parameters_pixel + str_result_pixel + str_parameters_country + str_result_country)
+        str_parameters_county = 'Best Country result\n\t--model parameters: {0}\n\t'.format(parameters_county)
+        str_result_county = '--result for Country, MAE:{0}, MAPE:{1}, MASE:{2}\n'.format(result_county[0], result_county[1], result_county[2]) 
+        resultFile.write(str_parameters_pixel + str_result_pixel + str_parameters_country + str_result_country + str_parameters_county + str_result_county)
 
 # From prediction.py file
 def send_email(*attachments):
@@ -819,6 +821,9 @@ def process_function(parameters,
     country_best_model = -1
     country_best_result = (-1, -1, -1)
 
+    county_best_model = -1
+    county_best_result = (-1, -1, -1)
+
     for i in range(start, end):
         input_size = parameters[i][0]
         hidden_dropout = parameters[i][1] 
@@ -834,6 +839,7 @@ def process_function(parameters,
 
         log('result for Pixels, MAE:{0}, MAPE:{1}, MASE:{2}'.format(result[0], result[1], result[2]))
         log('result for Country, MAE:{0}, MAPE:{1}, MASE:{2}'.format(result[3], result[4], result[5]))
+        log('result for County, MAE:{0}, MAPE:{1}, MASE:{2}'.format(result[6], result[7], result[8]))
         save_process_result(process_number, (input_size, hidden_dropout, visible_dropout, NO_dense_layer, increase_filters), result)
 
         if (pixel_best_model == -1 or result[2] < pixel_best_result[2]):
@@ -844,8 +850,12 @@ def process_function(parameters,
             country_best_model = i
             country_best_result = (result[3], result[4], result[5])
 
+        if (county_best_model == -1 or result[8] < county_best_result[2]):
+            county_best_model = i
+            county_best_result = (result[6], result[7], result[8])
+
     log('Process {0} done'.format(process_number))
-    save_best_result(process_number, parameters[pixel_best_model], pixel_best_result, parameters[country_best_model], country_best_result)
+    save_best_result(process_number, parameters[pixel_best_model], pixel_best_result, parameters[country_best_model], country_best_result, parameters[county_best_model], county_best_result)
 
 ################################################################ main
 
