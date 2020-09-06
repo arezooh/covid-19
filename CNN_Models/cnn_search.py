@@ -129,7 +129,7 @@ class standardizer:
         self.deviation = deviation
 
     def check(self, b):
-        if (self.mean == 0 and deviation == 0):
+        if (self.mean == 0 and self.deviation == 0):
             log('mean and deviation zero in b={0} | sum={1}, sum_deviation={2}, count={3}'.format(b, self.sum, self.sum_deviation, self.count))
 
 ################################################################ Functions
