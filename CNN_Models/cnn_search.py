@@ -573,7 +573,7 @@ def normal_x(train, validation, test, final_test):
 
     normalizers = []
     for b in range(data_shape[3]):
-        if (b >= 6 and (b - 6) % 4 == 0 or (b - 6) % 4 == 1):
+        if (b >= 6 and ((b - 6) % 4 == 0 or (b - 6) % 4 == 1)):
             normalizers.append(standardizer())
         else:
             normalizers.append(normalizer())
@@ -582,7 +582,7 @@ def normal_x(train, validation, test, final_test):
         for j in range(data_shape[1]):
             for a in range(data_shape[2]):
                 for b in range(data_shape[3]):
-                    if (b >= 6 and (b - 6) % 4 == 0 or (b - 6) % 4 == 1):
+                    if (b >= 6 and ((b - 6) % 4 == 0 or (b - 6) % 4 == 1)):
                         normalizers[b].update_mean(train[i][j][a][b])
                     else:
                         normalizers[b].update(train[i][j][a][b])
@@ -614,7 +614,7 @@ def normal_x(train, validation, test, final_test):
         for j in range(data_shape[1]):
             for a in range(data_shape[2]):
                 for b in range(data_shape[3]):
-                    if (b >= 6 and (b - 6) % 4 == 0 or (b - 6) % 4 == 1):
+                    if (b >= 6 and ((b - 6) % 4 == 0 or (b - 6) % 4 == 1)):
                         try:
                             normal_train[i][j][a][b] = normalizers[b].standardize(train[i][j][a][b])
                             if (i < no_validation):
