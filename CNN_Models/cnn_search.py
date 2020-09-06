@@ -721,7 +721,7 @@ def calculate_county_error(test_start_day, predictions):
     counties = loadCounties(_CONUTIES_FIPS_)
     for i in range(len(counties)):
         fips = int(counties[i]['county_fips'], 10)
-        index_temporal, index_fix = calculateIndex(fips, (test_start_day).isoformat())
+        index_temporal, index_fix = calculateIndex(fips, (startDay + timedelta(days=test_start_day)).isoformat())
         if (index_temporal != -1):
             for k in range(21):
                 orginal_death = float(countiesData_temporal[index_temporal + k]['death'])
