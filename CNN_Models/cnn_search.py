@@ -573,7 +573,7 @@ def normal_x(train, validation, test, final_test):
 
     normalizers = []
     for b in range(data_shape[3]):
-        if ((b - 6) % 4 == 0 or (b - 6) % 4 == 1):
+        if (b >= 6 and (b - 6) % 4 == 0 or (b - 6) % 4 == 1):
             normalizers.append(standardizer())
         else:
             normalizers.append(normalizer())
@@ -582,7 +582,7 @@ def normal_x(train, validation, test, final_test):
         for j in range(data_shape[1]):
             for a in range(data_shape[2]):
                 for b in range(data_shape[3]):
-                    if ((b - 6) % 4 == 0 or (b - 6) % 4 == 1):
+                    if (b >= 6 and (b - 6) % 4 == 0 or (b - 6) % 4 == 1):
                         normalizers[b].update_mean(train[i][j][a][b])
                     else:
                         normalizers[b].update(train[i][j][a][b])
@@ -614,14 +614,18 @@ def normal_x(train, validation, test, final_test):
         for j in range(data_shape[1]):
             for a in range(data_shape[2]):
                 for b in range(data_shape[3]):
-                    if ((b - 6) % 4 == 0 or (b - 6) % 4 == 1):
-                        normal_train[i][j][a][b] = normalizers[b].standardize(train[i][j][a][b])
-                        if (i < no_validation):
-                            normal_validation[i][j][a][b] = normalizers[b].standardize(validation[i][j][a][b])
-                        if (i < no_test):
-                            normal_test[i][j][a][b] = normalizers[b].standardize(test[i][j][a][b])
-                        if (i < no_final_test):
-                            normal_final_test[i][j][a][b] = normalizers[b].standardize(final_test[i][j][a][b])
+                    if (b >= 6 and (b - 6) % 4 == 0 or (b - 6) % 4 == 1):
+                        try:
+                            normal_train[i][j][a][b] = normalizers[b].standardize(train[i][j][a][b])
+                            if (i < no_validation):
+                                normal_validation[i][j][a][b] = normalizers[b].standardize(validation[i][j][a][b])
+                            if (i < no_test):
+                                normal_test[i][j][a][b] = normalizers[b].standardize(test[i][j][a][b])
+                            if (i < no_final_test):
+                                normal_final_test[i][j][a][b] = normalizers[b].standardize(final_test[i][j][a][b])
+                        except Exception as e:
+                            print('Exception occurred in i={0}, j={1}, a={2}, b={3}'.format(i, j, a, b))
+                            raise Exception(e)
                     else:
                         normal_train[i][j][a][b] = normalizers[b].normal(train[i][j][a][b])
                         if (i < no_validation):
@@ -714,12 +718,14 @@ def calculate_county_error(test_start_day, predictions):
     sum_MAE = 0
     sum_MASE = 0
 
-    for county in predictions[0]:
-        index_temporal, index_fix = calculateIndex(county['fips'], (test_start_day).isoformat())
+    counties = loadCounties(_CONUTIES_FIPS_)
+    for i in range(len(counties)):
+        fips = int(counties[i]['county_fips'], 10)
+        index_temporal, index_fix = calculateIndex(fips, (test_start_day).isoformat())
         if (index_temporal != -1):
             for k in range(21):
                 orginal_death = float(countiesData_temporal[index_temporal + k]['death'])
-                prediction_death = predictions[k][county['fips']]
+                prediction_death = predictions[k][fips]
                 simple_death = float(countiesData_temporal[index_temporal + k - 14]['death'])
                 
                 sum_org += orginal_death
