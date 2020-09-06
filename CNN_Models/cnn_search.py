@@ -57,9 +57,9 @@ hashCounties = [-1] * 78031     #78030 is biggest county fips
 countiesData_temporal = {}
 countiesData_fix = {}
 
-gridIntersection = []
-countiesData_temporal = []
-countiesData_fix = []
+gridIntersection = loadJsonFile(_GRID_INTERSECTION_FILENAME_)
+countiesData_temporal = loadCounties(_COUNTIES_DATA_TEMPORAL_)
+countiesData_fix = loadCounties(_COUNTIES_DATA_FIX_)
 
 ################################################################
 # We change 5 parameters to find best model (for now, we can't change number of blocks(NO_blocks))
@@ -863,13 +863,6 @@ def process_function(parameters,
 if __name__ == "__main__":
     log('START: loading data form files')
     init_no_processes()
-
-    global gridIntersection, countiesData_temporal, countiesData_fix
-
-    gridIntersection = loadJsonFile(_GRID_INTERSECTION_FILENAME_)
-    countiesData_temporal = loadCounties(_COUNTIES_DATA_TEMPORAL_)
-    countiesData_fix = loadCounties(_COUNTIES_DATA_FIX_)
-
     init_hashCounties()
     init_days()
 
