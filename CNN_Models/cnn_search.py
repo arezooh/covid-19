@@ -47,34 +47,12 @@ _DISTRIBUTION_FILENAME_ = './distribution.json'
 _NO_PARALLEL_PROCESSES_ = 4
 _NO_PROCESSES_ = 80
 
-################################################################ Globals
-
-startDay = datetime.datetime.strptime('2020-01-22', '%Y-%m-%d')
-endDay = datetime.datetime.strptime('2020-05-08', '%Y-%m-%d')
-dayLen = (endDay - startDay).days
-hashCounties = [-1] * 78031     #78030 is biggest county fips
-
-countiesData_temporal = {}
-countiesData_fix = {}
-
-gridIntersection = loadJsonFile(_GRID_INTERSECTION_FILENAME_)
-countiesData_temporal = loadCounties(_COUNTIES_DATA_TEMPORAL_)
-countiesData_fix = loadCounties(_COUNTIES_DATA_FIX_)
-
-################################################################
-# We change 5 parameters to find best model (for now, we can't change number of blocks(NO_blocks))
-# input_size = [3, 5, 15, 25] where image size is 300*300
-# hidden_dropout = [0, 0.2, 0.3, 0.4]
-# visible_dropout = [0, 0.2, 0.3, 0.4]
-# NO_dense_layer = [1, 2, 3]
-# increase_filters = [0, 1]
-################################################################
-
-p1 = [3, 5, 15, 25]
-p2 = [0, 0.2, 0.3, 0.4]
-p3 = [0, 0.2, 0.3, 0.4]
-p4 = [1, 2, 3]
-p5 = [0, 1]
+################################################################ Log Function
+# Use this function to log states of code, helps to find bugs
+def log(str):
+    t = datetime.datetime.now().isoformat()
+    with open('log', 'a') as logFile:
+        logFile.write('[{0}][{1}] {2}\n'.format(t, getpid(), str))
 
 ################################################################ Classes
 
@@ -137,7 +115,7 @@ class standardizer:
 
     def standardize(self, value):
         if (self.deviation == 0):
-            raise Exception('deviation is zero, divide by zero error will trigger sum:{0}, sum_deviation:{1}, count:{2}, mean:{3}'.format(self.sum, self.sum_deviation, self.count, self.mean))
+            return 0
         return (value - self.mean) / self.deviation
 
     def inverse_standardize(self, value):
@@ -149,6 +127,10 @@ class standardizer:
     def set_mean_deviation(self, mean, deviation):
         self.mean = mean
         self.deviation = deviation
+
+    def check(self, b):
+        if (self.mean == 0 and deviation == 0):
+            log('mean and deviation zero in b={0} | sum={1}, sum_deviation={2}, count={3}'.format(b, self.sum, self.sum_deviation, self.count))
 
 ################################################################ Functions
 
@@ -247,11 +229,11 @@ def calculateGridData(counties, i):
         index_temporal, index_fix = calculateIndex(county['fips'], (startDay + timedelta(days=i)).isoformat())
         if (index_temporal != -1):
             # sum
-            death += round(float(countiesData_temporal[index_temporal]['death']) * county['percent'])
-            confirmed += round(float(countiesData_temporal[index_temporal]['confirmed']) * county['percent'])
-            passenger_load += round(float(countiesData_fix[index_fix]['passenger_load']) * county['percent'], 6)
-            meat_plants += round(int(countiesData_fix[index_fix]['meat_plants'], 10) * county['percent'])
-            population += round(int(countiesData_fix[index_fix]['total_population'], 10) * county['percent'])
+            death += (float(countiesData_temporal[index_temporal]['death']) * county['percent'])
+            confirmed += (float(countiesData_temporal[index_temporal]['confirmed']) * county['percent'])
+            passenger_load += (float(countiesData_fix[index_fix]['passenger_load']) * county['percent'])
+            meat_plants += (int(countiesData_fix[index_fix]['meat_plants'], 10) * county['percent'])
+            population += (int(countiesData_fix[index_fix]['total_population'], 10) * county['percent'])
             # average
             longitude += float(countiesData_fix[index_fix]['longitude'])
             longitude_sum += 1
@@ -267,21 +249,21 @@ def calculateGridData(counties, i):
     for county in counties:
         index_temporal, index_fix = calculateIndex(county['fips'], (startDay + timedelta(days=i)).isoformat())
         if (index_temporal != -1):
-            county_confirmed = round(float(countiesData_temporal[index_temporal]['confirmed']) * county['percent'])
+            county_confirmed = (float(countiesData_temporal[index_temporal]['confirmed']) * county['percent'])
             if (county_confirmed != 0):
                 counties_dist.append({'fips': county['fips'], 'percent': county_confirmed / confirmed})
             else:
                 counties_dist.append({'fips': county['fips'], 'percent': 0})
 
     if daily_state_test_weightSum != 0:
-        daily_state_test = round(daily_state_test / daily_state_test_weightSum, 2)
+        daily_state_test = (daily_state_test / daily_state_test_weightSum)
     if area != 0:
-        population_density = round(population / area, 2)
-        houses_density = round(houses / area, 2)
+        population_density = (population / area)
+        houses_density = (houses / area)
     if longitude_sum != 0:
-        longitude = round(longitude / longitude_sum, 3)
+        longitude = (longitude / longitude_sum)
     if social_distancing_travel_distance_grade_weightSum != 0:
-        social_distancing_travel_distance_grade = round(social_distancing_travel_distance_grade / social_distancing_travel_distance_grade_weightSum, 1)
+        social_distancing_travel_distance_grade = (social_distancing_travel_distance_grade / social_distancing_travel_distance_grade_weightSum)
 
     output = []
     output.append(death)        #temporal
@@ -479,12 +461,6 @@ def evaluate_data(model, x_test, y_test, input_size, normal_min, normal_max):
 
     return (MAE_pixel, MAPE_pixel, MASE_pixel, MAE_country, MAPE_country, MASE_country, MAE_county, MAPE_county, MASE_county)
 
-# Use this function to log states of code, helps to find bugs
-def log(str):
-    t = datetime.datetime.now().isoformat()
-    with open('log', 'a') as logFile:
-        logFile.write('[{0}][{1}] {2}\n'.format(t, getpid(), str))
-
 def save_process_result(process_number, parameters, result):
     t = datetime.datetime.now().isoformat()
     with open('process{0}.txt'.format(process_number), 'a') as resultFile:
@@ -616,17 +592,13 @@ def normal_x(train, validation, test, final_test):
             for a in range(data_shape[2]):
                 for b in range(data_shape[3]):
                     if (b >= 6 and ((b - 6) % 4 == 0 or (b - 6) % 4 == 1)):
-                        try:
-                            normal_train[i][j][a][b] = normalizers[b].standardize(train[i][j][a][b])
-                            if (i < no_validation):
-                                normal_validation[i][j][a][b] = normalizers[b].standardize(validation[i][j][a][b])
-                            if (i < no_test):
-                                normal_test[i][j][a][b] = normalizers[b].standardize(test[i][j][a][b])
-                            if (i < no_final_test):
-                                normal_final_test[i][j][a][b] = normalizers[b].standardize(final_test[i][j][a][b])
-                        except Exception as e:
-                            print('Exception occurred in i={0}, j={1}, a={2}, b={3}'.format(i, j, a, b))
-                            raise Exception(e)
+                        normal_train[i][j][a][b] = normalizers[b].standardize(train[i][j][a][b])
+                        if (i < no_validation):
+                            normal_validation[i][j][a][b] = normalizers[b].standardize(validation[i][j][a][b])
+                        if (i < no_test):
+                            normal_test[i][j][a][b] = normalizers[b].standardize(test[i][j][a][b])
+                        if (i < no_final_test):
+                            normal_final_test[i][j][a][b] = normalizers[b].standardize(final_test[i][j][a][b])
                     else:
                         normal_train[i][j][a][b] = normalizers[b].normal(train[i][j][a][b])
                         if (i < no_validation):
@@ -635,6 +607,11 @@ def normal_x(train, validation, test, final_test):
                             normal_test[i][j][a][b] = normalizers[b].normal(test[i][j][a][b])
                         if (i < no_final_test):
                             normal_final_test[i][j][a][b] = normalizers[b].normal(final_test[i][j][a][b])
+
+    # check deviation and mean
+    for b in range(6, data_shape[3], 4):
+        normalizers[b].check(b)
+        normalizers[b + 1].check(b + 1)
 
     return (normal_train, normal_validation, normal_test, normal_final_test)
 
@@ -695,7 +672,7 @@ def inverse_normal_y(normal_data, standard_mean, standard_deviation):
         for j in range(data_shape[1]):
             for a in range(data_shape[2]):
                 for b in range(data_shape[3]):
-                    data[i][j][a][b] = round(obj_normalizer.inverse_standardize(normal_data[i][j][a][b]))
+                    data[i][j][a][b] = (obj_normalizer.inverse_standardize(normal_data[i][j][a][b]))
 
     return data
 
@@ -742,6 +719,35 @@ def calculate_county_error(test_start_day, predictions):
     MASE = MAE / (sum_MASE / (21 * len(predictions[0])))
 
     return (MAE, MAPE, MASE)
+
+################################################################ Globals
+
+startDay = datetime.datetime.strptime('2020-01-22', '%Y-%m-%d')
+endDay = datetime.datetime.strptime('2020-05-08', '%Y-%m-%d')
+dayLen = (endDay - startDay).days
+hashCounties = [-1] * 78031     #78030 is biggest county fips
+
+countiesData_temporal = {}
+countiesData_fix = {}
+
+gridIntersection = loadJsonFile(_GRID_INTERSECTION_FILENAME_)
+countiesData_temporal = loadCounties(_COUNTIES_DATA_TEMPORAL_)
+countiesData_fix = loadCounties(_COUNTIES_DATA_FIX_)
+
+################################################################
+# We change 5 parameters to find best model (for now, we can't change number of blocks(NO_blocks))
+# input_size = [3, 5, 15, 25] where image size is 300*300
+# hidden_dropout = [0, 0.2, 0.3, 0.4]
+# visible_dropout = [0, 0.2, 0.3, 0.4]
+# NO_dense_layer = [1, 2, 3]
+# increase_filters = [0, 1]
+################################################################
+
+p1 = [3, 5, 15, 25]
+p2 = [0, 0.2, 0.3, 0.4]
+p3 = [0, 0.2, 0.3, 0.4]
+p4 = [1, 2, 3]
+p5 = [0, 1]
 
 ################################################################ START
 
