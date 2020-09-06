@@ -735,7 +735,10 @@ def calculate_county_error(test_start_day, predictions):
                 sum_MASE += abs(orginal_death - simple_death)
 
     MAE = sum_MAE / (21 * len(predictions[0]))
-    MAPE = sum_MAE / sum_org
+    if (sum_org != 0):
+        MAPE = sum_MAE / sum_org
+    else:
+        MAPE = 'INFINITE'
     MASE = MAE / (sum_MASE / (21 * len(predictions[0])))
 
     return (MAE, MAPE, MASE)
@@ -743,16 +746,7 @@ def calculate_county_error(test_start_day, predictions):
 ################################################################ START
 
 def create_instances():
-    log('START: loading data form files')
-
     global gridIntersection, countiesData_temporal, countiesData_fix
-
-    gridIntersection = loadJsonFile(_GRID_INTERSECTION_FILENAME_)
-    countiesData_temporal = loadCounties(_COUNTIES_DATA_TEMPORAL_)
-    countiesData_fix = loadCounties(_COUNTIES_DATA_FIX_)
-
-    init_hashCounties()
-    init_days()
 
     ################################################################ creating image array(CNN input) ### Binary Search
 
@@ -867,7 +861,17 @@ def process_function(parameters,
 ################################################################ main
 
 if __name__ == "__main__":
+    log('START: loading data form files')
     init_no_processes()
+
+    global gridIntersection, countiesData_temporal, countiesData_fix
+
+    gridIntersection = loadJsonFile(_GRID_INTERSECTION_FILENAME_)
+    countiesData_temporal = loadCounties(_COUNTIES_DATA_TEMPORAL_)
+    countiesData_fix = loadCounties(_COUNTIES_DATA_FIX_)
+
+    init_hashCounties()
+    init_days()
 
     # Check if instances are ready
     if (os.path.exists('x_' + _INSTANCES_FILENAME_) and os.path.exists('y_' + _INSTANCES_FILENAME_)):
