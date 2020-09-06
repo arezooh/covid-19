@@ -491,7 +491,8 @@ def save_process_result(process_number, parameters, result):
         str_parameters = '[{0}][{1}]\n\t--model parameters: {2}\n\t'.format(t, getpid(), parameters)
         str_result_pixel = '--result for Pixels: MAE:{0}, MAPE:{1}, MASE:{2}\n\t'.format(result[0], result[1], result[2]) 
         str_result_country = '--result for Country, MAE:{0}, MAPE:{1}, MASE:{2}\n'.format(result[3], result[4], result[5])
-        resultFile.write(str_parameters + str_result_pixel + str_result_country)
+        str_result_county = '--result for County, MAE:{0}, MAPE:{1}, MASE:{2}\n'.format(result[6], result[7], result[8])
+        resultFile.write(str_parameters + str_result_pixel + str_result_country + str_result_county)
 
 def save_best_result(process_number, parameters_pixel, result_pixel, parameters_country, result_country, parameters_county, result_county):
     with open('process{0}.txt'.format(process_number), 'a') as resultFile:
