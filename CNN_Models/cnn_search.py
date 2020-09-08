@@ -276,7 +276,7 @@ def calculateGridData(counties, i):
     output.append(population)
     output.append(passenger_load)
     output.append(population_density)
-    return output
+    return (output, counties_dist)
 
 def init_days():
     global startDay
@@ -710,12 +710,11 @@ def calculate_county_error(test_start_day, predictions):
                 sum_predict += prediction_death
                 sum_MAE += abs(orginal_death - prediction_death)
                 sum_MASE += abs(orginal_death - simple_death)
+        else:
+            log('index = -1 | startDay={0}, fips={1}, index_fix={2}, test_start_day={3}'.format(startDay, fips, index_fix, test_start_day))
 
     MAE = sum_MAE / (21 * len(predictions[0]))
-    if (sum_org != 0):
-        MAPE = sum_MAE / sum_org
-    else:
-        MAPE = 'INFINITE'
+    MAPE = sum_MAE / sum_org
     MASE = MAE / (sum_MASE / (21 * len(predictions[0])))
 
     return (MAE, MAPE, MASE)
@@ -756,27 +755,37 @@ def create_instances():
 
     ################################################################ creating image array(CNN input) ### Binary Search
 
-    log('START: creating image')
+    log('creating image')
 
     # each row on imageArray include image data on day i
     imageArray = []
+    distribution = []
 
     for i in range(dayLen):
         grid = []
+        grid_distribution = []
         for x in range(len(gridIntersection)):
             gridRow = []
+            gridRow_distribution = []
             for y in range(len(gridIntersection[x])):
-                gridCell = calculateGridData(gridIntersection[x][y], i)
+                gridCell, gridCell_distribution = calculateGridData(gridIntersection[x][y], i)
                 gridRow.append(gridCell)
+                gridRow_distribution.append(gridCell_distribution)
             grid.append(gridRow)
+            grid_distribution.append(gridRow_distribution)
         imageArray.append(grid)
+        distribution.append(grid_distribution)
+
+    with open(_DISTRIBUTION_FILENAME_, 'w') as fd:
+        fd.write(json.dumps(distribution))
+        log('distribution file created')
 
     shape_imageArray = array(imageArray).shape
     imageArray = array(imageArray)
 
     ################################################################ creating instances
 
-    log('START: creating instances')
+    log('creating instances')
 
     # 6fix data, 4temporal data, 4D: number of instances, datas, grid row, grid column
     instance_shape = (dayLen - 28, shape_imageArray[1], shape_imageArray[2], 14 * 4 + 6)
@@ -791,7 +800,7 @@ def create_instances():
                     x_instances[i][x][y][j] = features[j]
                     y_instances[i][x][y] = result
 
-    log('START: saving instances into disk')
+    log('saving instances into disk')
 
     save('x_' + _INSTANCES_FILENAME_, x_instances)
     save('y_' + _INSTANCES_FILENAME_, y_instances)
@@ -867,13 +876,13 @@ def process_function(parameters,
 ################################################################ main
 
 if __name__ == "__main__":
-    log('START: loading data form files')
+    log('loading data form files')
     init_no_processes()
     init_hashCounties()
     init_days()
 
     # Check if instances are ready
-    if (os.path.exists('x_' + _INSTANCES_FILENAME_) and os.path.exists('y_' + _INSTANCES_FILENAME_)):
+    if (os.path.exists('x_' + _INSTANCES_FILENAME_) and os.path.exists('y_' + _INSTANCES_FILENAME_) and os.path.exists(_DISTRIBUTION_FILENAME_)):
         log('instances found')
     else:
         log('creating instances')
@@ -884,7 +893,7 @@ if __name__ == "__main__":
 
     ################################################################ split imageArray into train, validation and test
 
-    log('START: spliting data into train, validation and test')
+    log('spliting data into train, validation and test')
 
     x_dataTrain = x_instances[:-63]
     y_dataTrain = y_instances[:-63]
@@ -900,7 +909,7 @@ if __name__ == "__main__":
 
     ################################################################ normalize data
 
-    log('START: normalizing data')
+    log('normalizing data')
 
     normal_x_dataTrain, normal_x_dataValidation, normal_x_dataTest, normal_x_dataFinalTest = normal_x(x_dataTrain, x_dataValidation, x_dataTest, x_dataFinalTest)
     normal_y_dataTrain, normal_y_dataValidation, normal_y_dataTest, normal_y_dataFinalTest, normal_min, normal_max = normal_y(y_dataTrain, y_dataValidation, y_dataTest, y_dataFinalTest)
@@ -912,7 +921,7 @@ if __name__ == "__main__":
 
     ################################################################ copy data to shared memory
 
-    # log('START: copying data to shared memory')
+    # log('copying data to shared memory')
 
     # shared_x_train = sharedmem.empty(normal_x_dataTrain.shape)
     # copyto(shared_x_train, normal_x_dataTrain)
@@ -946,7 +955,7 @@ if __name__ == "__main__":
     # copyto(shared_y_final_test, normal_y_dataFinalTest)
     # del normal_y_dataFinalTest
 
-    log('START: Phase of testing models started')
+    log('Phase of testing models started')
 
     ################################################################ creating parameters
 
