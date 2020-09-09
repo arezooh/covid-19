@@ -713,9 +713,9 @@ def calculate_county_error(test_start_day, predictions):
         else:
             log('index = -1 | startDay={0}, fips={1}, index_fix={2}, test_start_day={3}'.format(startDay, fips, index_fix, test_start_day))
 
-    MAE = sum_MAE / (21 * len(predictions[0]))
+    MAE = sum_MAE / (21 * len(counties))
     MAPE = sum_MAE / sum_org
-    MASE = MAE / (sum_MASE / (21 * len(predictions[0])))
+    MASE = MAE / (sum_MASE / (21 * len(counties)))
 
     return (MAE, MAPE, MASE)
 
