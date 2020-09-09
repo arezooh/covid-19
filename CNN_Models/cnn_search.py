@@ -466,7 +466,7 @@ def save_process_result(process_number, parameters, result):
     with open('process{0}.txt'.format(process_number), 'a') as resultFile:
         str_parameters = '[{0}][{1}]\n\t--model parameters: {2}\n\t'.format(t, getpid(), parameters)
         str_result_pixel = '--result for Pixels: MAE:{0}, MAPE:{1}, MASE:{2}\n\t'.format(result[0], result[1], result[2]) 
-        str_result_country = '--result for Country, MAE:{0}, MAPE:{1}, MASE:{2}\n'.format(result[3], result[4], result[5])
+        str_result_country = '--result for Country, MAE:{0}, MAPE:{1}, MASE:{2}\n\t'.format(result[3], result[4], result[5])
         str_result_county = '--result for County, MAE:{0}, MAPE:{1}, MASE:{2}\n'.format(result[6], result[7], result[8])
         resultFile.write(str_parameters + str_result_pixel + str_result_country + str_result_county)
 
@@ -681,8 +681,6 @@ def init_no_processes():
     global _NO_PARALLEL_PROCESSES_
     _NO_PARALLEL_PROCESSES_ = multiprocessing.cpu_count()
     log('_NO_PARALLEL_PROCESSES_ set to {0}'.format(_NO_PARALLEL_PROCESSES_))
-    # Debug
-    _NO_PARALLEL_PROCESSES_ = 2
 
 def save_last_process(process_number):
     with open('last_process.txt', 'w') as fd:
