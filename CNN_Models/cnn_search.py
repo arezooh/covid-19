@@ -689,6 +689,8 @@ def save_last_process(process_number):
         fd.write(str(process_number))
 
 def calculate_county_error(test_start_day, predictions):
+    init_hashCounties()
+    init_days()
     countiesData_temporal = loadCounties(_COUNTIES_DATA_TEMPORAL_)
 
     sum_org = 0
