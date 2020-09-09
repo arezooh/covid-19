@@ -10,6 +10,7 @@ import datetime
 import matplotlib.pyplot as plt
 
 single_model_parameters = (3, 0, 0, 3, 0)
+target_counties = ['36059', '36061']
 image_size = 300
 
 # Use this function to log states of code, helps to find bugs
@@ -63,30 +64,30 @@ def evaluate_data_sd(model, x_data, y_data, input_size, normal_min, normal_max):
             subY_predict = cnn_search.inverse_normal_y(subY_predict_normal, normal_min, normal_max)
 
             for k in range(pred_shape[0]):
-                sum_org += y_data_org[k][i][j][0]
-                sum_predict += subY_predict[k][0][0][0]
-                sum_simple += x_data[k][i][j][-4]
-                sum_MAE += abs(y_data_org[k][i][j][0] - subY_predict[k][0][0][0])
-                sum_MAPE += abs(y_data_org[k][i][j][0] - subY_predict[k][0][0][0])
-                sum_MASE += abs(y_data_org[k][i][j][0] - x_data[k][i][j][-4])
+                if (k >= pred_shape[0] - 21):
+                    sum_org += y_data_org[k][i][j][0]
+                    sum_predict += subY_predict[k][0][0][0]
+                    sum_simple += x_data[k][i][j][-4]
+                    sum_MAE += abs(y_data_org[k][i][j][0] - subY_predict[k][0][0][0])
+                    sum_MAPE += abs(y_data_org[k][i][j][0] - subY_predict[k][0][0][0])
+                    sum_MASE += abs(y_data_org[k][i][j][0] - x_data[k][i][j][-4])
 
                 for county in distribution[k][i][j]:
-                    counties_predict[k][county['fips']] += round(subY_predict[k][0][0][0] * county['percent'])
+                    counties_predict[k][county['fips']] += (subY_predict[k][0][0][0] * county['percent'])
 
-    # debug: error calculation must be corrected
-    MAE_county, MAPE_county, MASE_county = cnn_search.calculate_county_error(0, counties_predict)
+    MAE_county, MAPE_county, MASE_county, MAE_county_round, MAPE_county_round, MASE_county_round, orginal = calculate_county_error_sd(0, counties_predict)
 
-    MAE_pixel = sum_MAE / (data_shape[0] * data_shape[1] * data_shape[2])
+    MAE_pixel = sum_MAE / (21 * data_shape[1] * data_shape[2])
     MAPE_pixel = sum_MAPE / sum_org
-    MASE_pixel = MAE_pixel / (sum_MASE / (data_shape[0] * data_shape[1] * data_shape[2]))
+    MASE_pixel = MAE_pixel / (sum_MASE / (21 * data_shape[1] * data_shape[2]))
 
     MAE_country = abs(sum_org - sum_predict)
     MAPE_country = abs(sum_org - sum_predict) / sum_org
     MASE_country = MAE_country / abs(sum_simple - sum_predict)
 
-    results = (MAE_pixel, MAPE_pixel, MASE_pixel, MAE_country, MAPE_country, MASE_country, MAE_county, MAPE_county, MASE_county)
+    results = (MAE_pixel, MAPE_pixel, MASE_pixel, MAE_country, MAPE_country, MASE_country, MAE_county, MAPE_county, MASE_county, MAE_county_round, MAPE_county_round, MASE_county_round)
 
-    return (counties_predict, results)
+    return (counties_predict, orginal, results)
 
 def county_pixcels(county_fips):
     gridIntersection = cnn_search.loadJsonFile(cnn_search._GRID_INTERSECTION_FILENAME_)
@@ -97,6 +98,8 @@ def county_pixcels(county_fips):
             for county in gridIntersection[x][y]:
                 if county['fips'] == county_fips:
                     pixcels.append((x, y, county_fips))
+                elif (type(county['fips']) != type(county_fips)):
+                    raise Exception ('type mismatch for county_fips')
 
     return(pixcels)
 
@@ -120,7 +123,7 @@ def plot_chart(fips, prediction, original):
 
     fig.savefig('result_{0}.png'.format(fips))
 
-def predict_counties_result(counties_fips, normal_x_data, normal_y_data, input_size, normal_min, normal_max):
+def predict_counties_result(counties_fips, model, normal_x_data, normal_y_data, input_size, normal_min, normal_max):
     pixcels = []
     min_x = -1
     min_y = -1
@@ -140,7 +143,7 @@ def predict_counties_result(counties_fips, normal_x_data, normal_y_data, input_s
         if (pixcel[1] == -1 or pixcel[1] > max_y):
             max_y = pixcel[1]
 
-    counties_predict, result = evaluate_data_sd(model, 
+    counties_predict, orginal, result = evaluate_data_sd(model, 
         pad_subImage(normal_x_data, input_size, min_x, min_y, max_x, max_y),
         pad_subImage(normal_y_data, input_size, min_x, min_y, max_x, max_y),
         input_size,
@@ -148,18 +151,69 @@ def predict_counties_result(counties_fips, normal_x_data, normal_y_data, input_s
         normal_max)
 
     for fips in counties_fips:
-        # debug: last parameter should be original data, which will get from internal calculate_county_error
-        plot_chart(fips, counties_predict[:, fips], counties_predict[:, fips])
+        plot_chart(fips, counties_predict[:, fips], orginal)
 
     return result
+
+def calculate_county_error_sd(test_start_day, predictions):
+    cnn_search.init_hashCounties()
+    cnn_search.init_days()
+    countiesData_temporal = cnn_search.loadCounties(cnn_search._COUNTIES_DATA_TEMPORAL_)
+    data_shape = predictions.shape
+
+    sum_org = 0
+    sum_predict = 0
+    sum_MAE = 0
+    sum_MASE = 0
+
+    sum_predict_round = 0
+    sum_MAE_round = 0
+
+    # init counties_predict array
+    orginals = []
+    orginals_per_day = zeros(78031)
+
+    for _ in range(data_shape[0]):
+        orginals.append(orginals_per_day.copy())
+
+    counties = cnn_search.loadCounties(cnn_search._CONUTIES_FIPS_)
+    for i in range(len(counties)):
+        fips = int(counties[i]['county_fips'], 10)
+        index_temporal, index_fix = cnn_search.calculateIndex(fips, (cnn_search.startDay + datetime.timedelta(days=test_start_day)).isoformat())
+        if (index_temporal != -1):
+            for k in range(data_shape[0]):
+                orginal_death = float(countiesData_temporal[index_temporal + k]['death'])
+                prediction_death = predictions[k][fips]
+                simple_death = float(countiesData_temporal[index_temporal + k - 14]['death'])
+
+                orginals[k][fips] = orginal_death
+                
+                if (k >= data_shape[0] - 21):
+                    sum_org += orginal_death
+                    sum_predict += prediction_death
+                    sum_MAE += abs(orginal_death - prediction_death)
+                    sum_MASE += abs(orginal_death - simple_death)
+
+                    sum_predict_round += round(prediction_death)
+                    sum_MAE_round += abs(orginal_death - round(prediction_death))
+        else:
+            log('index = -1 | startDay={0}, fips={1}, index_fix={2}, test_start_day={3}'.format(cnn_search.startDay, fips, index_fix, test_start_day))
+
+    MAE = sum_MAE / (21 * len(counties))
+    MAPE = sum_MAE / sum_org
+    MASE = MAE / (sum_MASE / (21 * len(counties)))
+
+    MAE_round = sum_MAE_round / (21 * len(counties))
+    MAPE_round = sum_MAE_round / sum_org
+    MASE_round = MAE_round / (sum_MASE / (21 * len(counties)))
+
+    return (MAE, MAPE, MASE, MAE_round, MAPE_round, MASE_round, orginals)
 
 ################################################################ main
 
 if __name__ == "__main__":
-    a = array([1,2,3,4])
-    print(a)
-    exit(0)
     cnn_search.init_hashCounties()
+    cnn_search.init_days()
 
     # Check if instances are ready
     if (os.path.exists('x_' + cnn_search._INSTANCES_FILENAME_) and os.path.exists('y_' + cnn_search._INSTANCES_FILENAME_)):
@@ -193,6 +247,11 @@ if __name__ == "__main__":
     normal_x_dataTrain, normal_x_dataValidation, normal_x_dataTest, normal_x_dataFinalTest = cnn_search.normal_x(x_dataTrain, x_dataValidation, x_dataTest, x_dataFinalTest)
     normal_y_dataTrain, normal_y_dataValidation, normal_y_dataTest, normal_y_dataFinalTest, normal_min, normal_max = cnn_search.normal_y(y_dataTrain, y_dataValidation, y_dataTest, y_dataFinalTest)
 
+    data_shape = normal_x_dataTrain.shape
+    no_train = normal_x_dataTrain.shape[0]
+    no_validation = normal_x_dataValidation.shape[0]
+    no_test = normal_x_dataTest.shape[0]
+
     ################################################################ clearing memory
 
     del x_instances, x_dataTrain, x_dataValidation, x_dataTest, x_dataFinalTest
@@ -212,11 +271,18 @@ if __name__ == "__main__":
     NO_blocks = floor(log2(input_size))
     model = cnn_search.create_model(input_size, hidden_dropout, visible_dropout, NO_blocks, NO_dense_layer, increase_filters)
     cnn_search.train_data(model, normal_x_dataTrain, normal_y_dataTrain, normal_x_dataValidation, normal_y_dataValidation, 2, input_size)
-    result = cnn_search.evaluate_data(model, normal_x_dataTest, normal_y_dataTest, input_size, normal_min, normal_max)
+    result = predict_counties_result(target_counties, 
+        model, 
+        append(append(normal_x_dataTrain, normal_x_dataValidation).reshape(no_train + no_validation, data_shape[1], data_shape[2], data_shape[3]), normal_x_dataTest).reshape(no_train + no_validation + no_test, data_shape[1], data_shape[2], data_shape[3]), 
+        append(append(normal_y_dataTrain, normal_y_dataValidation).reshape(no_train + no_validation, data_shape[1], data_shape[2], 1), normal_y_dataTest).reshape(no_train + no_validation + no_test, data_shape[1], data_shape[2], 1), 
+        input_size, 
+        normal_min, 
+        normal_max)
 
     log('result for Pixels, MAE:{0}, MAPE:{1}, MASE:{2}'.format(result[0], result[1], result[2]))
     log('result for Country, MAE:{0}, MAPE:{1}, MASE:{2}'.format(result[3], result[4], result[5]))
     log('result for County, MAE:{0}, MAPE:{1}, MASE:{2}'.format(result[6], result[7], result[8]))
+    log('result for County with rounded prediction, MAE:{0}, MAPE:{1}, MASE:{2}'.format(result[9], result[10], result[11]))
 
 
         
