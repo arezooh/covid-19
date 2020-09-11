@@ -9,8 +9,10 @@ import os
 import datetime
 import matplotlib.pyplot as plt
 
-single_model_parameters = (3, 0, 0, 3, 0)
-target_counties = ['36059', '36061']
+_RESULTS_DIR_ = './results/'
+
+single_model_parameters = (3, 0, 0.3, 1, 0)
+target_counties = [36059, 36061]
 image_size = 300
 
 # Use this function to log states of code, helps to find bugs
@@ -121,7 +123,7 @@ def plot_chart(fips, prediction, original):
     fig.set_figwidth(25)
     plt.legend()
 
-    fig.savefig('result_{0}.png'.format(fips))
+    fig.savefig(_RESULTS_DIR_ + 'result_{0}.png'.format(fips))
 
 def predict_counties_result(counties_fips, model, normal_x_data, normal_y_data, input_size, normal_min, normal_max):
     pixcels = []
@@ -134,14 +136,16 @@ def predict_counties_result(counties_fips, model, normal_x_data, normal_y_data, 
         pixcels.extend(county_pixcels(fips))
 
     for pixcel in pixcels:
-        if (pixcel[0] == -1 or pixcel[0] < min_x):
+        if (min_x == -1 or pixcel[0] < min_x):
             min_x = pixcel[0]
-        if (pixcel[1] == -1 or pixcel[1] < min_y):
+        if (min_y == -1 or pixcel[1] < min_y):
             min_y = pixcel[1]
-        if (pixcel[0] == -1 or pixcel[0] > max_x):
+        if (max_x == -1 or pixcel[0] > max_x):
             max_x = pixcel[0]
-        if (pixcel[1] == -1 or pixcel[1] > max_y):
+        if (max_y == -1 or pixcel[1] > max_y):
             max_y = pixcel[1]
+
+    log('MIN x:{0}, y:{1} | MAX x:{2}, y:{3}')
 
     counties_predict, orginal, result = evaluate_data_sd(model, 
         pad_subImage(normal_x_data, input_size, min_x, min_y, max_x, max_y),
@@ -150,8 +154,10 @@ def predict_counties_result(counties_fips, model, normal_x_data, normal_y_data, 
         normal_min,
         normal_max)
 
+    counties_predict = array(counties_predict)
+    orginal = array(orginal)
     for fips in counties_fips:
-        plot_chart(fips, counties_predict[:, fips], orginal)
+        plot_chart(fips, counties_predict[:, fips], orginal[:, fips])
 
     return result
 
@@ -159,7 +165,7 @@ def calculate_county_error_sd(test_start_day, predictions):
     cnn_search.init_hashCounties()
     cnn_search.init_days()
     countiesData_temporal = cnn_search.loadCounties(cnn_search._COUNTIES_DATA_TEMPORAL_)
-    data_shape = predictions.shape
+    no_days = len(predictions)
 
     sum_org = 0
     sum_predict = 0
@@ -173,7 +179,7 @@ def calculate_county_error_sd(test_start_day, predictions):
     orginals = []
     orginals_per_day = zeros(78031)
 
-    for _ in range(data_shape[0]):
+    for _ in range(no_days):
         orginals.append(orginals_per_day.copy())
 
     counties = cnn_search.loadCounties(cnn_search._CONUTIES_FIPS_)
@@ -181,14 +187,14 @@ def calculate_county_error_sd(test_start_day, predictions):
         fips = int(counties[i]['county_fips'], 10)
         index_temporal, index_fix = cnn_search.calculateIndex(fips, (cnn_search.startDay + datetime.timedelta(days=test_start_day)).isoformat())
         if (index_temporal != -1):
-            for k in range(data_shape[0]):
+            for k in range(no_days):
                 orginal_death = float(countiesData_temporal[index_temporal + k]['death'])
                 prediction_death = predictions[k][fips]
                 simple_death = float(countiesData_temporal[index_temporal + k - 14]['death'])
 
                 orginals[k][fips] = orginal_death
                 
-                if (k >= data_shape[0] - 21):
+                if (k >= no_days - 21):
                     sum_org += orginal_death
                     sum_predict += prediction_death
                     sum_MAE += abs(orginal_death - prediction_death)
