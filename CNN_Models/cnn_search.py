@@ -1003,7 +1003,7 @@ if __name__ == "__main__":
         processes[i + start_process].start()
 
     # Wait till 1 process done, then start the next one
-    for i in range(len(processes) - start_process - _NO_PARALLEL_PROCESSES_):
+    for i in range(_NO_PROCESSES_ - start_process - _NO_PARALLEL_PROCESSES_):
         processes[i + start_process].join()
         save_last_process(i + start_process)
         processes[i + start_process + _NO_PARALLEL_PROCESSES_].start()
@@ -1013,7 +1013,8 @@ if __name__ == "__main__":
 
     # Wait for all processes done
     for i in range(_NO_PARALLEL_PROCESSES_):
-        processes[len(processes) - _NO_PARALLEL_PROCESSES_ + i].join()
+        processes[_NO_PROCESSES_ - _NO_PARALLEL_PROCESSES_ + i].join()
+        save_last_process(_NO_PROCESSES_ - _NO_PARALLEL_PROCESSES_ + i)
 
     log('All processes done')
     send_log()
