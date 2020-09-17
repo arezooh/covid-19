@@ -457,7 +457,7 @@ def evaluate_data(model, x_test, y_test, input_size, normal_min, normal_max):
 
     MAE_country = abs(sum_org - sum_predict)
     MAPE_country = abs(sum_org - sum_predict) / sum_org
-    MASE_country = MAE_country / abs(sum_simple - sum_predict)
+    MASE_country = MAE_country / abs(sum_org - sum_simple)
 
     return (MAE_pixel, MAPE_pixel, MASE_pixel, MAE_country, MAPE_country, MASE_country, MAE_county, MAPE_county, MASE_county)
 
@@ -656,6 +656,7 @@ def normal_y(train, validation, test, final_test):
                 if (i < no_final_test):
                     normal_final_test[i][j][a][0] = obj_normalizer.standardize(final_test[i][j][a])
 
+    obj_normalizer.check(100)
     standard_mean, standard_deviation = obj_normalizer.get_mean_deviation()
 
     return (normal_train, normal_validation, normal_test, normal_final_test, standard_mean, standard_deviation)
