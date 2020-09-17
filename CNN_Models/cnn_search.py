@@ -33,6 +33,9 @@ import os
 
 import sharedmem
 
+from numpy.random import seed
+from tensorflow.random import set_seed
+
 ################################################################ Defines
 
 _CSV_Directory_ = ''
@@ -46,6 +49,9 @@ _DISTRIBUTION_FILENAME_ = './distribution.json'
 
 _NO_PARALLEL_PROCESSES_ = 4
 _NO_PROCESSES_ = 80
+
+_NUMPY_SEED_ = 580
+_TENSORFLOW_SEED_ = 870
 
 ################################################################ Log Function
 # Use this function to log states of code, helps to find bugs
@@ -325,6 +331,10 @@ def parse_data_into_instance(data):
     return (instance, result)
 
 def create_model(inputSize, hiddenDropout, visibleDropout, noBlocks, noDenseLayer, increaseFilters):
+    # Set random seeds to make situation equal for all models 
+    seed(_NUMPY_SEED_)
+    set_seed(_TENSORFLOW_SEED_)
+
     noFilters = 64
     model = keras.Sequential()
 
