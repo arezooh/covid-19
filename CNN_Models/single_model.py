@@ -12,7 +12,7 @@ import matplotlib.pyplot as plt
 _RESULTS_DIR_ = './results/'
 
 single_model_parameters = (3, 0, 0.3, 1, 0)
-target_counties = [36059, 36061, 1005]
+target_counties = [36061, 40117, 51059]
 image_size = 300
 
 # Use this function to log states of code, helps to find bugs
@@ -45,6 +45,9 @@ def evaluate_data_sd(model, x_data, y_data, input_size, normal_min, normal_max):
     sum_MAPE = 0
     sum_MASE = 0
 
+    country_org = zeros(data_shape[0])
+    country_pred = zeros(data_shape[0])
+
     _debug_no_pixcels = 0
 
     # init counties_predict array
@@ -76,6 +79,9 @@ def evaluate_data_sd(model, x_data, y_data, input_size, normal_min, normal_max):
                     sum_MAPE += abs(y_data_org[k][i][j][0] - subY_predict[k][0][0][0])
                     sum_MASE += abs(y_data_org[k][i][j][0] - x_data[k][i][j][-4])
 
+                country_org[k] += y_data_org[k][i][j][0]
+                country_pred[k] += subY_predict[k][0][0][0]
+
                 for county in distribution[k][i][j]:
                     counties_predict[k][county['fips']] += (subY_predict[k][0][0][0] * county['percent'])
 
@@ -96,7 +102,7 @@ def evaluate_data_sd(model, x_data, y_data, input_size, normal_min, normal_max):
 
     results = (MAE_pixel, MAPE_pixel, MASE_pixel, MAE_country, MAPE_country, MASE_country, MAE_county, MAPE_county, MASE_county, MAE_county_round, MAPE_county_round, MASE_county_round)
 
-    return (counties_predict, orginal, results)
+    return (counties_predict, orginal, results, country_org, country_pred)
 
 def county_pixcels(county_fips):
     gridIntersection = cnn_search.loadJsonFile(cnn_search._GRID_INTERSECTION_FILENAME_)
@@ -154,7 +160,7 @@ def predict_counties_result(counties_fips, model, normal_x_data, normal_y_data, 
 
     log('MIN x:{0}, y:{1} | MAX x:{2}, y:{3}'.format(min_x, min_y, max_x, max_y))
 
-    counties_predict, orginal, result = evaluate_data_sd(model, 
+    counties_predict, orginal, result, country_org, country_pred = evaluate_data_sd(model, 
         pad_subImage(normal_x_data, input_size, min_x, min_y, max_x, max_y),
         pad_subImage(normal_y_data, input_size, min_x, min_y, max_x, max_y),
         input_size,
@@ -165,6 +171,8 @@ def predict_counties_result(counties_fips, model, normal_x_data, normal_y_data, 
     orginal = array(orginal)
     for fips in counties_fips:
         plot_chart(fips, counties_predict[:, fips], orginal[:, fips])
+
+    plot_chart('country', country_org, country_pred)
 
     return result
 
