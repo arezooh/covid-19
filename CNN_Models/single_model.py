@@ -12,7 +12,7 @@ import matplotlib.pyplot as plt
 _RESULTS_DIR_ = './results/'
 
 single_model_parameters = (3, 0, 0.3, 1, 0)
-target_counties = [36059, 36061]
+target_counties = [36059, 36061, 1005]
 image_size = 300
 
 # Use this function to log states of code, helps to find bugs
@@ -44,6 +44,8 @@ def evaluate_data_sd(model, x_data, y_data, input_size, normal_min, normal_max):
     sum_MAE = 0
     sum_MAPE = 0
     sum_MASE = 0
+
+    _debug_no_pixcels = 0
 
     # init counties_predict array
     counties_predict = []
@@ -77,6 +79,11 @@ def evaluate_data_sd(model, x_data, y_data, input_size, normal_min, normal_max):
                 for county in distribution[k][i][j]:
                     counties_predict[k][county['fips']] += (subY_predict[k][0][0][0] * county['percent'])
 
+            _debug_no_pixcels += 1
+
+    if (sum_org == 0):
+        log('sum_org is zero, _debug_no_pixcels = {0}'.format(_debug_no_pixcels))
+
     MAE_county, MAPE_county, MASE_county, MAE_county_round, MAPE_county_round, MASE_county_round, orginal = calculate_county_error_sd(0, counties_predict)
 
     MAE_pixel = sum_MAE / (21 * data_shape[1] * data_shape[2])
@@ -85,7 +92,7 @@ def evaluate_data_sd(model, x_data, y_data, input_size, normal_min, normal_max):
 
     MAE_country = abs(sum_org - sum_predict)
     MAPE_country = abs(sum_org - sum_predict) / sum_org
-    MASE_country = MAE_country / abs(sum_simple - sum_predict)
+    MASE_country = MAE_country / abs(sum_org - sum_simple)
 
     results = (MAE_pixel, MAPE_pixel, MASE_pixel, MAE_country, MAPE_country, MASE_country, MAE_county, MAPE_county, MASE_county, MAE_county_round, MAPE_county_round, MASE_county_round)
 
@@ -145,7 +152,7 @@ def predict_counties_result(counties_fips, model, normal_x_data, normal_y_data, 
         if (max_y == -1 or pixcel[1] > max_y):
             max_y = pixcel[1]
 
-    log('MIN x:{0}, y:{1} | MAX x:{2}, y:{3}')
+    log('MIN x:{0}, y:{1} | MAX x:{2}, y:{3}'.format(min_x, min_y, max_x, max_y))
 
     counties_predict, orginal, result = evaluate_data_sd(model, 
         pad_subImage(normal_x_data, input_size, min_x, min_y, max_x, max_y),
@@ -175,6 +182,8 @@ def calculate_county_error_sd(test_start_day, predictions):
     sum_predict_round = 0
     sum_MAE_round = 0
 
+    _debug_no_counties = 0
+
     # init counties_predict array
     orginals = []
     orginals_per_day = zeros(78031)
@@ -187,6 +196,7 @@ def calculate_county_error_sd(test_start_day, predictions):
         fips = int(counties[i]['county_fips'], 10)
         index_temporal, index_fix = cnn_search.calculateIndex(fips, (cnn_search.startDay + datetime.timedelta(days=test_start_day)).isoformat())
         if (index_temporal != -1):
+            _debug_no_counties += 1
             for k in range(no_days):
                 orginal_death = float(countiesData_temporal[index_temporal + k]['death'])
                 prediction_death = predictions[k][fips]
@@ -204,6 +214,9 @@ def calculate_county_error_sd(test_start_day, predictions):
                     sum_MAE_round += abs(orginal_death - round(prediction_death))
         else:
             log('index = -1 | startDay={0}, fips={1}, index_fix={2}, test_start_day={3}'.format(cnn_search.startDay, fips, index_fix, test_start_day))
+
+    if (sum_org == 0):
+        log('sum_org is zero, _debug_no_counties = {0}'.format(_debug_no_counties))
 
     MAE = sum_MAE / (21 * len(counties))
     MAPE = sum_MAE / sum_org
