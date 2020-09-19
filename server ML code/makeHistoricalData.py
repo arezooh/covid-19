@@ -7,7 +7,7 @@ from sklearn.impute import SimpleImputer
 # h is the number of days before day (t)
 # r indicates how many days after day (t) --> target-day = day(t+r)
 # target could be number of deaths or number of confirmed 
-def makeHistoricalData(h, r, test_size, target, feature_selection, spatial_mode, target_mode, address, future_features, pivot):
+def makeHistoricalData(h, r, test_size, target, feature_selection, spatial_mode, target_mode, address, future_features):
     
     ''' in this code when h is 1, it means there is no history and we have just one column for each covariate
     so when h is 0, we put h equal to 1, because when h is 0 that means there no history (as when h is 1) '''
@@ -311,40 +311,6 @@ def makeHistoricalData(h, r, test_size, target, feature_selection, spatial_mode,
     zero_removed_data=zero_removed_data.drop(['index'],axis=1)
     result = zero_removed_data
 
-    if pivot == 'state':
-        temp = result
-        temp['county_fips'] = temp['state_fips']
-        temp['county_name'] = temp['state_name']
-        temp.drop(['state_fips', 'state_name'], axis=1, inplace=True)
-        all_columns = temp.columns.values
-        social_distancing_columns = [col for col in all_columns if col.startswith('social-distancing')]
-        confirmed_death_columns = [col for col in all_columns if
-                                   col.startswith('confirmed') or col.startswith('death ')]
-        base_columns = ['county_fips', 'county_name', 'date of day t']
-        cumulative_columns = ['Target', 'total_population', 'meat_plants', 'passenger_load',
-                              'area'] + confirmed_death_columns
-        mean_columns = [col for col in all_columns if col not in cumulative_columns]
-        cumulative_columns += base_columns
-
-        cumulative_grouped = temp[cumulative_columns].groupby(base_columns)
-        mean_grouped = temp[mean_columns].groupby(base_columns)
-
-        cumulative_data = cumulative_grouped.sum()
-        mean_data = mean_grouped.mean()
-
-        temp = pd.DataFrame(data={}, columns=['county_fips', 'county_name', 'date of day t'])
-        for name, group in cumulative_grouped:
-            s = pd.Series(data=list(name), index=['county_fips', 'county_name', 'date of day t'])
-            temp = temp.append(s, ignore_index=True)
-
-        result = pd.concat([temp,
-                            pd.DataFrame(mean_data.values, columns=mean_data.columns.values),
-                            pd.DataFrame(cumulative_data.values, columns=cumulative_data.columns.values)],
-                           axis=1)
-
-        for social_distancing_column in social_distancing_columns:
-            result[social_distancing_column] = result[social_distancing_column].map(lambda x: round(x))
-
 
     
     return result
@@ -358,8 +324,7 @@ def main():
     spatial_mode = 'country'
     target_mode = 'cumulative'
     address = './'
-    pivot = 'county'
-    # result = makeHistoricalData(h, r, target, feature_selection, spatial_mode, target_mode,address, pivot)
+    # result = makeHistoricalData(h, r, target, feature_selection, spatial_mode, target_mode,address)
     # Storing the result in a csv file
     # result.to_csv('dataset_h=' + str(h) + '.csv', mode='w', index=False)
 
