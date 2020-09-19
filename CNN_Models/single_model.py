@@ -90,7 +90,7 @@ def evaluate_data_sd(model, x_data, y_data, input_size, normal_min, normal_max):
     if (sum_org == 0):
         log('sum_org is zero, _debug_no_pixcels = {0}'.format(_debug_no_pixcels))
 
-    MAE_county, MAPE_county, MASE_county, MAE_county_round, MAPE_county_round, MASE_county_round, orginal = calculate_county_error_sd(0, counties_predict)
+    MAE_county, MAPE_county, MASE_county, MAE_county_round, MAPE_county_round, MASE_county_round, MAE_state, MAPE_state, MASE_state, orginal = calculate_county_error_sd(0, counties_predict)
 
     MAE_pixel = sum_MAE / (21 * data_shape[1] * data_shape[2])
     MAPE_pixel = sum_MAPE / sum_org
@@ -100,7 +100,7 @@ def evaluate_data_sd(model, x_data, y_data, input_size, normal_min, normal_max):
     MAPE_country = abs(sum_org - sum_predict) / sum_org
     MASE_country = MAE_country / abs(sum_org - sum_simple)
 
-    results = (MAE_pixel, MAPE_pixel, MASE_pixel, MAE_country, MAPE_country, MASE_country, MAE_county, MAPE_county, MASE_county, MAE_county_round, MAPE_county_round, MASE_county_round)
+    results = (MAE_pixel, MAPE_pixel, MASE_pixel, MAE_country, MAPE_country, MASE_country, MAE_county, MAPE_county, MASE_county, MAE_county_round, MAPE_county_round, MASE_county_round, MAE_state, MAPE_state, MASE_state)
 
     return (counties_predict, orginal, results, country_org, country_pred)
 
@@ -170,6 +170,13 @@ def predict_counties_result(counties_fips, model, normal_x_data, normal_y_data, 
     # create results directory if it's missing
     if (os.path.exists('results') == False):
         os.mkdir('results')
+        
+    # save results in a file
+    save_results('Pixels', result[0], result[1], result[2])
+    save_results('Country', result[3], result[4], result[5])
+    save_results('Counties', result[6], result[7], result[8])
+    save_results('Counties with rounded prediction', result[9], result[10], result[11])
+    save_results('States', result[12], result[13], result[14])
 
     counties_predict = array(counties_predict)
     orginal = array(orginal)
@@ -177,8 +184,6 @@ def predict_counties_result(counties_fips, model, normal_x_data, normal_y_data, 
         plot_chart(fips, counties_predict[:, fips], orginal[:, fips])
 
     plot_chart('country', country_org, country_pred)
-
-    return result
 
 def calculate_county_error_sd(test_start_day, predictions):
     cnn_search.init_hashCounties()
@@ -200,12 +205,20 @@ def calculate_county_error_sd(test_start_day, predictions):
     orginals = []
     orginals_per_day = zeros(78031)
 
+    sum_org_state = zeros(79)
+    sum_predict_state = zeros(79)
+    sum_simple_state = zeros(79)
+    sum_MAE_state = 0
+    sum_MASE_state = 0
+    states_count = 0
+
     for _ in range(no_days):
         orginals.append(orginals_per_day.copy())
 
     counties = cnn_search.loadCounties(cnn_search._CONUTIES_FIPS_)
     for i in range(len(counties)):
         fips = int(counties[i]['county_fips'], 10)
+        state_fips = fips // 1000
         index_temporal, index_fix = cnn_search.calculateIndex(fips, (cnn_search.startDay + datetime.timedelta(days=test_start_day)).isoformat())
         if (index_temporal != -1):
             _debug_no_counties += 1
@@ -224,8 +237,16 @@ def calculate_county_error_sd(test_start_day, predictions):
 
                     sum_predict_round += round(prediction_death)
                     sum_MAE_round += abs(orginal_death - round(prediction_death))
+
+                    sum_org_state[state_fips] += orginal_death
+                    sum_predict_state[state_fips] += prediction_death
+                    sum_simple_state[state_fips] += simple_death
         else:
             log('index = -1 | startDay={0}, fips={1}, index_fix={2}, test_start_day={3}'.format(cnn_search.startDay, fips, index_fix, test_start_day))
+
+        # count number of states
+        if (i == 0 or state_fips != (int(counties[i - 1]['county_fips'], 10)) // 1000):
+            states_count += 1
 
     if (sum_org == 0):
         log('sum_org is zero, _debug_no_counties = {0}'.format(_debug_no_counties))
@@ -238,7 +259,21 @@ def calculate_county_error_sd(test_start_day, predictions):
     MAPE_round = sum_MAE_round / sum_org
     MASE_round = MAE_round / (sum_MASE / (21 * len(counties)))
 
-    return (MAE, MAPE, MASE, MAE_round, MAPE_round, MASE_round, orginals)
+    # calculate state errors
+    for i in range(79):
+        sum_MAE_state += abs(sum_org_state - sum_predict_state)
+        sum_MASE_state += abs(sum_org_state - sum_simple_state)
+
+    MAE_state = sum_MAE_state / states_count
+    MAPE_state = sum_MAE_state / sum_org
+    MASE_state = MAE_state / (sum_MASE_state / states_count)
+
+    return (MAE, MAPE, MASE, MAE_round, MAPE_round, MASE_round, MAE_state, MAPE_state, MASE_state, orginals)
+
+def save_results(results_type, MAE, MAPE, MASE):
+    output = 'results for {0}, MAE:{1}, MAPE:{2}, MASE:{3}'.format(results_type, MAE, MAPE, MASE)
+    with open('results/single_model_results.txt', 'a') as logFile:
+        logFile.write('{0}\n'.format(output))
 
 ################################################################ main
 
@@ -302,18 +337,13 @@ if __name__ == "__main__":
     NO_blocks = floor(log2(input_size))
     model = cnn_search.create_model(input_size, hidden_dropout, visible_dropout, NO_blocks, NO_dense_layer, increase_filters)
     cnn_search.train_data(model, normal_x_dataTrain, normal_y_dataTrain, normal_x_dataValidation, normal_y_dataValidation, 2, input_size)
-    result = predict_counties_result(target_counties, 
+    predict_counties_result(target_counties, 
         model, 
         append(append(normal_x_dataTrain, normal_x_dataValidation).reshape(no_train + no_validation, data_shape[1], data_shape[2], data_shape[3]), normal_x_dataTest).reshape(no_train + no_validation + no_test, data_shape[1], data_shape[2], data_shape[3]), 
         append(append(normal_y_dataTrain, normal_y_dataValidation).reshape(no_train + no_validation, data_shape[1], data_shape[2], 1), normal_y_dataTest).reshape(no_train + no_validation + no_test, data_shape[1], data_shape[2], 1), 
         input_size, 
         normal_min, 
         normal_max)
-
-    log('result for Pixels, MAE:{0}, MAPE:{1}, MASE:{2}'.format(result[0], result[1], result[2]))
-    log('result for Country, MAE:{0}, MAPE:{1}, MASE:{2}'.format(result[3], result[4], result[5]))
-    log('result for County, MAE:{0}, MAPE:{1}, MASE:{2}'.format(result[6], result[7], result[8]))
-    log('result for County with rounded prediction, MAE:{0}, MAPE:{1}, MASE:{2}'.format(result[9], result[10], result[11]))
 
 
         
