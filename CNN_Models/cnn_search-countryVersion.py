@@ -584,10 +584,9 @@ def send_log():
         raise Exception(e)
 
 # get a 4D numpy array and normalize it
-def normal_x(train, validation, test, final_test):
+def normal_x(train, validation, final_test):
     data_shape = train.shape
     no_validation = validation.shape[0]
-    no_test = test.shape[0]
     no_final_test = test.shape[0]
 
     normalizers = []
@@ -626,7 +625,6 @@ def normal_x(train, validation, test, final_test):
 
     normal_train = zeros((data_shape[0], data_shape[1], data_shape[2], data_shape[3]))
     normal_validation = zeros((no_validation, data_shape[1], data_shape[2], data_shape[3]))
-    normal_test = zeros((no_test, data_shape[1], data_shape[2], data_shape[3]))
     normal_final_test = zeros((no_final_test, data_shape[1], data_shape[2], data_shape[3]))
 
     for i in range(data_shape[0]):
@@ -637,16 +635,12 @@ def normal_x(train, validation, test, final_test):
                         normal_train[i][j][a][b] = normalizers[b].standardize(train[i][j][a][b])
                         if (i < no_validation):
                             normal_validation[i][j][a][b] = normalizers[b].standardize(validation[i][j][a][b])
-                        if (i < no_test):
-                            normal_test[i][j][a][b] = normalizers[b].standardize(test[i][j][a][b])
                         if (i < no_final_test):
                             normal_final_test[i][j][a][b] = normalizers[b].standardize(final_test[i][j][a][b])
                     else:
                         normal_train[i][j][a][b] = normalizers[b].normal(train[i][j][a][b])
                         if (i < no_validation):
                             normal_validation[i][j][a][b] = normalizers[b].normal(validation[i][j][a][b])
-                        if (i < no_test):
-                            normal_test[i][j][a][b] = normalizers[b].normal(test[i][j][a][b])
                         if (i < no_final_test):
                             normal_final_test[i][j][a][b] = normalizers[b].normal(final_test[i][j][a][b])
 
@@ -655,12 +649,11 @@ def normal_x(train, validation, test, final_test):
         normalizers[b].check(b)
         normalizers[b + 1].check(b + 1)
 
-    return (normal_train, normal_validation, normal_test, normal_final_test)
+    return (normal_train, normal_validation, normal_final_test)
 
-def normal_y(train, validation, test, final_test):
+def normal_y(train, validation, final_test):
     data_shape = train.shape
     no_validation = validation.shape[0]
-    no_test = test.shape[0]
     no_final_test = test.shape[0]
 
     obj_normalizer = standardizer()
@@ -684,7 +677,6 @@ def normal_y(train, validation, test, final_test):
 
     normal_train = zeros((data_shape[0], data_shape[1], data_shape[2], 1))
     normal_validation = zeros((no_validation, data_shape[1], data_shape[2], 1))
-    normal_test = zeros((no_test, data_shape[1], data_shape[2], 1))
     normal_final_test = zeros((no_final_test, data_shape[1], data_shape[2], 1))
 
     for i in range(data_shape[0]):
@@ -693,15 +685,13 @@ def normal_y(train, validation, test, final_test):
                 normal_train[i][j][a][0] = obj_normalizer.standardize(train[i][j][a])
                 if (i < no_validation):
                     normal_validation[i][j][a][0] = obj_normalizer.standardize(validation[i][j][a])
-                if (i < no_test):
-                    normal_test[i][j][a][0] = obj_normalizer.standardize(test[i][j][a])
                 if (i < no_final_test):
                     normal_final_test[i][j][a][0] = obj_normalizer.standardize(final_test[i][j][a])
 
     obj_normalizer.check(100)
     standard_mean, standard_deviation = obj_normalizer.get_mean_deviation()
 
-    return (normal_train, normal_validation, normal_test, normal_final_test, standard_mean, standard_deviation)
+    return (normal_train, normal_validation, normal_final_test, standard_mean, standard_deviation)
 
 def inverse_normal_y(normal_data, standard_mean, standard_deviation):
     data_shape = normal_data.shape
@@ -868,8 +858,6 @@ def process_function(parameters,
             shared_y_train, 
             shared_x_validation, 
             shared_y_validation, 
-            shared_x_test, 
-            shared_y_test, 
             shared_x_final_test, 
             shared_y_final_test, ):
     log('Process {1} started | parameters {0}'.format((start, end), process_number))
@@ -891,7 +879,7 @@ def process_function(parameters,
         NO_blocks = floor(log2(input_size))
         model = create_model(input_size, hidden_dropout, visible_dropout, NO_blocks, NO_dense_layer, increase_filters)
         train_data(model, shared_x_train, shared_y_train, shared_x_validation, shared_y_validation, 2, input_size)
-        result = evaluate_data(model, shared_x_test, shared_y_test, input_size, normal_min, normal_max)
+        result = evaluate_data(model, shared_x_final_test, shared_y_final_test, input_size, normal_min, normal_max)
 
         log('result for Pixels, MAE:{0}, MAPE:{1}, MASE:{2}'.format(result[0], result[1], result[2]))
         log('result for Country, MAE:{0}, MAPE:{1}, MASE:{2}'.format(result[3], result[4], result[5]))
@@ -930,14 +918,11 @@ if __name__ == "__main__":
 
     log('spliting data into train, validation and test')
 
-    x_dataTrain = x_instances[:-63]
-    y_dataTrain = y_instances[:-63]
+    x_dataTrain = x_instances[:-42]
+    y_dataTrain = y_instances[:-42]
 
-    x_dataValidation = x_instances[-63:-42]
-    y_dataValidation = y_instances[-63:-42]
-
-    x_dataTest = x_instances[-42:-21]
-    y_dataTest = y_instances[-42:-21]
+    x_dataValidation = x_instances[-42:-21]
+    y_dataValidation = y_instances[-42:-21]
 
     x_dataFinalTest = x_instances[-21:]
     y_dataFinalTest = y_instances[-21:]
@@ -946,13 +931,13 @@ if __name__ == "__main__":
 
     log('normalizing data')
 
-    normal_x_dataTrain, normal_x_dataValidation, normal_x_dataTest, normal_x_dataFinalTest = normal_x(x_dataTrain, x_dataValidation, x_dataTest, x_dataFinalTest)
-    normal_y_dataTrain, normal_y_dataValidation, normal_y_dataTest, normal_y_dataFinalTest, normal_min, normal_max = normal_y(y_dataTrain, y_dataValidation, y_dataTest, y_dataFinalTest)
+    normal_x_dataTrain, normal_x_dataValidation, normal_x_dataFinalTest = normal_x(x_dataTrain, x_dataValidation, x_dataFinalTest)
+    normal_y_dataTrain, normal_y_dataValidation, normal_y_dataFinalTest, normal_min, normal_max = normal_y(y_dataTrain, y_dataValidation, y_dataFinalTest)
 
     ################################################################ clearing memory
 
-    del x_instances, x_dataTrain, x_dataValidation, x_dataTest, x_dataFinalTest
-    del y_instances, y_dataTrain, y_dataValidation, y_dataTest, y_dataFinalTest
+    del x_instances, x_dataTrain, x_dataValidation, x_dataFinalTest
+    del y_instances, y_dataTrain, y_dataValidation, y_dataFinalTest
 
     ################################################################ copy data to shared memory
 
@@ -1020,8 +1005,6 @@ if __name__ == "__main__":
             normal_y_dataTrain, 
             normal_x_dataValidation, 
             normal_y_dataValidation, 
-            normal_x_dataTest, 
-            normal_y_dataTest, 
             normal_x_dataFinalTest, 
             normal_y_dataFinalTest, )))
 
