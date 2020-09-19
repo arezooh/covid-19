@@ -469,6 +469,22 @@ def save_best_result(process_number, parameters_pixel, result_pixel, parameters_
         str_result_country = '--result for Country, MAE:{0}, MAPE:{1}, MASE:{2}\n'.format(result_country[0], result_country[1], result_country[2])
         resultFile.write(str_parameters_pixel + str_result_pixel + str_parameters_country + str_result_country)
 
+def save_process_result_ft(process_number, parameters, result):
+    t = datetime.datetime.now().isoformat()
+    with open('process{0}_ft.txt'.format(process_number), 'a') as resultFile:
+        str_parameters = '[{0}][{1}]\n\t--model parameters: {2}\n\t'.format(t, getpid(), parameters)
+        str_result_pixel = '--result for Pixels: MAE:{0}, MAPE:{1}, MASE:{2}\n\t'.format(result[0], result[1], result[2]) 
+        str_result_country = '--result for Country, MAE:{0}, MAPE:{1}, MASE:{2}\n\t'.format(result[3], result[4], result[5])
+        resultFile.write(str_parameters + str_result_pixel + str_result_country)
+
+def save_best_result_ft(process_number, parameters_pixel, result_pixel, parameters_country, result_country):
+    with open('process{0}_ft.txt'.format(process_number), 'a') as resultFile:
+        str_parameters_pixel = 'Best Pixel result\n\t--model parameters: {0}\n\t'.format(parameters_pixel)
+        str_result_pixel = '--result for Pixels: MAE:{0}, MAPE:{1}, MASE:{2}\n\t'.format(result_pixel[0], result_pixel[1], result_pixel[2]) 
+        str_parameters_country = 'Best Country result\n\t--model parameters: {0}\n\t'.format(parameters_country)
+        str_result_country = '--result for Country, MAE:{0}, MAPE:{1}, MASE:{2}\n'.format(result_country[0], result_country[1], result_country[2])
+        resultFile.write(str_parameters_pixel + str_result_pixel + str_parameters_country + str_result_country)
+
 # From prediction.py file
 def send_email(*attachments):
     subject = "Server results"
@@ -561,7 +577,7 @@ def send_private_email(attachments):
 def send_result(process_numbers):
     files = []
     for process_number in process_numbers:
-        filename = 'process{0}.txt'.format(process_number)
+        filename = 'process{0}_ft.txt'.format(process_number)
         files.append(filename)
 
     try:
@@ -571,7 +587,7 @@ def send_result(process_numbers):
 
 def send_private_result(process_number):
     try:
-        filename = 'process{0}.txt'.format(process_number)
+        filename = 'process{0}_ft.txt'.format(process_number)
         send_private_email(filename)
     except:
         log('sending result of process {0} via email failed'.format(process_number))
@@ -587,7 +603,7 @@ def send_log():
 def normal_x(train, validation, final_test):
     data_shape = train.shape
     no_validation = validation.shape[0]
-    no_final_test = test.shape[0]
+    no_final_test = final_test.shape[0]
 
     normalizers = []
     for b in range(data_shape[3]):
@@ -654,7 +670,7 @@ def normal_x(train, validation, final_test):
 def normal_y(train, validation, final_test):
     data_shape = train.shape
     no_validation = validation.shape[0]
-    no_final_test = test.shape[0]
+    no_final_test = final_test.shape[0]
 
     obj_normalizer = standardizer()
     
@@ -868,6 +884,12 @@ def process_function(parameters,
     country_best_model = -1
     country_best_result = (-1, -1, -1)
 
+    pixel_best_model_ft = -1
+    pixel_best_result_ft = (-1, -1, -1)
+
+    country_best_model_ft = -1
+    country_best_result_ft = (-1, -1, -1)
+
     for i in range(start, end):
         input_size = parameters[i][0]
         hidden_dropout = parameters[i][1] 
@@ -879,7 +901,7 @@ def process_function(parameters,
         NO_blocks = floor(log2(input_size))
         model = create_model(input_size, hidden_dropout, visible_dropout, NO_blocks, NO_dense_layer, increase_filters)
         train_data(model, shared_x_train, shared_y_train, shared_x_validation, shared_y_validation, 2, input_size)
-        result = evaluate_data(model, shared_x_final_test, shared_y_final_test, input_size, normal_min, normal_max)
+        result = evaluate_data(model, shared_x_validation, shared_y_validation, input_size, normal_min, normal_max)
 
         log('result for Pixels, MAE:{0}, MAPE:{1}, MASE:{2}'.format(result[0], result[1], result[2]))
         log('result for Country, MAE:{0}, MAPE:{1}, MASE:{2}'.format(result[3], result[4], result[5]))
@@ -893,8 +915,20 @@ def process_function(parameters,
             country_best_model = i
             country_best_result = (result[3], result[4], result[5])
 
+        result = evaluate_data(model, shared_x_final_test, shared_y_final_test, input_size, normal_min, normal_max)
+        save_process_result_ft(process_number, (input_size, hidden_dropout, visible_dropout, NO_dense_layer, increase_filters), result)
+
+        if (pixel_best_model_ft == -1 or result[2] < pixel_best_result_ft[2]):
+            pixel_best_model_ft = i
+            pixel_best_result_ft = (result[0], result[1], result[2])
+
+        if (country_best_model_ft == -1 or result[5] < country_best_result_ft[2]):
+            country_best_model_ft = i
+            country_best_result_ft = (result[3], result[4], result[5])
+
     log('Process {0} done'.format(process_number))
     save_best_result(process_number, parameters[pixel_best_model], pixel_best_result, parameters[country_best_model], country_best_result)
+    save_best_result_ft(process_number, parameters[pixel_best_model_ft], pixel_best_result_ft, parameters[country_best_model_ft], country_best_result_ft)
 
 ################################################################ main
 
