@@ -183,7 +183,7 @@ def predict_counties_result(counties_fips, model, normal_x_data, normal_y_data, 
     for fips in counties_fips:
         plot_chart(fips, counties_predict[:, fips], orginal[:, fips])
 
-    plot_chart('country', country_org, country_pred)
+    plot_chart('country', country_pred, country_org)
 
 def calculate_county_error_sd(test_start_day, predictions):
     cnn_search.init_hashCounties()
