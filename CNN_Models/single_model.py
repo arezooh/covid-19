@@ -272,7 +272,7 @@ def calculate_county_error_sd(test_start_day, predictions):
 
 def save_results(results_type, MAE, MAPE, MASE):
     output = 'results for {0}, MAE:{1}, MAPE:{2}, MASE:{3}'.format(results_type, MAE, MAPE, MASE)
-    with open('results/single_model_results.txt', 'a') as logFile:
+    with open(_RESULTS_DIR_ + 'single_model_results.txt', 'a') as logFile:
         logFile.write('{0}\n'.format(output))
 
 ################################################################ main
