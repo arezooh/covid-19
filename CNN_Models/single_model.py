@@ -167,6 +167,10 @@ def predict_counties_result(counties_fips, model, normal_x_data, normal_y_data, 
         normal_min,
         normal_max)
 
+    # create results directory if it's missing
+    if (os.path.exists('results') == False):
+        os.mkdir('results')
+
     counties_predict = array(counties_predict)
     orginal = array(orginal)
     for fips in counties_fips:
