@@ -409,6 +409,9 @@ def train_data(model, x_train, y_train, x_validation, y_validation, NO_epochs, i
 def evaluate_data(model, x_test, y_test, input_size, normal_min, normal_max):
     data_shape = x_test.shape
     y_test_org = inverse_normal_y(y_test, normal_min, normal_max)
+
+    if (data_shape[0] != 21):
+        log('datashape[0] supposed to be 21, but its {0}'.format(data_shape[0]))
     
     padded_x = []
     padded_y = []
@@ -427,6 +430,14 @@ def evaluate_data(model, x_test, y_test, input_size, normal_min, normal_max):
     sum_MAPE = 0
     sum_MASE = 0
 
+    sum_org_country = zeros(data_shape[0])
+    sum_predict_country = zeros(data_shape[0])
+    sum_simple_country = zeros(data_shape[0])
+    
+    sum_MAE_country = 0
+    sum_MAPE_country = 0
+    sum_MASE_country = 0
+
     for i in range(data_shape[1]):
         for j in range(data_shape[2]):
             subX_test = x_test[0:data_shape[0], i:i+input_size, j:j+input_size, 0:data_shape[3]]
@@ -442,14 +453,28 @@ def evaluate_data(model, x_test, y_test, input_size, normal_min, normal_max):
                 sum_MAE += abs(y_test_org[k][i][j][0] - subY_predict[k][0][0][0])
                 sum_MAPE += abs(y_test_org[k][i][j][0] - subY_predict[k][0][0][0])
                 sum_MASE += abs(y_test_org[k][i][j][0] - x_test[k][i][j][-4])
+                
+                sum_org_country[k] += y_test_org[k][i][j][0]
+                sum_predict_country[k] += subY_predict[k][0][0][0]
+                sum_simple_country[k] += x_test[k][i][j][-4]
 
     MAE_pixel = sum_MAE / (data_shape[0] * data_shape[1] * data_shape[2])
     MAPE_pixel = sum_MAPE / sum_org
     MASE_pixel = MAE_pixel / (sum_MASE / (data_shape[0] * data_shape[1] * data_shape[2]))
 
-    MAE_country = abs(sum_org - sum_predict)
-    MAPE_country = abs(sum_org - sum_predict) / sum_org
-    MASE_country = MAE_country / abs(sum_org - sum_simple)
+    # calculating country errors
+    for k in range(data_shape[0]):
+        sum_MAE_country += abs(sum_org_country[k] - sum_predict_country[k])
+        sum_MASE_country += abs(sum_org_country[k] - sum_simple_country[k])
+        
+        if (sum_org_country[k] != 0):
+            sum_MAPE_country += abs(sum_org_country[k] - sum_predict_country[k]) / sum_org_country[k]
+        else:
+            log('sum_org_country[{0}] is zero'.format(k))
+
+    MAE_country = sum_MAE_country / data_shape[0]
+    MAPE_country = sum_MAPE_country / data_shape[0]
+    MASE_country = MAE_country / (sum_MASE_country / data_shape[0])
 
     return (MAE_pixel, MAPE_pixel, MASE_pixel, MAE_country, MAPE_country, MASE_country)
 
