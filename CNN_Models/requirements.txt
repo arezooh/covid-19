@@ -1,0 +1,11 @@
+datetime
+pandas
+tensorflow
+sklearn
+numpy
+multiprocessing
+email
+smtplib
+ssl
+mimetypes
+sharedmem
