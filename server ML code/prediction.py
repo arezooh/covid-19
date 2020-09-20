@@ -34,11 +34,13 @@ import datetime
 import statistics
 import tensorflow as tf
 from numpy.random import seed
+
 seed(1)
 tf.random.set_seed(1)
 
 plt.rcParams.update({'figure.max_open_warning': 0})
 
+pivot = 'county'
 r = 21  # the following day to predict
 numberOfSelectedCounties = -1
 target_mode = 'regular'
@@ -116,8 +118,12 @@ def clean_data(data, numberOfSelectedCounties, spatial_mode):
     using_data = data[(data['county_fips'] <= data['county_fips'].unique()[numberOfSelectedCounties - 1])]
     using_data = using_data.reset_index(drop=True)
     if (spatial_mode == 'county') or (spatial_mode == 'country'):
-        main_data = using_data.drop(['county_name', 'state_fips', 'state_name'],
-                                    axis=1)  # , 'date of day t'
+        if pivot == 'county':
+            main_data = using_data.drop(['county_name', 'state_fips', 'state_name'],
+                                        axis=1)  # , 'date of day t'
+        elif pivot == 'state':
+            main_data = using_data.drop(['county_name'],
+                                        axis=1)  # , 'date of day t'
     elif (spatial_mode == 'state'):
         main_data = using_data.drop(['county_name', 'state_name'],
                                     axis=1)
@@ -150,45 +156,47 @@ def preprocess(main_data, spatial_mode, validationFlag):
 
 
 ################################ MASE_denominator
-def mase_denominator(r, h, data, target_name, target_mode ,numberOfSelectedCounties, spatial_mode):
+def mase_denominator(r, h, data, target_name, target_mode, numberOfSelectedCounties, spatial_mode):
+    if numberOfSelectedCounties == -1:
+        numberOfSelectedCounties = len(data['county_fips'].unique())
 
-    if numberOfSelectedCounties == -1 :
-      numberOfSelectedCounties = len(data['county_fips'].unique())
-    
-    X_train_train, X_train_val, X_test, y_train_train_date, y_train_val_date, y_test_date = preprocess(data, spatial_mode, 1)
-    
+    X_train_train, X_train_val, X_test, y_train_train_date, y_train_val_date, y_test_date = preprocess(data,
+                                                                                                       spatial_mode, 1)
+
     train_train = (y_train_train_date.reset_index(drop=True)).sort_values(by=['date of day t', 'county_fips'])
     train_val = (y_train_val_date.reset_index(drop=True)).sort_values(by=['date of day t', 'county_fips'])
     test = (y_test_date.reset_index(drop=True)).sort_values(by=['date of day t', 'county_fips'])
     train = ((train_train.append(train_val)).reset_index(drop=True)).sort_values(by=['date of day t', 'county_fips'])
 
-    train = train.tail(len(test)).rename(columns={'Target': 'train-Target','date of day t':'train-date'})
-    train_train = train_train.tail(len(train_val)).rename(columns={'Target': 'train-Target','date of day t':'train-date'})
-    train_val = train_val.rename(columns={'Target': 'val-Target','date of day t':'val-date'})
-    test = test.rename(columns={'Target': 'test-Target','date of day t':'test-date'})
-    
+    train = train.tail(len(test)).rename(columns={'Target': 'train-Target', 'date of day t': 'train-date'})
+    train_train = train_train.tail(len(train_val)).rename(
+        columns={'Target': 'train-Target', 'date of day t': 'train-date'})
+    train_val = train_val.rename(columns={'Target': 'val-Target', 'date of day t': 'val-date'})
+    test = test.rename(columns={'Target': 'test-Target', 'date of day t': 'test-date'})
 
-
-    df_for_train_val_MASE_denominator = pd.concat([train_train.reset_index(drop=True),train_val.reset_index(drop=True)], axis=1)
-    df_for_train_val_MASE_denominator['absolute-error']=abs(df_for_train_val_MASE_denominator['val-Target'] -
-                                                            df_for_train_val_MASE_denominator['train-Target'])
-    df_for_val_test_MASE_denominator=pd.concat([train.reset_index(drop=True),test.reset_index(drop=True)], axis=1)
-    df_for_val_test_MASE_denominator['absolute-error']=abs(df_for_val_test_MASE_denominator['test-Target'] -
-                                                           df_for_val_test_MASE_denominator['train-Target'])
+    df_for_train_val_MASE_denominator = pd.concat(
+        [train_train.reset_index(drop=True), train_val.reset_index(drop=True)], axis=1)
+    df_for_train_val_MASE_denominator['absolute-error'] = abs(df_for_train_val_MASE_denominator['val-Target'] -
+                                                              df_for_train_val_MASE_denominator['train-Target'])
+    df_for_val_test_MASE_denominator = pd.concat([train.reset_index(drop=True), test.reset_index(drop=True)], axis=1)
+    df_for_val_test_MASE_denominator['absolute-error'] = abs(df_for_val_test_MASE_denominator['test-Target'] -
+                                                             df_for_val_test_MASE_denominator['train-Target'])
 
     train_val_MASE_denominator = df_for_train_val_MASE_denominator['absolute-error'].mean()
     val_test_MASE_denominator = df_for_val_test_MASE_denominator['absolute-error'].mean()
-    
+
     # we need to have mase denominator based on target values for whole country (sum of target for all counties)
     # this will be used for calculation of country error
     df_for_train_val_MASE_denominator_country = df_for_train_val_MASE_denominator.groupby(['val-date']).sum()
-    df_for_train_val_MASE_denominator_country['absolute-error']=abs(df_for_train_val_MASE_denominator_country['val-Target'] -
-                                                            df_for_train_val_MASE_denominator_country['train-Target'])
-    
-    df_for_val_test_MASE_denominator_country=df_for_val_test_MASE_denominator.groupby(['test-date']).sum()
-    df_for_val_test_MASE_denominator_country['absolute-error']=abs(df_for_val_test_MASE_denominator_country['test-Target'] -
-                                                           df_for_val_test_MASE_denominator_country['train-Target'])
-    
+    df_for_train_val_MASE_denominator_country['absolute-error'] = abs(
+        df_for_train_val_MASE_denominator_country['val-Target'] -
+        df_for_train_val_MASE_denominator_country['train-Target'])
+
+    df_for_val_test_MASE_denominator_country = df_for_val_test_MASE_denominator.groupby(['test-date']).sum()
+    df_for_val_test_MASE_denominator_country['absolute-error'] = abs(
+        df_for_val_test_MASE_denominator_country['test-Target'] -
+        df_for_val_test_MASE_denominator_country['train-Target'])
+
     train_val_MASE_denominator_country = df_for_train_val_MASE_denominator_country['absolute-error'].mean()
     val_test_MASE_denominator_country = df_for_val_test_MASE_denominator_country['absolute-error'].mean()
 
@@ -373,12 +381,12 @@ def get_best_loss_mode(counties_best_loss_list):
 ########################################################### generate data for best h and c
 
 def generate_data(h, numberOfCovariates, covariates_names, numberOfSelectedCounties):
-    data = makeHistoricalData(h, r, test_size, 'death', 'mrmr', spatial_mode, target_mode, './', future_features)
+    data = makeHistoricalData(h, r, test_size, 'death', 'mrmr', spatial_mode, target_mode, './', future_features, pivot)
     data = clean_data(data, numberOfSelectedCounties, spatial_mode)
 
     X_train, X_test, y_train, y_test = preprocess(data, spatial_mode, 0)
     covariates = [covariates_names[i] for i in range(numberOfCovariates)]
-    best_covariates = force_features
+    best_covariates = force_features.copy()
     indx_c = 0
     for covar in covariates:  # iterate through sorted covariates
         indx_c += 1
@@ -514,28 +522,43 @@ def real_prediction_plot(df, r, test_size, target_name, target_mode, best_h, max
     address = test_address + 'plots_of_real_prediction_values/'
     if not os.path.exists(address):
         os.makedirs(address)
-        
-    if target_mode == 'weeklyaverage': label_prefix='Weekly averaged \n n'
-    elif target_mode == 'weeklymovingaverage': label_prefix='weekly moving averaged \n n'
-    elif target_mode == 'differential': label_prefix='differential \n n'
-    elif target_mode == 'logarithmic': label_prefix='logarithmic \n n'
-    elif target_mode == 'cumulative': label_prefix='cumulative \n n'
-    else: label_prefix='N'
-    if target_name == 'confirmed': label_suffix='cases'
-    else: label_suffix ='s'
 
-    
+    if target_mode == 'weeklyaverage':
+        label_prefix = 'Weekly averaged \n n'
+    elif target_mode == 'weeklymovingaverage':
+        label_prefix = 'weekly moving averaged \n n'
+    elif target_mode == 'differential':
+        label_prefix = 'differential \n n'
+    elif target_mode == 'logarithmic':
+        label_prefix = 'logarithmic \n n'
+    elif target_mode == 'cumulative':
+        label_prefix = 'cumulative \n n'
+    else:
+        label_prefix = 'N'
+    if target_name == 'confirmed':
+        label_suffix = 'cases'
+    else:
+        label_suffix = 's'
+
     for method in methods:
 
         method_prediction_df = df[method]  # this df contain real and predicted target values
-        county_name_df = pd.read_csv('./' + 'fixed-data.csv')[
-            ['county_fips', 'county_name']]  # we need county names for plot label
+        if pivot == 'county':
+            county_name_df = pd.read_csv('./' + 'fixed-data.csv')[
+                ['county_fips', 'county_name']]  # we need county names for plot label
+        elif pivot == 'state':
+            county_name_df = pd.read_csv('./' + 'fixed-data.csv')[
+                ['state_fips', 'state_name']]  # we need county names for plot label
+            county_name_df.rename(columns={'state_fips': 'county_fips', 'state_name': 'county_name'},
+                                  inplace=True)
+            county_name_df.drop_duplicates(subset=["county_fips", "county_name"],
+                                 keep='first', inplace=True)
         df_for_plot = pd.merge(method_prediction_df, county_name_df, how='left')
 
         if target_mode != 'weeklyaverage':
             df_for_plot['date'] = df_for_plot['date of day t'].apply(
                 lambda x: datetime.datetime.strptime(x, '%m/%d/%y') + datetime.timedelta(days=r))
-            df_for_plot['weekday'] = df_for_plot['date'].apply(lambda x:x.weekday())
+            df_for_plot['weekday'] = df_for_plot['date'].apply(lambda x: x.weekday())
             df_for_plot['date'] = df_for_plot['date'].apply(lambda x: datetime.datetime.strftime(x, '%m/%d/%y'))
         else:
             df_for_plot['date'] = df_for_plot['date of day t'].apply(lambda x: 'week ' + str(x + r))
@@ -573,13 +596,13 @@ def real_prediction_plot(df, r, test_size, target_name, target_mode, best_h, max
                      color='black', linewidth=2.0)
             #             if target_mode != 'cumulative':
             #                 plt.plot(county_df_for_plot['date'][-r:],county_df_for_plot['Target'].round()[-(2*r):-r],'-.',color='gray',label='Naive prediction',linewidth=2.0)
-            
+
             if target_mode != 'weeklyaverage':
                 county_df_for_plot = county_df_for_plot.reset_index(drop=True)
-                weekend_index = county_df_for_plot[county_df_for_plot['weekday'].isin([5,6])].index
+                weekend_index = county_df_for_plot[county_df_for_plot['weekday'].isin([5, 6])].index
                 for i in weekend_index:
                     plt.gca().get_xticklabels()[i].set_color("red")
-            
+
             plt.xticks(rotation=65)
             fig.subplots_adjust(hspace=0.4)
             plt.ylabel(label_prefix + 'umber of ' + target_name + label_suffix)
@@ -592,117 +615,136 @@ def real_prediction_plot(df, r, test_size, target_name, target_mode, best_h, max
 
 
 ########################################################### get errors for each model in each h and c
-def get_errors(h, c, method, y_prediction, y_prediction_train, y_test_date, y_train_date, regular_data, MASE_denominator, numberOfSelectedCounties, target_name, mode):
-    
+def get_errors(h, c, method, y_prediction, y_prediction_train, y_test_date, y_train_date, regular_data,
+               MASE_denominator, numberOfSelectedCounties, target_name, mode):
     # y_test_date and y_train_date are a dataframes with columns ['date of day t', 'county_fips', 'Target']
     # set negative predictions to zero
     y_prediction[y_prediction < 0] = 0
-    
-    #country_errors show error for prediction of target variable for whole country
-    country_errors = {error:None for error in ['meanAbsoluteError', 'percentageOfAbsoluteError', 'adj_r_squared', 'second_error', 'MASE']}
-    
- 
+
+    # country_errors show error for prediction of target variable for whole country
+    country_errors = {error: None for error in
+                      ['meanAbsoluteError', 'percentageOfAbsoluteError', 'adj_r_squared', 'second_error', 'MASE']}
+
     # next 8 lines sort y_prediction and y_prediction_train like output of preprocess function
     # we need to sort predictions because in county and state mode their order may be cluttered
     y_train_date['prediction'] = y_prediction_train
-    y_train_date = y_train_date.sort_values(by=['county_fips','date of day t'])
+    y_train_date = y_train_date.sort_values(by=['county_fips', 'date of day t'])
     y_prediction_train = list(y_train_date['prediction'])
-    y_train_date= y_train_date.drop(['prediction'],axis=1)
+    y_train_date = y_train_date.drop(['prediction'], axis=1)
 
     y_test_date['prediction'] = y_prediction
-    y_test_date = y_test_date.sort_values(by=['county_fips','date of day t'])
+    y_test_date = y_test_date.sort_values(by=['county_fips', 'date of day t'])
     y_prediction = list(y_test_date['prediction'])
-    y_test_date = y_test_date.drop(['prediction'],axis=1)
+    y_test_date = y_test_date.drop(['prediction'], axis=1)
     y_test = np.array(y_test_date['Target']).reshape(-1)
-    
-    if numberOfSelectedCounties == -1 :
-          numberOfSelectedCounties = len(y_test_date['county_fips'].unique())
-    
+
+    if numberOfSelectedCounties == -1:
+        numberOfSelectedCounties = len(y_test_date['county_fips'].unique())
+
     # we need data with regular target to return modified target to its original state
     # in validation mode we read regular data in main function and passed to get_error to avoid redundancy 
     # but in test mode its not possible because each method has different h(best_h)
     if mode == 'test':
-        regular_data = makeHistoricalData(h, r, test_size, target_name, 'mrmr', spatial_mode, 'regular', './', future_features)
+        regular_data = makeHistoricalData(h, r, test_size, target_name, 'mrmr', spatial_mode, 'regular', './',
+                                          future_features, pivot)
         regular_data = clean_data(regular_data, numberOfSelectedCounties, spatial_mode)
         temp_1, temp_2, regular_y_train_date, regular_y_test_date = preprocess(regular_data, spatial_mode, 0)
- 
+
     if mode == 'val':
-        temp_1, temp_2, temp_3, regular_y_train_date, regular_y_test_date, temp_4 = preprocess(regular_data, spatial_mode, 1)
-        
-            
+        temp_1, temp_2, temp_3, regular_y_train_date, regular_y_test_date, temp_4 = preprocess(regular_data,
+                                                                                               spatial_mode, 1)
+
     # if target mode is cumulative we need to return the target variable to its original state
     if target_mode == 'cumulative':
         cumulative_data = y_train_date.append(y_test_date)
-        cumulative_data['prediction'] = list(y_train_date['Target'])+list(y_prediction)
-        cumulative_data = cumulative_data.sort_values(by=['date of day t','county_fips'])
-        reverse_dates = cumulative_data['date of day t'].unique()[-(r+1):][::-1]
+        cumulative_data['prediction'] = list(y_train_date['Target']) + list(y_prediction)
+        cumulative_data = cumulative_data.sort_values(by=['date of day t', 'county_fips'])
+        reverse_dates = cumulative_data['date of day t'].unique()[-(r + 1):][::-1]
         for index in range(len(reverse_dates)):
-            date=reverse_dates[index]
-            past_date=reverse_dates[index+1]
-            cumulative_data.loc[cumulative_data['date of day t']==date,'Target']=list(np.array(cumulative_data.loc[cumulative_data['date of day t']==date,'Target'])-np.array(cumulative_data.loc[cumulative_data['date of day t']==past_date,'Target']))
-            cumulative_data.loc[cumulative_data['date of day t']==date,'prediction']=list(np.array(cumulative_data.loc[cumulative_data['date of day t']==date,'prediction'])-np.array(cumulative_data.loc[cumulative_data['date of day t']==past_date,'prediction']))
-            if index == len(reverse_dates)-2:
+            date = reverse_dates[index]
+            past_date = reverse_dates[index + 1]
+            cumulative_data.loc[cumulative_data['date of day t'] == date, 'Target'] = list(
+                np.array(cumulative_data.loc[cumulative_data['date of day t'] == date, 'Target']) - np.array(
+                    cumulative_data.loc[cumulative_data['date of day t'] == past_date, 'Target']))
+            cumulative_data.loc[cumulative_data['date of day t'] == date, 'prediction'] = list(
+                np.array(cumulative_data.loc[cumulative_data['date of day t'] == date, 'prediction']) - np.array(
+                    cumulative_data.loc[cumulative_data['date of day t'] == past_date, 'prediction']))
+            if index == len(reverse_dates) - 2:
                 break
-        cumulative_data = cumulative_data.sort_values(by=['date of day t','county_fips'])
-        y_test_date = cumulative_data.tail(r*numberOfSelectedCounties)
+        cumulative_data = cumulative_data.sort_values(by=['date of day t', 'county_fips'])
+        y_test_date = cumulative_data.tail(r * numberOfSelectedCounties)
         y_test = np.array(y_test_date['Target']).reshape(-1)
-        y_prediction = np.array(cumulative_data.tail(r*numberOfSelectedCounties)['prediction']).reshape(-1)
+        y_prediction = np.array(cumulative_data.tail(r * numberOfSelectedCounties)['prediction']).reshape(-1)
 
-        
     # if target mode is logarithmic we need to return the target variable to its original state
     if target_mode == 'logarithmic':
-        y_test = np.array(np.round(np.exp(y_test)-1)).reshape(-1)
-        y_test_date['Target'] = list(np.round(np.exp(y_test_date['Target'])-1))
-        y_prediction = np.array(np.exp(y_prediction)-1).reshape(-1)
-        
+        y_test = np.array(np.round(np.exp(y_test) - 1)).reshape(-1)
+        y_test_date['Target'] = list(np.round(np.exp(y_test_date['Target']) - 1))
+        y_prediction = np.array(np.exp(y_prediction) - 1).reshape(-1)
 
     # if target mode is moving average we need to return the target variable to its original state
     if target_mode == 'weeklymovingaverage':
-        
+
         # past values of targets that will be use for return the weeklymovingaverage target (predicted)
         # to original state to calculate errors
-        regular_real_predicted_target = regular_y_train_date.append(regular_y_test_date) #dataframe with columns ['date of day t', 'county_fips', 'Target']
-        regular_real_predicted_target['prediction'] = list(regular_y_train_date['Target'])+list(y_prediction)
-            
-        regular_real_predicted_target = regular_real_predicted_target.sort_values(by=['date of day t','county_fips'])
-        regular_real_predicted_target=regular_real_predicted_target.tail((r+6)*numberOfSelectedCounties)
-        
+        regular_real_predicted_target = regular_y_train_date.append(
+            regular_y_test_date)  # dataframe with columns ['date of day t', 'county_fips', 'Target']
+        regular_real_predicted_target['prediction'] = list(regular_y_train_date['Target']) + list(y_prediction)
+
+        regular_real_predicted_target = regular_real_predicted_target.sort_values(by=['date of day t', 'county_fips'])
+        regular_real_predicted_target = regular_real_predicted_target.tail((r + 6) * numberOfSelectedCounties)
+
         dates = regular_real_predicted_target['date of day t'].unique()
         for index in range(len(dates)):
-            ind=index+6
-            date=dates[ind]
-            regular_real_predicted_target.loc[regular_real_predicted_target['date of day t']==date,'prediction'] = list(7*np.array(regular_real_predicted_target.loc[regular_real_predicted_target['date of day t']==date,'prediction']))
+            ind = index + 6
+            date = dates[ind]
+            regular_real_predicted_target.loc[
+                regular_real_predicted_target['date of day t'] == date, 'prediction'] = list(7 * np.array(
+                regular_real_predicted_target.loc[
+                    regular_real_predicted_target['date of day t'] == date, 'prediction']))
             for i in range(6):
-                past_date=dates[ind-(i+1)]
-                regular_real_predicted_target.loc[regular_real_predicted_target['date of day t']==date,'prediction']=list(np.array(regular_real_predicted_target.loc[regular_real_predicted_target['date of day t']==date,'prediction'])-np.array(regular_real_predicted_target.loc[regular_real_predicted_target['date of day t']==past_date,'prediction']))
-            if ind == len(dates)-1:
+                past_date = dates[ind - (i + 1)]
+                regular_real_predicted_target.loc[
+                    regular_real_predicted_target['date of day t'] == date, 'prediction'] = list(np.array(
+                    regular_real_predicted_target.loc[
+                        regular_real_predicted_target['date of day t'] == date, 'prediction']) - np.array(
+                    regular_real_predicted_target.loc[
+                        regular_real_predicted_target['date of day t'] == past_date, 'prediction']))
+            if ind == len(dates) - 1:
                 break
-        y_test_date = regular_real_predicted_target.tail(r*numberOfSelectedCounties)
+        y_test_date = regular_real_predicted_target.tail(r * numberOfSelectedCounties)
         y_test = np.array(y_test_date['Target']).reshape(-1)
-        y_prediction = np.array(regular_real_predicted_target.tail(r*numberOfSelectedCounties)['prediction']).reshape(-1)
-        
+        y_prediction = np.array(regular_real_predicted_target.tail(r * numberOfSelectedCounties)['prediction']).reshape(
+            -1)
+
     # if target mode is differential we need to return the target variable to its original state
     if target_mode == 'differential':
-        
+
         # past values of targets that will be use for return the differential target (predicted)
         # to original state to calculate errors
-        regular_real_predicted_target = regular_y_train_date.append(regular_y_test_date) #dataframe with columns ['date of day t', 'county_fips', 'Target']
-        regular_real_predicted_target['prediction'] = list(regular_y_train_date['Target'])+list(y_prediction)
-            
-        regular_real_predicted_target = regular_real_predicted_target.sort_values(by=['date of day t','county_fips'])
-        regular_real_predicted_target=regular_real_predicted_target.tail((r+1)*numberOfSelectedCounties)
+        regular_real_predicted_target = regular_y_train_date.append(
+            regular_y_test_date)  # dataframe with columns ['date of day t', 'county_fips', 'Target']
+        regular_real_predicted_target['prediction'] = list(regular_y_train_date['Target']) + list(y_prediction)
+
+        regular_real_predicted_target = regular_real_predicted_target.sort_values(by=['date of day t', 'county_fips'])
+        regular_real_predicted_target = regular_real_predicted_target.tail((r + 1) * numberOfSelectedCounties)
         dates = regular_real_predicted_target['date of day t'].unique()
         for index in range(len(dates)):
-            date=dates[index+1]
-            past_date=dates[index]
-            regular_real_predicted_target.loc[regular_real_predicted_target['date of day t']==date,'prediction']=list(np.array(regular_real_predicted_target.loc[regular_real_predicted_target['date of day t']==date,'prediction'])+np.array(regular_real_predicted_target.loc[regular_real_predicted_target['date of day t']==past_date,'prediction']))
-            if index == len(dates)-2:
+            date = dates[index + 1]
+            past_date = dates[index]
+            regular_real_predicted_target.loc[
+                regular_real_predicted_target['date of day t'] == date, 'prediction'] = list(np.array(
+                regular_real_predicted_target.loc[
+                    regular_real_predicted_target['date of day t'] == date, 'prediction']) + np.array(
+                regular_real_predicted_target.loc[
+                    regular_real_predicted_target['date of day t'] == past_date, 'prediction']))
+            if index == len(dates) - 2:
                 break
-        y_test_date = regular_real_predicted_target.tail(r*numberOfSelectedCounties)
+        y_test_date = regular_real_predicted_target.tail(r * numberOfSelectedCounties)
         y_test = np.array(y_test_date['Target']).reshape(-1)
-        y_prediction = np.array(regular_real_predicted_target.tail(r*numberOfSelectedCounties)['prediction']).reshape(-1)
-            
-            
+        y_prediction = np.array(regular_real_predicted_target.tail(r * numberOfSelectedCounties)['prediction']).reshape(
+            -1)
+
     # make predictions rounded to their closest number
     y_prediction = np.array(y_prediction)
     if target_mode != 'weeklyaverage':
@@ -712,11 +754,11 @@ def get_errors(h, c, method, y_prediction, y_prediction_train, y_test_date, y_tr
     y_test_date_country = y_test_date.groupby(['date of day t']).sum()
     y_test_country = np.array(y_test_date_country['Target']).reshape(-1)
     y_prediction_country = np.array(y_test_date_country['prediction']).reshape(-1)
-    
+
     #############################################################
     # write outputs into a file
     orig_stdout = sys.stdout
-    f = open(env_address+'out.txt', 'a')
+    f = open(env_address + 'out.txt', 'a')
     sys.stdout = f
     meanAbsoluteError = mean_absolute_error(y_test, y_prediction)
     print("Mean Absolute Error of ", method, " for h =", h, "and #covariates =", c, ": %.2f" % meanAbsoluteError)
@@ -740,14 +782,13 @@ def get_errors(h, c, method, y_prediction, y_prediction_train, y_test_date, y_tr
     r_squared = 1 - (float(SS_Residual)) / SS_Total
     adj_r_squared = 1 - (1 - r_squared) * (len(y_test) - 1) / (len(y_test) - c - 1)
     print("Adjusted R Squared Error of ", method, " for h =", h, "and #covariates =", c, ": %.2f" % adj_r_squared)
-    
-    MASE_numerator = sum(abs(y_prediction_temp - y_test_temp))/len(y_test)
-    MASE = MASE_numerator/MASE_denominator['county']
+
+    MASE_numerator = sum(abs(y_prediction_temp - y_test_temp)) / len(y_test)
+    MASE = MASE_numerator / MASE_denominator['county']
     print("MASE Error of ", method, " for h =", h, "and #covariates =", c, ": %.2f" % MASE)
 
-
     print("-----------------------------------------------------------------------------------------")
-    
+
     # calculate whole country error
     country_errors['meanAbsoluteError'] = mean_absolute_error(y_test_country, y_prediction_country)
     sumOfAbsoluteError = sum(abs(y_test_country - y_prediction_country))
@@ -761,13 +802,14 @@ def get_errors(h, c, method, y_prediction, y_prediction_train, y_test_date, y_tr
     SS_Residual = sum((y_test_country - y_prediction_country.reshape(-1)) ** 2)
     SS_Total = sum((y_test_country - np.mean(y_test_country)) ** 2)
     r_squared = 1 - (float(SS_Residual)) / SS_Total
-    if len(y_test_country) - c - 1 > 0 :
-      country_errors['adj_r_squared'] = 1 - (1 - r_squared) * (len(y_test_country) - 1) / (len(y_test_country) - c - 1)
+    if len(y_test_country) - c - 1 > 0:
+        country_errors['adj_r_squared'] = 1 - (1 - r_squared) * (len(y_test_country) - 1) / (
+                    len(y_test_country) - c - 1)
     else:
-      country_errors['adj_r_squared'] = 1
-    MASE_numerator = sum(abs(y_prediction_temp_country - y_test_temp_country))/len(y_test_country)
-    country_errors['MASE'] = MASE_numerator/MASE_denominator['country']
-    country_errors['second_error']=(sum(y_prediction_country - y_test_country) / sum(y_test_country)) * 100
+        country_errors['adj_r_squared'] = 1
+    MASE_numerator = sum(abs(y_prediction_temp_country - y_test_temp_country)) / len(y_test_country)
+    country_errors['MASE'] = MASE_numerator / MASE_denominator['country']
+    country_errors['second_error'] = (sum(y_prediction_country - y_test_country) / sum(y_test_country)) * 100
 
     # save outputs in 'out.txt'
     sys.stdout = orig_stdout
@@ -803,17 +845,18 @@ def get_errors(h, c, method, y_prediction, y_prediction_train, y_test_date, y_tr
         dataframe['percentage_error'] = ((abs(y_prediction_temp - y_test_temp)) / y_test_temp) * 100
         second_error = (sum(dataframe['error']) / sum(y_test)) * 100
         dataframe.to_csv(all_errors_address + 'all_errors_' + str(method) + '.csv')
-        box_violin_plot(dataframe['date of day t'], dataframe['percentage_error'], figsizes={'box': (60, 30), 'violin': (100, 50)},
-                        fontsizes={'box' : 40, 'violin': 60}, name=str(method) + '_percentage_errors_in_each_day_',
+        box_violin_plot(dataframe['date of day t'], dataframe['percentage_error'],
+                        figsizes={'box': (60, 30), 'violin': (100, 50)},
+                        fontsizes={'box': 40, 'violin': 60}, name=str(method) + '_percentage_errors_in_each_day_',
                         address=all_errors_address)
         box_violin_plot(dataframe['date of day t'], dataframe['error'], figsizes={'box': (20, 10), 'violin': (50, 30)},
                         fontsizes={'box': 15, 'violin': 30}, name=str(method) + '_pure_errors_in_each_day_',
                         address=all_errors_address)
-        dataframe['county_fips']=dataframe['county_fips'].astype(float)
+        dataframe['county_fips'] = dataframe['county_fips'].astype(float)
         if numberOfSelectedCounties == -1:
-          numberOfSelectedCounties = len(dataframe['county_fips'])
+            numberOfSelectedCounties = len(dataframe['county_fips'])
         first_error = pd.DataFrame((dataframe.groupby(['date of day t']).sum() / numberOfSelectedCounties))
-        first_error.columns = ['fips','average of targets', 'average of predictions', 'average of errors',
+        first_error.columns = ['fips', 'average of targets', 'average of predictions', 'average of errors',
                                'average of absoulte_errors', 'average of percentage_errors']
         first_error = first_error.drop(['fips'], axis=1)
         first_error.to_csv(first_error_address + 'first_error_' + str(method) + '.csv')
@@ -973,11 +1016,11 @@ def test_process(h, r, test_size, target_name, spatial_mode, target_mode, best_h
         table_data.append([best_h[method]['MAPE'], best_c[method]['MAPE'], round(meanAbsoluteError, 2),
                            round(percentageOfAbsoluteError, 2), round(adj_r_squared, 2), round(second_error, 2),
                            round(meanAbsoluteScaledError, 2)])
-        
-        country_table_data.append([best_h[method]['MAPE'], best_c[method]['MAPE'],  round(country_errors['meanAbsoluteError'], 2),
-                            round(country_errors['percentageOfAbsoluteError'], 2), round(country_errors['adj_r_squared'], 2),
-                            round(country_errors['second_error'], 2), round(country_errors['MASE'], 2)])
 
+        country_table_data.append(
+            [best_h[method]['MAPE'], best_c[method]['MAPE'], round(country_errors['meanAbsoluteError'], 2),
+             round(country_errors['percentageOfAbsoluteError'], 2), round(country_errors['adj_r_squared'], 2),
+             round(country_errors['second_error'], 2), round(country_errors['MASE'], 2)])
 
     push('a new table added')
 
@@ -1069,23 +1112,25 @@ def test_process(h, r, test_size, target_name, spatial_mode, target_mode, best_h
     y_prediction['MM_NN'], y_prediction_train['MM_NN'] = MM_NN
     for mixed_method in mixed_methods:
         meanAbsoluteError, percentageOfAbsoluteError, adj_r_squared, second_error, meanAbsoluteScaledError, country_errors = get_errors(
-        best_h[mixed_method]['MAPE'],
-        best_c[mixed_method]['MAPE'], mixed_method, y_prediction[mixed_method], y_prediction_train[mixed_method],
-        y_test_date[mixed_method], y_train[mixed_method] , None, val_test_MASE_denominator[best_h[mixed_method]['MAPE']],
-        numberOfSelectedCounties, target_name, mode='test')
-        
-        table_data.append([best_h[mixed_method]['MAPE'], best_c[mixed_method]['MAPE'], round(meanAbsoluteError, 2), round(percentageOfAbsoluteError, 2),
-                            round(adj_r_squared, 2), round(second_error, 2), round(meanAbsoluteScaledError, 2)])
-        country_table_data.append([best_h[mixed_method]['MAPE'], best_c[mixed_method]['MAPE'], round(country_errors['meanAbsoluteError'], 2),
-                            round(country_errors['percentageOfAbsoluteError'], 2), round(country_errors['adj_r_squared'], 2), round(country_errors['second_error'], 2), round(country_errors['MASE'], 2)])
+            best_h[mixed_method]['MAPE'],
+            best_c[mixed_method]['MAPE'], mixed_method, y_prediction[mixed_method], y_prediction_train[mixed_method],
+            y_test_date[mixed_method], y_train[mixed_method], None,
+            val_test_MASE_denominator[best_h[mixed_method]['MAPE']],
+            numberOfSelectedCounties, target_name, mode='test')
 
+        table_data.append([best_h[mixed_method]['MAPE'], best_c[mixed_method]['MAPE'], round(meanAbsoluteError, 2),
+                           round(percentageOfAbsoluteError, 2),
+                           round(adj_r_squared, 2), round(second_error, 2), round(meanAbsoluteScaledError, 2)])
+        country_table_data.append(
+            [best_h[mixed_method]['MAPE'], best_c[mixed_method]['MAPE'], round(country_errors['meanAbsoluteError'], 2),
+             round(country_errors['percentageOfAbsoluteError'], 2), round(country_errors['adj_r_squared'], 2),
+             round(country_errors['second_error'], 2), round(country_errors['MASE'], 2)])
 
     table_name = 'table_of_best_test_results'
     plot_table(table_data, columns_table_t, methods, table_name, mode='test')
     table_name = 'table_of_country_best_test_results'
     plot_table(country_table_data, columns_table_t, methods, table_name, mode='test')
     push('a new table added')
-    
 
     for method in mixed_methods:
         method_real_pred_df = y_train[method].append(y_test[method])
@@ -1116,14 +1161,22 @@ def test_process(h, r, test_size, target_name, spatial_mode, target_mode, best_h
 
 ########################################################### main
 def main(maxHistory):
+    print("main started")
     history = [i for i in range(1, maxHistory + 1)]
+    print("history: ", history)
     methods = ['GBM', 'GLM', 'KNN', 'NN', 'MM_GLM', 'MM_NN']
     none_mixed_methods = ['GBM', 'GLM', 'KNN', 'NN']
+    # none_mixed_methods = ['GBM']
     mixed_methods = ['MM_GLM', 'MM_NN']
     target_name = 'death'
     base_data = makeHistoricalData(0, r, test_size, target_name, 'mrmr', spatial_mode, target_mode, './',
-                                   future_features)
+                                   future_features, pivot)
+    print("base data before clean shape: ", base_data.shape)
+    base_data_before_clean_columns = base_data.columns.values
     base_data = clean_data(base_data, numberOfSelectedCounties, spatial_mode)
+    print("base data after clean shape: ", base_data.shape)
+    print("base data cleaned columns: ",
+          [c for c in base_data_before_clean_columns if c not in base_data.columns.values])
     covariates_names = list(base_data.columns)
     covariates_names.remove('Target')
     covariates_names.remove('date of day t')
@@ -1131,7 +1184,7 @@ def main(maxHistory):
     # covariates_names.remove('daily-country-test-per-1000 t')
     numberOfCovariates = len(covariates_names)
     print('number of covariates: ', numberOfCovariates)
-    print(covariates_names)
+    # print(covariates_names)
 
     y_prediction = {'GBM': {}, 'GLM': {}, 'KNN': {}, 'NN': {}, 'MM_GLM': {}, 'MM_NN': {}}
     y_prediction_train = {'GBM': {}, 'GLM': {}, 'KNN': {}, 'NN': {}, 'MM_GLM': {}, 'MM_NN': {}}
@@ -1153,8 +1206,8 @@ def main(maxHistory):
     columns_table = ['best_h', 'best_c', 'mean absolute error', 'percentage of absolute error',
                      'adjusted R squared error',
                      'sum of absolute error', 'mean absolute scaled error']  # table columns names
-    train_val_MASE_denominator = {h:{key:None for key in ['county','country']} for h in history}
-    val_test_MASE_denominator = {h:{key:None for key in ['county','country']} for h in history}
+    train_val_MASE_denominator = {h: {key: None for key in ['county', 'country']} for h in history}
+    val_test_MASE_denominator = {h: {key: None for key in ['county', 'country']} for h in history}
 
     historical_X_train = {}  # X_train for best h and c
     historical_X_test = {}  # X_test for best h and c
@@ -1165,10 +1218,14 @@ def main(maxHistory):
     parallel_outputs = {}
 
     for h in history:
+        print(100 * "#")
+        print("h =", h)
         data = makeHistoricalData(h, r, test_size, target_name, 'mrmr', spatial_mode, target_mode, './',
-                                  future_features)
+                                  future_features, pivot)
+        print("data before clean shape:", data.shape)
         # pre-process and split the data, 'date's have dates info
         data = clean_data(data, numberOfSelectedCounties, spatial_mode)
+        print("data after clean shape:", data.shape)
 
         X_train_train_to_use = {method: None for method in methods}
         X_train_val_to_use = {method: None for method in methods}
@@ -1176,17 +1233,31 @@ def main(maxHistory):
         X_train_train, X_train_val, X_test, y_train_train_date, y_train_val_date, y_test_date = preprocess(data,
                                                                                                            spatial_mode,
                                                                                                            1)
+        # print([c for c in data.columns.values if c not in X_train_train])
+        # print("X_train_train shape:", X_train_train.shape)
+        # print("X_train_val shape:", X_train_val.shape)
+        # print("X_test shape:", X_test.shape)
+        # print("y_train_train_date shape:", y_train_train_date.shape)
+        # print("y_train_val_date shape:", y_train_val_date.shape)
+        # print("y_test_date shape:", y_test_date.shape)
+        # print("y columns:", y_test_date.columns.values)
 
         if target_mode not in ['regular',
                                'weeklyaverage']:  # we need regular data to return predicted values to first state
             regular_data = makeHistoricalData(h, r, test_size, target_name, 'mrmr', spatial_mode, 'regular', './',
-                                              future_features)
+                                              future_features, pivot)
             regular_data = clean_data(regular_data, numberOfSelectedCounties, spatial_mode)
         else:
             regular_data = data
+        print("regular_data shape:", regular_data.shape)
 
-        train_val_MASE_denominator[h]['county'], val_test_MASE_denominator[h]['county'], train_val_MASE_denominator[h]['country'], val_test_MASE_denominator[h]['country'] = mase_denominator(r, h, 
-                                                                                    regular_data, target_name, target_mode, numberOfSelectedCounties, spatial_mode)
+        train_val_MASE_denominator[h]['county'], val_test_MASE_denominator[h]['county'], train_val_MASE_denominator[h][
+            'country'], val_test_MASE_denominator[h]['country'] = mase_denominator(r, h,
+                                                                                   regular_data, target_name,
+                                                                                   target_mode,
+                                                                                   numberOfSelectedCounties,
+                                                                                   spatial_mode)
+        # print(train_val_MASE_denominator)
 
 
         for method in methods:
@@ -1198,6 +1269,7 @@ def main(maxHistory):
                 negative_features = ['temperature']
                 for covar in covariates_names:
                     if (' t' in covar) and (covar.split(' ')[0] not in negative_features):
+                        # print(covar)
                         X_train_train_to_use[method][covar] = np.log(
                             (X_train_train_to_use[method][covar] + 1).astype(float))
                         X_train_val_to_use[method][covar] = np.log(
@@ -1220,43 +1292,57 @@ def main(maxHistory):
         y_test = np.array(y_test_date['Target']).reshape(-1)
         y_train = np.array(
             (pd.DataFrame(y_train_train).append(pd.DataFrame(y_train_val))).reset_index(drop=True)).reshape(-1)
+        print("y_train shape:", y_train.shape)
+        print("y_test shape:", y_test.shape)
 
         # find best loss
+        # print(best_loss)
         if (h == 1):
             best_loss = update_best_loss('none_mixed_model', spatial_mode, None, best_loss, X_train_train_to_use,
                                          X_train_val_to_use, \
                                          y_train_train, y_train_val, None, None,
                                          data.columns.drop(['Target', 'date of day t', 'county_fips']), \
                                          numberOfCovariates, maxC)
+        print(best_loss)
 
-        covariates_list = force_features
+        print('force_features len: ', len(force_features))
+        covariates_list = []
+        covariates_list = force_features.copy()
+        print('covariates_list len:', len(covariates_list))
         # covariates are sorted by their correlation with Target. We start from the first important covariate and
         # in each loop we add the next important one
 
         loom = ProcessLoom(max_runner_cap=len(base_data.columns) * len(none_mixed_methods) + 5)
-
         indx_c = 0
         for c in covariates_names:  # iterate through sorted covariates
             indx_c += 1
-            print('h=', h, ' c=', indx_c)
+            # print('h=', h, ' c=', indx_c)
             for covariate in data.columns:  # add all historical covariates of this covariate and create a feature
                 pure_name = c.split(' ')[0]
                 cov_temp = covariate.split(' ')[0]
                 if pure_name == cov_temp and pure_name not in force_features:
                     covariates_list.append(covariate)
-            print(covariates_list)
+            # print('covariates_list:', covariates_list)
             for method in none_mixed_methods:
                 X_train_train_temp = X_train_train_to_use[method][covariates_list]
                 X_train_val_temp = X_train_val_to_use[method][covariates_list]
-
+                # print(X_train_train_temp.columns.values)
+                # print('X_train_train_temp shape:', X_train_train_temp.shape)
+                # print('X_train_val_temp shape:', X_train_val_temp.shape)
+                # print('y_train_train shape:', y_train_train.shape)
+                # print('y_train_val shape:', y_train_val.shape)
                 loom.add_function(parallel_run,
                                   [method, X_train_train_temp, X_train_val_temp, y_train_train, y_train_val, best_loss,
                                    indx_c])
-
-            if indx_c == maxC:
+            if indx_c >= maxC:
                 break
-                # run the processes in parallel
 
+        print('covariates_list len:', len(covariates_list))
+        print('covariates_list:', covariates_list)
+
+
+
+        # run the processes in parallel
         parallel_outputs['non_mixed'] = loom.execute()
 
         ind = 0
@@ -1267,6 +1353,11 @@ def main(maxHistory):
                 ind += 1
             if c == maxC:
                 break
+
+        # for method in none_mixed_methods:
+        #     print(y_prediction[method].keys())
+        #     print(np.isnan(y_prediction[method][(h, 4)]))
+        #     print(y_prediction[method][(h, 4)].shape)
 
         # save the entire session for each h and c
         filename = env_address + 'validation.out'
@@ -1283,6 +1374,8 @@ def main(maxHistory):
             best_loss = update_best_loss('mixed_model', spatial_mode, None, best_loss, None, None, y_train_train, \
                                          y_train_val, y_prediction_train, y_prediction, None, \
                                          numberOfCovariates, maxC)
+        print(best_loss)
+
         # initiate loom for parallel processing
         loom = ProcessLoom(max_runner_cap=len(base_data.columns) * len(mixed_methods) + 5)
         indx_c = 0
@@ -1320,6 +1413,11 @@ def main(maxHistory):
             if c == maxC:
                 break
 
+        # for method in mixed_methods:
+        #     print(y_prediction[method].keys())
+        #     print(np.isnan(y_prediction[method][(h, 4)]))
+        #     print(y_prediction[method][(h, 4)].shape)
+
         # save the entire session for each h and c
         filename = env_address + 'validation.out'
         my_shelf = shelve.open(filename, 'n')  # 'n' for new
@@ -1333,8 +1431,14 @@ def main(maxHistory):
         number_of_improved_methods = 0  # we count number_of_improved_methods to run test if no method have improved in current h
 
         indx_c = 0
-        covariates_list = ['county_fips', 'date of day t']
-        covariates_list.extend(force_features)
+        print('force_features len: ', len(force_features))
+        covariates_list = []
+        covariates_list = force_features.copy()
+        covariates_list.append('county_fips')
+        covariates_list.append('date of day t')
+        print('covariates_list len: ', len(covariates_list))
+        # covariates_list = ['county_fips', 'date of day t']
+        # covariates_list.extend(force_features.copy())
         for c in covariates_names:  # iterate through sorted covariates
             indx_c += 1
             for covariate in data.columns:  # add all historical covariates of this covariate and create a feature
@@ -1442,18 +1546,17 @@ if __name__ == "__main__":
     if r >= 28:
         future_mode = True
         future_features = ['social-distancing-travel-distance-grade', 'social-distancing-encounters-grade',
-                           'social-distancing-total-grade'] # sorted by their mrmr rank
+                           'social-distancing-total-grade']  # sorted by their mrmr rank
     if target_mode == 'weeklyaverage':
         r //= 7
         maxHistory //= 7
         test_size //= 7
 
     force_features = []
-    force_mode = 0 # with force_mode we determine how many future feature have to be forced (be used in all eterations)
+    force_mode = 0  # with force_mode we determine how many future feature have to be forced (be used in all eterations)
     if future_mode:
         for f in range(force_mode):
             force_features.append('future-' + future_features[f])
-
 
     # make directories for saving the results
     validation_address = './' + 'results/counties=' + str(numberOfSelectedCountiesname) + ' max_history=' + str(
