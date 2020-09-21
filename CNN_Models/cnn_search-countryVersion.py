@@ -761,6 +761,11 @@ def inverse_normal_y(normal_data, standard_mean, standard_deviation):
 def init_no_processes():
     global _NO_PARALLEL_PROCESSES_
     _NO_PARALLEL_PROCESSES_ = multiprocessing.cpu_count()
+    # limit no processes to 20
+    if (_NO_PARALLEL_PROCESSES_ > 22):
+        log('cpu core counts: {0}'.format(_NO_PARALLEL_PROCESSES_))
+        _NO_PARALLEL_PROCESSES_ = 22
+        
     log('_NO_PARALLEL_PROCESSES_ set to {0}'.format(_NO_PARALLEL_PROCESSES_))
 
 def save_last_process(process_number):
