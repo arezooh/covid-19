@@ -385,6 +385,7 @@ def pad_data(data, input_size):
 def train_data(model, x_train, y_train, x_validation, y_validation, NO_epochs, input_size):
     data_shape = x_train.shape
     y_shape = y_train.shape
+    no_validation = x_validation.shape[0]
     
     padded_x = []
     padded_y = []
@@ -399,7 +400,7 @@ def train_data(model, x_train, y_train, x_validation, y_validation, NO_epochs, i
     padded_x = []
     padded_y = []
 
-    for i in range(data_shape[0]):
+    for i in range(no_validation):
         padded_x.append(pad_data(x_validation[i], input_size))
         padded_y.append(pad_data(y_validation[i], input_size))
 
