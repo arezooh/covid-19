@@ -395,6 +395,10 @@ def train_data(model, x_train, y_train, x_validation, y_validation, NO_epochs, i
 
     x_train = array(padded_x)
     y_train = array(padded_y)
+
+    # clear memory
+    del padded_x, padded_y
+
     for i in range(data_shape[1]):
         for j in range(data_shape[2]):
             subX_trian = x_train[0:data_shape[0], i:i+input_size, j:j+input_size, 0:data_shape[3]]
@@ -422,6 +426,9 @@ def evaluate_data(model, x_test, y_test, input_size, normal_min, normal_max):
 
     x_test = array(padded_x)
     y_test = array(padded_y)
+
+    # clear memory
+    del padded_x, padded_y
 
     sum_org = 0
     sum_predict = 0
