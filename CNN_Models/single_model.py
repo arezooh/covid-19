@@ -285,7 +285,8 @@ if __name__ == "__main__":
     if (os.path.exists('x_' + cnn_search._INSTANCES_FILENAME_) and os.path.exists('y_' + cnn_search._INSTANCES_FILENAME_)):
         log('instances found')
     else:
-        raise Exception('no instances found')
+        log('creating instances')
+        create_instances()
 
     x_instances = load('x_' + cnn_search._INSTANCES_FILENAME_)
     y_instances = load('y_' + cnn_search._INSTANCES_FILENAME_)
