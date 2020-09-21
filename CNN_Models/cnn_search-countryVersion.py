@@ -889,8 +889,8 @@ def create_instances():
     y_instances = zeros((dayLen - 28, shape_imageArray[1], shape_imageArray[2]))
 
     for i in range(dayLen - 28):
-        for x in range(instance_shape[2]):
-            for y in range(instance_shape[3]):
+        for x in range(instance_shape[1]):
+            for y in range(instance_shape[2]):
                 features, result = parse_data_into_instance(imageArray[i:i+28, x, y, 0:10])
                 for j in range(len(features)):
                     x_instances[i][x][y][j] = features[j]
