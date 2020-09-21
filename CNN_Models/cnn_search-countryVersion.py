@@ -395,6 +395,16 @@ def train_data(model, x_train, y_train, x_validation, y_validation, NO_epochs, i
 
     x_train = array(padded_x)
     y_train = array(padded_y)
+    
+    padded_x = []
+    padded_y = []
+
+    for i in range(data_shape[0]):
+        padded_x.append(pad_data(x_validation[i], input_size))
+        padded_y.append(pad_data(y_validation[i], input_size))
+
+    x_validation = array(padded_x)
+    y_validation = array(padded_y)
 
     # clear memory
     del padded_x, padded_y
