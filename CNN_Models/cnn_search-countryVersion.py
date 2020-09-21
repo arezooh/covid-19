@@ -424,6 +424,9 @@ def train_data(model, x_train, y_train, x_validation, y_validation, NO_epochs, i
 def evaluate_data(model, x_test, y_test, input_size, normal_min, normal_max):
     data_shape = x_test.shape
     y_test_org = inverse_normal_y(y_test, normal_min, normal_max)
+
+    if (data_shape[0] != 21):
+        log('datashape[0] supposed to be 21, but its {0}'.format(data_shape[0]))
     
     padded_x = []
     padded_y = []
@@ -445,18 +448,13 @@ def evaluate_data(model, x_test, y_test, input_size, normal_min, normal_max):
     sum_MAPE = 0
     sum_MASE = 0
 
-    # init counties_predict array
-    counties_predict = []
-    counties_predict_per_day = zeros(78031)
-
-    for _ in range(21):
-        counties_predict.append(counties_predict_per_day.copy())
-
-    # load distribution
-    distribution = loadJsonFile(_DISTRIBUTION_FILENAME_)
-    distribution_no_days = len(distribution)
-    # get only test data distribution 
-    distribution = distribution[distribution_no_days - 14 - 21 - 20: distribution_no_days - 14 - 20]
+    sum_org_country = zeros(data_shape[0])
+    sum_predict_country = zeros(data_shape[0])
+    sum_simple_country = zeros(data_shape[0])
+    
+    sum_MAE_country = 0
+    sum_MAPE_country = 0
+    sum_MASE_country = 0
 
     for i in range(data_shape[1]):
         for j in range(data_shape[2]):
@@ -473,21 +471,30 @@ def evaluate_data(model, x_test, y_test, input_size, normal_min, normal_max):
                 sum_MAE += abs(y_test_org[k][i][j][0] - subY_predict[k][0][0][0])
                 sum_MAPE += abs(y_test_org[k][i][j][0] - subY_predict[k][0][0][0])
                 sum_MASE += abs(y_test_org[k][i][j][0] - x_test[k][i][j][-4])
-
-                for county in distribution[k][i][j]:
-                    counties_predict[k][county['fips']] += round(subY_predict[k][0][0][0] * county['percent'])
-
-    MAE_county, MAPE_county, MASE_county = calculate_county_error(distribution_no_days - 21 - 20, counties_predict)
+                
+                sum_org_country[k] += y_test_org[k][i][j][0]
+                sum_predict_country[k] += subY_predict[k][0][0][0]
+                sum_simple_country[k] += x_test[k][i][j][-4]
 
     MAE_pixel = sum_MAE / (data_shape[0] * data_shape[1] * data_shape[2])
     MAPE_pixel = sum_MAPE / sum_org
     MASE_pixel = MAE_pixel / (sum_MASE / (data_shape[0] * data_shape[1] * data_shape[2]))
 
-    MAE_country = abs(sum_org - sum_predict)
-    MAPE_country = abs(sum_org - sum_predict) / sum_org
-    MASE_country = MAE_country / abs(sum_org - sum_simple)
+    # calculating country errors
+    for k in range(data_shape[0]):
+        sum_MAE_country += abs(sum_org_country[k] - sum_predict_country[k])
+        sum_MASE_country += abs(sum_org_country[k] - sum_simple_country[k])
+        
+        if (sum_org_country[k] != 0):
+            sum_MAPE_country += abs(sum_org_country[k] - sum_predict_country[k]) / sum_org_country[k]
+        else:
+            log('sum_org_country[{0}] is zero'.format(k))
 
-    return (MAE_pixel, MAPE_pixel, MASE_pixel, MAE_country, MAPE_country, MASE_country, MAE_county, MAPE_county, MASE_county)
+    MAE_country = sum_MAE_country / data_shape[0]
+    MAPE_country = sum_MAPE_country / data_shape[0]
+    MASE_country = MAE_country / (sum_MASE_country / data_shape[0])
+
+    return (MAE_pixel, MAPE_pixel, MASE_pixel, MAE_country, MAPE_country, MASE_country)
 
 def save_process_result(process_number, parameters, result):
     t = datetime.datetime.now().isoformat()
@@ -495,18 +502,31 @@ def save_process_result(process_number, parameters, result):
         str_parameters = '[{0}][{1}]\n\t--model parameters: {2}\n\t'.format(t, getpid(), parameters)
         str_result_pixel = '--result for Pixels: MAE:{0}, MAPE:{1}, MASE:{2}\n\t'.format(result[0], result[1], result[2]) 
         str_result_country = '--result for Country, MAE:{0}, MAPE:{1}, MASE:{2}\n\t'.format(result[3], result[4], result[5])
-        str_result_county = '--result for County, MAE:{0}, MAPE:{1}, MASE:{2}\n'.format(result[6], result[7], result[8])
-        resultFile.write(str_parameters + str_result_pixel + str_result_country + str_result_county)
+        resultFile.write(str_parameters + str_result_pixel + str_result_country)
 
-def save_best_result(process_number, parameters_pixel, result_pixel, parameters_country, result_country, parameters_county, result_county):
+def save_best_result(process_number, parameters_pixel, result_pixel, parameters_country, result_country):
     with open('process{0}.txt'.format(process_number), 'a') as resultFile:
         str_parameters_pixel = 'Best Pixel result\n\t--model parameters: {0}\n\t'.format(parameters_pixel)
         str_result_pixel = '--result for Pixels: MAE:{0}, MAPE:{1}, MASE:{2}\n\t'.format(result_pixel[0], result_pixel[1], result_pixel[2]) 
         str_parameters_country = 'Best Country result\n\t--model parameters: {0}\n\t'.format(parameters_country)
-        str_result_country = '--result for Country, MAE:{0}, MAPE:{1}, MASE:{2}\n'.format(result_country[0], result_country[1], result_country[2]) 
-        str_parameters_county = 'Best Country result\n\t--model parameters: {0}\n\t'.format(parameters_county)
-        str_result_county = '--result for Country, MAE:{0}, MAPE:{1}, MASE:{2}\n'.format(result_county[0], result_county[1], result_county[2]) 
-        resultFile.write(str_parameters_pixel + str_result_pixel + str_parameters_country + str_result_country + str_parameters_county + str_result_county)
+        str_result_country = '--result for Country, MAE:{0}, MAPE:{1}, MASE:{2}\n'.format(result_country[0], result_country[1], result_country[2])
+        resultFile.write(str_parameters_pixel + str_result_pixel + str_parameters_country + str_result_country)
+
+def save_process_result_ft(process_number, parameters, result):
+    t = datetime.datetime.now().isoformat()
+    with open('process{0}_ft.txt'.format(process_number), 'a') as resultFile:
+        str_parameters = '[{0}][{1}]\n\t--model parameters: {2}\n\t'.format(t, getpid(), parameters)
+        str_result_pixel = '--result for Pixels: MAE:{0}, MAPE:{1}, MASE:{2}\n\t'.format(result[0], result[1], result[2]) 
+        str_result_country = '--result for Country, MAE:{0}, MAPE:{1}, MASE:{2}\n\t'.format(result[3], result[4], result[5])
+        resultFile.write(str_parameters + str_result_pixel + str_result_country)
+
+def save_best_result_ft(process_number, parameters_pixel, result_pixel, parameters_country, result_country):
+    with open('process{0}_ft.txt'.format(process_number), 'a') as resultFile:
+        str_parameters_pixel = 'Best Pixel result\n\t--model parameters: {0}\n\t'.format(parameters_pixel)
+        str_result_pixel = '--result for Pixels: MAE:{0}, MAPE:{1}, MASE:{2}\n\t'.format(result_pixel[0], result_pixel[1], result_pixel[2]) 
+        str_parameters_country = 'Best Country result\n\t--model parameters: {0}\n\t'.format(parameters_country)
+        str_result_country = '--result for Country, MAE:{0}, MAPE:{1}, MASE:{2}\n'.format(result_country[0], result_country[1], result_country[2])
+        resultFile.write(str_parameters_pixel + str_result_pixel + str_parameters_country + str_result_country)
 
 # From prediction.py file
 def send_email(*attachments):
@@ -514,7 +534,51 @@ def send_email(*attachments):
     body = " "
     sender_email = "covidserver1@gmail.com"
     receiver_email = ["hadifazelinia78@gmail.com", "arezo.h1371@yahoo.com"]#
-    CC_email = ["p.ramazi@gmail.com"]#
+    CC_email = ["p.ramazi@gmail.com", "zeinab.maleki@gmail.com"]#
+    password = "S.123456.S"
+
+    # Create a multipart message and set headers
+    message = MIMEMultipart()
+    message["From"] = sender_email
+    message["To"] = ','.join(receiver_email)#receiver_email
+    message["Subject"] = subject
+    message["CC"] = ','.join(CC_email) # Recommended for mass emails
+
+    # Add body to email
+    message.attach(MIMEText(body, "plain"))
+
+    # Add attachments
+    for file_name in attachments:
+            f = open(file_name, 'rb')
+            ctype, encoding = mimetypes.guess_type(file_name)
+            if ctype is None or encoding is not None:
+                ctype = 'application/octet-stream'
+            maintype, subtype = ctype.split('/', 1)
+            # in case of a text file
+            if maintype == 'text':
+                part = MIMEText(f.read(), _subtype=subtype)
+            # any other file
+            else:
+                part = MIMEBase(maintype, subtype)
+                part.set_payload(f.read())
+            encoders.encode_base64(part)
+            part.add_header('Content-Disposition', 'attachment; filename="%s"' % os.path.basename(file_name))
+            message.attach(part)
+            f.close()
+            text = message.as_string()
+
+    # Log in to server using secure context and send email
+    context = ssl.create_default_context()
+    with smtplib.SMTP_SSL("smtp.gmail.com", 465, context=context) as server:
+        server.login(sender_email, password)
+        server.sendmail(sender_email, receiver_email+CC_email , text)
+
+def send_private_email(attachments):
+    subject = "Server results"
+    body = " "
+    sender_email = "covidserver1@gmail.com"
+    receiver_email = ["hadifazelinia78@gmail.com"]#
+    CC_email = []#
     password = "S.123456.S"
 
     # Create a multipart message and set headers
@@ -554,13 +618,22 @@ def send_email(*attachments):
         server.sendmail(sender_email, receiver_email+CC_email , text)
 
 def send_result(process_numbers):
+    files = []
     for process_number in process_numbers:
-        try:
-            filename = 'process{0}.txt'.format(process_number)
-            send_email(filename)
-        except Exception as e:
-            log('sending result of process {0} via email failed'.format(process_number))
-            raise Exception(e)
+        filename = 'process{0}_ft.txt'.format(process_number)
+        files.append(filename)
+
+    try:
+        send_email(files)
+    except:
+        log('sending result of processes {0} via email failed'.format(process_numbers))
+
+def send_private_result(process_number):
+    try:
+        filename = 'process{0}_ft.txt'.format(process_number)
+        send_private_email(filename)
+    except:
+        log('sending result of process {0} via email failed'.format(process_number))
 
 def send_log():
     try:
@@ -570,11 +643,10 @@ def send_log():
         raise Exception(e)
 
 # get a 4D numpy array and normalize it
-def normal_x(train, validation, test, final_test):
+def normal_x(train, validation, final_test):
     data_shape = train.shape
     no_validation = validation.shape[0]
-    no_test = test.shape[0]
-    no_final_test = test.shape[0]
+    no_final_test = final_test.shape[0]
 
     normalizers = []
     for b in range(data_shape[3]):
@@ -612,7 +684,6 @@ def normal_x(train, validation, test, final_test):
 
     normal_train = zeros((data_shape[0], data_shape[1], data_shape[2], data_shape[3]))
     normal_validation = zeros((no_validation, data_shape[1], data_shape[2], data_shape[3]))
-    normal_test = zeros((no_test, data_shape[1], data_shape[2], data_shape[3]))
     normal_final_test = zeros((no_final_test, data_shape[1], data_shape[2], data_shape[3]))
 
     for i in range(data_shape[0]):
@@ -623,16 +694,12 @@ def normal_x(train, validation, test, final_test):
                         normal_train[i][j][a][b] = normalizers[b].standardize(train[i][j][a][b])
                         if (i < no_validation):
                             normal_validation[i][j][a][b] = normalizers[b].standardize(validation[i][j][a][b])
-                        if (i < no_test):
-                            normal_test[i][j][a][b] = normalizers[b].standardize(test[i][j][a][b])
                         if (i < no_final_test):
                             normal_final_test[i][j][a][b] = normalizers[b].standardize(final_test[i][j][a][b])
                     else:
                         normal_train[i][j][a][b] = normalizers[b].normal(train[i][j][a][b])
                         if (i < no_validation):
                             normal_validation[i][j][a][b] = normalizers[b].normal(validation[i][j][a][b])
-                        if (i < no_test):
-                            normal_test[i][j][a][b] = normalizers[b].normal(test[i][j][a][b])
                         if (i < no_final_test):
                             normal_final_test[i][j][a][b] = normalizers[b].normal(final_test[i][j][a][b])
 
@@ -641,13 +708,12 @@ def normal_x(train, validation, test, final_test):
         normalizers[b].check(b)
         normalizers[b + 1].check(b + 1)
 
-    return (normal_train, normal_validation, normal_test, normal_final_test)
+    return (normal_train, normal_validation, normal_final_test)
 
-def normal_y(train, validation, test, final_test):
+def normal_y(train, validation, final_test):
     data_shape = train.shape
     no_validation = validation.shape[0]
-    no_test = test.shape[0]
-    no_final_test = test.shape[0]
+    no_final_test = final_test.shape[0]
 
     obj_normalizer = standardizer()
     
@@ -670,7 +736,6 @@ def normal_y(train, validation, test, final_test):
 
     normal_train = zeros((data_shape[0], data_shape[1], data_shape[2], 1))
     normal_validation = zeros((no_validation, data_shape[1], data_shape[2], 1))
-    normal_test = zeros((no_test, data_shape[1], data_shape[2], 1))
     normal_final_test = zeros((no_final_test, data_shape[1], data_shape[2], 1))
 
     for i in range(data_shape[0]):
@@ -679,15 +744,13 @@ def normal_y(train, validation, test, final_test):
                 normal_train[i][j][a][0] = obj_normalizer.standardize(train[i][j][a])
                 if (i < no_validation):
                     normal_validation[i][j][a][0] = obj_normalizer.standardize(validation[i][j][a])
-                if (i < no_test):
-                    normal_test[i][j][a][0] = obj_normalizer.standardize(test[i][j][a])
                 if (i < no_final_test):
                     normal_final_test[i][j][a][0] = obj_normalizer.standardize(final_test[i][j][a])
 
     obj_normalizer.check(100)
     standard_mean, standard_deviation = obj_normalizer.get_mean_deviation()
 
-    return (normal_train, normal_validation, normal_test, normal_final_test, standard_mean, standard_deviation)
+    return (normal_train, normal_validation, normal_final_test, standard_mean, standard_deviation)
 
 def inverse_normal_y(normal_data, standard_mean, standard_deviation):
     data_shape = normal_data.shape
@@ -709,6 +772,11 @@ def inverse_normal_y(normal_data, standard_mean, standard_deviation):
 def init_no_processes():
     global _NO_PARALLEL_PROCESSES_
     _NO_PARALLEL_PROCESSES_ = multiprocessing.cpu_count()
+    # limit no processes to 20
+    if (_NO_PARALLEL_PROCESSES_ > 22):
+        log('cpu core counts: {0}'.format(_NO_PARALLEL_PROCESSES_))
+        _NO_PARALLEL_PROCESSES_ = 22
+        
     log('_NO_PARALLEL_PROCESSES_ set to {0}'.format(_NO_PARALLEL_PROCESSES_))
 
 def save_last_process(process_number):
@@ -854,8 +922,6 @@ def process_function(parameters,
             shared_y_train, 
             shared_x_validation, 
             shared_y_validation, 
-            shared_x_test, 
-            shared_y_test, 
             shared_x_final_test, 
             shared_y_final_test, ):
     log('Process {1} started | parameters {0}'.format((start, end), process_number))
@@ -866,8 +932,11 @@ def process_function(parameters,
     country_best_model = -1
     country_best_result = (-1, -1, -1)
 
-    county_best_model = -1
-    county_best_result = (-1, -1, -1)
+    pixel_best_model_ft = -1
+    pixel_best_result_ft = (-1, -1, -1)
+
+    country_best_model_ft = -1
+    country_best_result_ft = (-1, -1, -1)
 
     for i in range(start, end):
         input_size = parameters[i][0]
@@ -880,11 +949,10 @@ def process_function(parameters,
         NO_blocks = floor(log2(input_size))
         model = create_model(input_size, hidden_dropout, visible_dropout, NO_blocks, NO_dense_layer, increase_filters)
         train_data(model, shared_x_train, shared_y_train, shared_x_validation, shared_y_validation, 2, input_size)
-        result = evaluate_data(model, shared_x_test, shared_y_test, input_size, normal_min, normal_max)
+        result = evaluate_data(model, shared_x_validation, shared_y_validation, input_size, normal_min, normal_max)
 
         log('result for Pixels, MAE:{0}, MAPE:{1}, MASE:{2}'.format(result[0], result[1], result[2]))
         log('result for Country, MAE:{0}, MAPE:{1}, MASE:{2}'.format(result[3], result[4], result[5]))
-        log('result for County, MAE:{0}, MAPE:{1}, MASE:{2}'.format(result[6], result[7], result[8]))
         save_process_result(process_number, (input_size, hidden_dropout, visible_dropout, NO_dense_layer, increase_filters), result)
 
         if (pixel_best_model == -1 or result[2] < pixel_best_result[2]):
@@ -895,12 +963,20 @@ def process_function(parameters,
             country_best_model = i
             country_best_result = (result[3], result[4], result[5])
 
-        if (county_best_model == -1 or result[8] < county_best_result[2]):
-            county_best_model = i
-            county_best_result = (result[6], result[7], result[8])
+        result = evaluate_data(model, shared_x_final_test, shared_y_final_test, input_size, normal_min, normal_max)
+        save_process_result_ft(process_number, (input_size, hidden_dropout, visible_dropout, NO_dense_layer, increase_filters), result)
+
+        if (pixel_best_model_ft == -1 or result[2] < pixel_best_result_ft[2]):
+            pixel_best_model_ft = i
+            pixel_best_result_ft = (result[0], result[1], result[2])
+
+        if (country_best_model_ft == -1 or result[5] < country_best_result_ft[2]):
+            country_best_model_ft = i
+            country_best_result_ft = (result[3], result[4], result[5])
 
     log('Process {0} done'.format(process_number))
-    save_best_result(process_number, parameters[pixel_best_model], pixel_best_result, parameters[country_best_model], country_best_result, parameters[county_best_model], county_best_result)
+    save_best_result(process_number, parameters[pixel_best_model], pixel_best_result, parameters[country_best_model], country_best_result)
+    save_best_result_ft(process_number, parameters[pixel_best_model_ft], pixel_best_result_ft, parameters[country_best_model_ft], country_best_result_ft)
 
 ################################################################ main
 
@@ -924,14 +1000,11 @@ if __name__ == "__main__":
 
     log('spliting data into train, validation and test')
 
-    x_dataTrain = x_instances[:-63]
-    y_dataTrain = y_instances[:-63]
+    x_dataTrain = x_instances[:-42]
+    y_dataTrain = y_instances[:-42]
 
-    x_dataValidation = x_instances[-63:-42]
-    y_dataValidation = y_instances[-63:-42]
-
-    x_dataTest = x_instances[-42:-21]
-    y_dataTest = y_instances[-42:-21]
+    x_dataValidation = x_instances[-42:-21]
+    y_dataValidation = y_instances[-42:-21]
 
     x_dataFinalTest = x_instances[-21:]
     y_dataFinalTest = y_instances[-21:]
@@ -940,13 +1013,13 @@ if __name__ == "__main__":
 
     log('normalizing data')
 
-    normal_x_dataTrain, normal_x_dataValidation, normal_x_dataTest, normal_x_dataFinalTest = normal_x(x_dataTrain, x_dataValidation, x_dataTest, x_dataFinalTest)
-    normal_y_dataTrain, normal_y_dataValidation, normal_y_dataTest, normal_y_dataFinalTest, normal_min, normal_max = normal_y(y_dataTrain, y_dataValidation, y_dataTest, y_dataFinalTest)
+    normal_x_dataTrain, normal_x_dataValidation, normal_x_dataFinalTest = normal_x(x_dataTrain, x_dataValidation, x_dataFinalTest)
+    normal_y_dataTrain, normal_y_dataValidation, normal_y_dataFinalTest, normal_min, normal_max = normal_y(y_dataTrain, y_dataValidation, y_dataFinalTest)
 
     ################################################################ clearing memory
 
-    del x_instances, x_dataTrain, x_dataValidation, x_dataTest, x_dataFinalTest
-    del y_instances, y_dataTrain, y_dataValidation, y_dataTest, y_dataFinalTest
+    del x_instances, x_dataTrain, x_dataValidation, x_dataFinalTest
+    del y_instances, y_dataTrain, y_dataValidation, y_dataFinalTest
 
     ################################################################ copy data to shared memory
 
@@ -1014,8 +1087,6 @@ if __name__ == "__main__":
             normal_y_dataTrain, 
             normal_x_dataValidation, 
             normal_y_dataValidation, 
-            normal_x_dataTest, 
-            normal_y_dataTest, 
             normal_x_dataFinalTest, 
             normal_y_dataFinalTest, )))
 
@@ -1034,6 +1105,7 @@ if __name__ == "__main__":
     # Wait till 1 process done, then start the next one
     for i in range(_NO_PROCESSES_ - start_process - _NO_PARALLEL_PROCESSES_):
         processes[i + start_process].join()
+        send_private_result(i + start_process)
         save_last_process(i + start_process)
         processes[i + start_process + _NO_PARALLEL_PROCESSES_].start()
 
