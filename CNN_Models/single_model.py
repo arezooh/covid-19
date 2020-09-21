@@ -286,7 +286,7 @@ if __name__ == "__main__":
         log('instances found')
     else:
         log('creating instances')
-        create_instances()
+        cnn_search.create_instances()
 
     x_instances = load('x_' + cnn_search._INSTANCES_FILENAME_)
     y_instances = load('y_' + cnn_search._INSTANCES_FILENAME_)
