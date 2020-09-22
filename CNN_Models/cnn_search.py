@@ -476,7 +476,7 @@ def evaluate_data(model, x_test, y_test, input_size, normal_min, normal_max):
                 sum_MASE += abs(y_test_org[k][i][j][0] - x_test[k][i][j][-4])
 
                 for county in distribution[k][i][j]:
-                    counties_predict[k][county['fips']] += round(subY_predict[k][0][0][0] * county['percent'])
+                    counties_predict[k][county['fips']] += (subY_predict[k][0][0][0] * county['percent'])
 
     MAE_county, MAPE_county, MASE_county = calculate_county_error(distribution_no_days - 21 - 20, counties_predict)
 
