@@ -261,8 +261,8 @@ def calculate_county_error_sd(test_start_day, predictions):
 
     # calculate state errors
     for i in range(79):
-        sum_MAE_state += abs(sum_org_state - sum_predict_state)
-        sum_MASE_state += abs(sum_org_state - sum_simple_state)
+        sum_MAE_state += abs(sum_org_state[i] - sum_predict_state[i])
+        sum_MASE_state += abs(sum_org_state[i] - sum_simple_state[i])
 
     MAE_state = sum_MAE_state / states_count
     MAPE_state = sum_MAE_state / sum_org
