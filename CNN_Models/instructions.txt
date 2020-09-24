@@ -1,0 +1,21 @@
+1. Get codes and data from git:
+
+	git clone https://github.com/arezooh/covid-19
+
+2. go to CNN_Models directory
+
+	cd covid-19/CNN_Models	
+
+3. install requirements:
+
+	pip install -r requirements.txt
+
+4. run code
+
+	python3 cnn_search-countryVersion.py
+	// or
+	python cnn_search-countryVersion.py
+
+	// if any errors occured, please send me log file and error itself.
+
+5. the result will send by email. It also save into "log" and files like "process0.txt" and "process0_ft.txt"
