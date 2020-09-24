@@ -288,7 +288,7 @@ def init_days():
     global startDay
     global endDay
     global dayLen
-    global countiesData_temporal
+    countiesData_temporal = loadCounties(_COUNTIES_DATA_TEMPORAL_)
     startDay = datetime.datetime.strptime(countiesData_temporal[0]['date'], '%m/%d/%y')
     endDay = startDay
     
