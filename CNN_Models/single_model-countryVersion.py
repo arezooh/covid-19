@@ -90,7 +90,7 @@ def evaluate_data_sd(model, x_data, y_data, input_size, normal_min, normal_max):
         sum_MAE_country += abs(country_org[k - 21] - country_pred[k - 21])
         sum_MASE_country += abs(country_org[k - 21] - country_simple[k - 21])
         
-        if (country_org[k] != 0):
+        if (country_org[k - 21] != 0):
             sum_MAPE_country += abs(country_org[k - 21] - country_pred[k - 21]) / country_org[k - 21]
         else:
             log('sum_org_country[{0}] is zero'.format(k))
