@@ -926,6 +926,7 @@ def process_function(parameters,
             shared_x_final_test, 
             shared_y_final_test, ):
     log('Process {1} started | parameters {0}'.format((start, end), process_number))
+    print('[*] Process {0} started'.format(process_number))
 
     pixel_best_model = -1
     pixel_best_result = (-1, -1, -1)
@@ -978,6 +979,8 @@ def process_function(parameters,
     log('Process {0} done'.format(process_number))
     save_best_result(process_number, parameters[pixel_best_model], pixel_best_result, parameters[country_best_model], country_best_result)
     save_best_result_ft(process_number, parameters[pixel_best_model_ft], pixel_best_result_ft, parameters[country_best_model_ft], country_best_result_ft)
+    
+    print('[+] Process {0} done'.format(process_number))
 
 ################################################################ main
 
@@ -1060,6 +1063,8 @@ if __name__ == "__main__":
 
     log('Phase of testing models started')
 
+    print('[*] Number of parallel processes: {0}'.format(_NO_PARALLEL_PROCESSES_))
+
     ################################################################ creating parameters
 
     parameters = []
@@ -1100,7 +1105,7 @@ if __name__ == "__main__":
 
     # Start parallel processes
     for i in range(_NO_PARALLEL_PROCESSES_):
-        log('Process number {0} starting'.format(i))
+        log('Process number {0} starting'.format(i + start_process))
         processes[i + start_process].start()
 
     # Wait till 1 process done, then start the next one
