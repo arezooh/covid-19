@@ -1029,7 +1029,7 @@ if __name__ == "__main__":
 
     # Start parallel processes
     for i in range(_NO_PARALLEL_PROCESSES_):
-        log('Process number {0} starting'.format(i))
+        log('Process number {0} starting'.format(i + start_process))
         processes[i + start_process].start()
 
     # Wait till 1 process done, then start the next one
