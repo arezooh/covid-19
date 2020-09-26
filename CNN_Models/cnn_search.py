@@ -419,7 +419,7 @@ def train_data(model, x_train, y_train, x_validation, y_validation, NO_epochs, i
             subX_validation = x_validation[0:data_shape[0], i:i+input_size, j:j+input_size, 0:data_shape[3]]
             subY_validation = y_validation[0:data_shape[0], i:i+input_size, j:j+input_size, 0:y_shape[3]]
 
-            model.fit(subX_trian, subY_train, batch_size=32, epochs=NO_epochs, verbose=1, validation_data=(subX_validation, subY_validation))
+            model.fit(subX_trian, subY_train, batch_size=32, epochs=NO_epochs, verbose=0, validation_data=(subX_validation, subY_validation))
 
 # This function extract windows with "input_size" size from image, evaluate model with the windows data
 def evaluate_data(model, x_test, y_test, input_size, normal_min, normal_max):
@@ -1029,7 +1029,7 @@ if __name__ == "__main__":
 
     # Start parallel processes
     for i in range(_NO_PARALLEL_PROCESSES_):
-        log('Process number {0} starting'.format(i))
+        log('Process number {0} starting'.format(i + start_process))
         processes[i + start_process].start()
 
     # Wait till 1 process done, then start the next one
