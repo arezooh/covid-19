@@ -160,7 +160,7 @@ def makeHistoricalData(h, r, test_size, target, feature_selection, spatial_mode,
 
         timeDeapandantData = add_future_features(timeDeapandantData)
         
-        future_features = ["{}{}".format('future-',i) for i in future_features]
+    future_features = ["{}{}".format('future-',i) for i in future_features]
         
     ##################################################################
     
@@ -243,6 +243,7 @@ def makeHistoricalData(h, r, test_size, target, feature_selection, spatial_mode,
               temporalDataFrame = allData[[name]]
               temp = temporalDataFrame.head((totalNumberOfDays-h-r+1)*totalNumberOfCounties).copy().reset_index(drop=True)
               result = pd.concat([result, temp], axis=1)
+
 
     # next 3 lines is for adding FIPS code to final dataframe
     temporalDataFrame = allData[['county_fips']]
