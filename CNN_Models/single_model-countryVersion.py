@@ -8,8 +8,10 @@ from os import getpid
 import os
 import datetime
 import matplotlib.pyplot as plt
+import progressbar
 
 _RESULTS_DIR_ = './results/'
+_PROGRESS_BAR_WIDGET_ = [progressbar.Percentage(), ' ', progressbar.Bar('=', '[', ']'), ' ']
 
 single_model_parameters = (3, 0, 0.3, 1, 0)
 target_counties = [36061, 40117, 51059]
@@ -31,6 +33,53 @@ def pad_subImage(data, input_size, minX, minY, maxX, maxY):
     n = input_size // 2
     padded_data = array(padded_data)
     return padded_data[0:data_shape[0], minX:maxX + 2 * n, minY:maxY + 2 * n, 0:data_shape[3]] 
+
+# This function extract windows with "input_size" size from image, train model with the windows data
+def train_data(model, x_train, y_train, x_validation, y_validation, NO_epochs, input_size):
+    data_shape = x_train.shape
+    y_shape = y_train.shape
+    no_validation = x_validation.shape[0]
+    
+    padded_x = []
+    padded_y = []
+
+    for i in range(data_shape[0]):
+        padded_x.append(cnn_search.pad_data(x_train[i], input_size))
+        padded_y.append(cnn_search.pad_data(y_train[i], input_size))
+
+    x_train = array(padded_x)
+    y_train = array(padded_y)
+    
+    padded_x = []
+    padded_y = []
+
+    for i in range(no_validation):
+        padded_x.append(cnn_search.pad_data(x_validation[i], input_size))
+        padded_y.append(cnn_search.pad_data(y_validation[i], input_size))
+
+    x_validation = array(padded_x)
+    y_validation = array(padded_y)
+
+    # clear memory
+    del padded_x, padded_y
+
+    # progressbar
+    progressBar = progressbar.ProgressBar(maxval=data_shape[1]*data_shape[2], widgets=_PROGRESS_BAR_WIDGET_)
+    progressBar.start()
+
+    for i in range(data_shape[1]):
+        for j in range(data_shape[2]):
+            subX_trian = x_train[0:data_shape[0], i:i+input_size, j:j+input_size, 0:data_shape[3]]
+            subY_train = y_train[0:data_shape[0], i:i+input_size, j:j+input_size, 0:y_shape[3]]
+
+            subX_validation = x_validation[0:data_shape[0], i:i+input_size, j:j+input_size, 0:data_shape[3]]
+            subY_validation = y_validation[0:data_shape[0], i:i+input_size, j:j+input_size, 0:y_shape[3]]
+
+            model.fit(subX_trian, subY_train, batch_size=32, epochs=NO_epochs, verbose=0, validation_data=(subX_validation, subY_validation))
+            
+            progressBar.update((i * data_shape[2]) + j)
+
+    progressBar.finish()
 
 # This function extract windows with "input_size" size from image, evaluate model with the windows data
 # Note: the data in here is padded.
@@ -55,6 +104,10 @@ def evaluate_data_sd(model, x_data, y_data, input_size, normal_min, normal_max):
 
     _debug_no_pixcels = 0
 
+    # progressbar
+    progressBar = progressbar.ProgressBar(maxval=(data_shape[1] - (input_size // 2 * 2))*(data_shape[2] - (input_size // 2 * 2)), widgets=_PROGRESS_BAR_WIDGET_)
+    progressBar.start()
+
     for i in range(data_shape[1] - (input_size // 2 * 2)):
         for j in range(data_shape[2] - (input_size // 2 * 2)):
             subX = x_data[0:data_shape[0], i:i+input_size, j:j+input_size, 0:data_shape[3]]
@@ -77,6 +130,10 @@ def evaluate_data_sd(model, x_data, y_data, input_size, normal_min, normal_max):
                 country_simple[k] += x_data[k][i][j][-4]
 
             _debug_no_pixcels += 1
+            
+            progressBar.update((i * (data_shape[2] - (input_size // 2 * 2))) + j)
+
+    progressBar.finish()
 
     if (sum_org == 0):
         log('sum_org is zero, _debug_no_pixcels = {0}'.format(_debug_no_pixcels))
@@ -103,20 +160,6 @@ def evaluate_data_sd(model, x_data, y_data, input_size, normal_min, normal_max):
 
     return (results, country_org, country_pred)
 
-def county_pixcels(county_fips):
-    gridIntersection = cnn_search.loadJsonFile(cnn_search._GRID_INTERSECTION_FILENAME_)
-    pixcels = []
-
-    for x in range(len(gridIntersection)):
-        for y in range(len(gridIntersection[x])):
-            for county in gridIntersection[x][y]:
-                if county['fips'] == county_fips:
-                    pixcels.append((x, y, county_fips))
-                elif (type(county['fips']) != type(county_fips)):
-                    raise Exception ('type mismatch for county_fips')
-
-    return(pixcels)
-
 def plot_chart(fips, prediction, original):
     start_day = (cnn_search.startDay + datetime.timedelta(days=14))
     days = []
@@ -138,24 +181,10 @@ def plot_chart(fips, prediction, original):
     fig.savefig(_RESULTS_DIR_ + 'result_{0}.png'.format(fips))
 
 def predict_counties_result(counties_fips, model, normal_x_data, normal_y_data, input_size, normal_min, normal_max):
-    pixcels = []
     min_x = 0
     min_y = 0
     max_x = 300
     max_y = 300
-
-    # for fips in counties_fips:
-    #     pixcels.extend(county_pixcels(fips))
-
-    # for pixcel in pixcels:
-    #     if (min_x == -1 or pixcel[0] < min_x):
-    #         min_x = pixcel[0]
-    #     if (min_y == -1 or pixcel[1] < min_y):
-    #         min_y = pixcel[1]
-    #     if (max_x == -1 or pixcel[0] > max_x):
-    #         max_x = pixcel[0]
-    #     if (max_y == -1 or pixcel[1] > max_y):
-    #         max_y = pixcel[1]
 
     log('MIN x:{0}, y:{1} | MAX x:{2}, y:{3}'.format(min_x, min_y, max_x, max_y))
 
@@ -366,7 +395,7 @@ if __name__ == "__main__":
     log('Model testing with parameters {0}'.format(single_model_parameters))
     NO_blocks = floor(log2(input_size))
     model = cnn_search.create_model(input_size, hidden_dropout, visible_dropout, NO_blocks, NO_dense_layer, increase_filters)
-    cnn_search.train_data(model, normal_x_dataTrain, normal_y_dataTrain, normal_x_dataValidation, normal_y_dataValidation, 2, input_size)
+    train_data(model, normal_x_dataTrain, normal_y_dataTrain, normal_x_dataValidation, normal_y_dataValidation, 2, input_size)
     predict_counties_result(target_counties, 
         model, 
         append(append(normal_x_dataTrain, normal_x_dataValidation).reshape(no_train + no_validation, data_shape[1], data_shape[2], data_shape[3]), normal_x_dataTest).reshape(no_train + no_validation + no_test, data_shape[1], data_shape[2], data_shape[3]), 
