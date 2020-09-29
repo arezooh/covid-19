@@ -2,20 +2,34 @@
 
 import cnn_search
 
-from math import log2, floor, ceil, sqrt
-from numpy import array, zeros, save, load, copyto, append
-from os import getpid
 import os
 import datetime
 import matplotlib.pyplot as plt
 import progressbar
 
+from math import log2, floor, ceil, sqrt
+from numpy import array, zeros, save, load, copyto, append
+from os import getpid
+
+import tensorflow as tf
+from tensorflow import keras
+from tensorflow.keras.layers import Conv2D, Dense, BatchNormalization, MaxPooling2D, Dropout
+
+from numpy.random import seed
+from tensorflow.random import set_seed
+
+################################################################ Globals
+
 _RESULTS_DIR_ = './results/'
 _PROGRESS_BAR_WIDGET_ = [progressbar.Percentage(), ' ', progressbar.Bar('=', '[', ']'), ' ']
+_NUMPY_SEED_ = 580
+_TENSORFLOW_SEED_ = 870
 
-single_model_parameters = (3, 0, 0.3, 1, 0)
+single_model_parameters = (3, 0.5, 0.8, 2, 0, 0.1, 16)
 target_counties = [36061, 40117, 51059]
 image_size = 300
+
+################################################################
 
 # Use this function to log states of code, helps to find bugs
 def log(str):
@@ -34,8 +48,42 @@ def pad_subImage(data, input_size, minX, minY, maxX, maxY):
     padded_data = array(padded_data)
     return padded_data[0:data_shape[0], minX:maxX + 2 * n, minY:maxY + 2 * n, 0:data_shape[3]] 
 
+def create_model(inputSize, hiddenDropout, visibleDropout, noBlocks, noDenseLayer, increaseFilters, learning_rate):
+    # Set random seeds to make situation equal for all models 
+    seed(_NUMPY_SEED_)
+    set_seed(_TENSORFLOW_SEED_)
+
+    noFilters = 64
+    model = keras.Sequential()
+
+    # Layers before first block
+    model.add(tf.keras.layers.Conv2D(filters=noFilters, kernel_size = (3,3), padding='same', activation='relu', input_shape=(inputSize, inputSize, 62)))
+    if (visibleDropout != 0):
+        model.add(Dropout(visibleDropout))
+
+    # layers in Blocks
+    for i in range(noBlocks):
+        if (increaseFilters == 1):
+            noFilters = 64 * pow(2, i)
+        model.add(Conv2D(filters=noFilters, kernel_size = (3,3), padding='same', activation="relu"))
+        model.add(Conv2D(filters=noFilters, kernel_size = (3,3), padding='same', activation="relu"))
+        model.add(MaxPooling2D(pool_size=(2,2)))
+        model.add(BatchNormalization())
+        if (hiddenDropout != 0):
+            model.add(Dropout(hiddenDropout))
+
+    # Layers after last block
+    for i in range(noDenseLayer - 1):
+        model.add(Dense(512,activation="relu"))
+    # Last layer
+    model.add(Dense(1,activation="relu"))
+
+    model_optimizer = keras.optimizers.Adam(learning_rate=learning_rate)
+    model.compile(loss='mean_squared_error', optimizer=model_optimizer)
+    return model
+
 # This function extract windows with "input_size" size from image, train model with the windows data
-def train_data(model, x_train, y_train, x_validation, y_validation, NO_epochs, input_size):
+def train_data(model, x_train, y_train, x_validation, y_validation, NO_epochs, input_size, batch_size):
     data_shape = x_train.shape
     y_shape = y_train.shape
     no_validation = x_validation.shape[0]
@@ -75,7 +123,7 @@ def train_data(model, x_train, y_train, x_validation, y_validation, NO_epochs, i
             subX_validation = x_validation[0:data_shape[0], i:i+input_size, j:j+input_size, 0:data_shape[3]]
             subY_validation = y_validation[0:data_shape[0], i:i+input_size, j:j+input_size, 0:y_shape[3]]
 
-            model.fit(subX_trian, subY_train, batch_size=32, epochs=NO_epochs, verbose=0, validation_data=(subX_validation, subY_validation))
+            model.fit(subX_trian, subY_train, batch_size=batch_size, epochs=NO_epochs, verbose=0, validation_data=(subX_validation, subY_validation))
             
             progressBar.update((i * data_shape[2]) + j)
 
@@ -391,11 +439,13 @@ if __name__ == "__main__":
     visible_dropout = single_model_parameters[2]
     NO_dense_layer = single_model_parameters[3]
     increase_filters = single_model_parameters[4]
+    learning_rate = single_model_parameters[5]
+    batch_size = single_model_parameters[6]
 
     log('Model testing with parameters {0}'.format(single_model_parameters))
     NO_blocks = floor(log2(input_size))
-    model = cnn_search.create_model(input_size, hidden_dropout, visible_dropout, NO_blocks, NO_dense_layer, increase_filters)
-    train_data(model, normal_x_dataTrain, normal_y_dataTrain, normal_x_dataValidation, normal_y_dataValidation, 2, input_size)
+    model = create_model(input_size, hidden_dropout, visible_dropout, NO_blocks, NO_dense_layer, increase_filters, learning_rate)
+    train_data(model, normal_x_dataTrain, normal_y_dataTrain, normal_x_dataValidation, normal_y_dataValidation, 2, input_size, batch_size)
     predict_counties_result(target_counties, 
         model, 
         append(append(normal_x_dataTrain, normal_x_dataValidation).reshape(no_train + no_validation, data_shape[1], data_shape[2], data_shape[3]), normal_x_dataTest).reshape(no_train + no_validation + no_test, data_shape[1], data_shape[2], data_shape[3]), 

@@ -331,7 +331,7 @@ def parse_data_into_instance(data):
 
     return (instance, result)
 
-def create_model(inputSize, hiddenDropout, visibleDropout, noBlocks, noDenseLayer, increaseFilters):
+def create_model(inputSize, hiddenDropout, visibleDropout, noBlocks, noDenseLayer, increaseFilters, learning_rate):
     # Set random seeds to make situation equal for all models 
     seed(_NUMPY_SEED_)
     set_seed(_TENSORFLOW_SEED_)
@@ -361,9 +361,8 @@ def create_model(inputSize, hiddenDropout, visibleDropout, noBlocks, noDenseLaye
     # Last layer
     model.add(Dense(1,activation="relu"))
 
-    model.compile('adam', 'mean_squared_error', metrics=['accuracy'])
-    # model.compile(loss=keras.losses.poisson, optimizer=keras.optimizers.Adam(), metrics=['accuracy'])
-    # model.compile(optimizer='adam', loss=tf.keras.losses.Poisson())
+    model_optimizer = keras.optimizers.Adam(learning_rate=learning_rate)
+    model.compile(loss='mean_squared_error', optimizer=model_optimizer)
     return model
 
 # This function expand the image, to get output size equal to input size
@@ -383,7 +382,7 @@ def pad_data(data, input_size):
     return array(padded_data)
 
 # This function extract windows with "input_size" size from image, train model with the windows data
-def train_data(model, x_train, y_train, x_validation, y_validation, NO_epochs, input_size):
+def train_data(model, x_train, y_train, x_validation, y_validation, NO_epochs, input_size, batch_size):
     data_shape = x_train.shape
     y_shape = y_train.shape
     no_validation = x_validation.shape[0]
@@ -419,7 +418,7 @@ def train_data(model, x_train, y_train, x_validation, y_validation, NO_epochs, i
             subX_validation = x_validation[0:data_shape[0], i:i+input_size, j:j+input_size, 0:data_shape[3]]
             subY_validation = y_validation[0:data_shape[0], i:i+input_size, j:j+input_size, 0:y_shape[3]]
 
-            model.fit(subX_trian, subY_train, batch_size=32, epochs=NO_epochs, verbose=0, validation_data=(subX_validation, subY_validation))
+            model.fit(subX_trian, subY_train, batch_size=batch_size, epochs=NO_epochs, verbose=0, validation_data=(subX_validation, subY_validation))
 
 # This function extract windows with "input_size" size from image, evaluate model with the windows data
 def evaluate_data(model, x_test, y_test, input_size, normal_min, normal_max):
@@ -817,6 +816,7 @@ def calculate_county_error(test_start_day, predictions):
 
     return (MAE, MAPE, MASE)
 
+
 ################################################################ Globals
 
 startDay = datetime.datetime.strptime('2020-01-22', '%Y-%m-%d')
@@ -832,19 +832,51 @@ countiesData_temporal = loadCounties(_COUNTIES_DATA_TEMPORAL_)
 countiesData_fix = loadCounties(_COUNTIES_DATA_FIX_)
 
 ################################################################
-# We change 5 parameters to find best model (for now, we can't change number of blocks(NO_blocks))
-# input_size = [3, 5, 15, 25] where image size is 300*300
-# hidden_dropout = [0, 0.2, 0.3, 0.4]
-# visible_dropout = [0, 0.2, 0.3, 0.4]
+# We change these parameters to find best model
+# input_size = [3, 5, 15, 25]
+# hidden_dropout = [0.5, 0.6, 0.7, 0.8, 1]
+# visible_dropout = [0.8, 0.9, 0.95, 1]
 # NO_dense_layer = [1, 2, 3]
 # increase_filters = [0, 1]
+# learning_rate = [0.1, 0.01, 0.001]
+# batch_size = [16, 32, 64, 128]
 ################################################################
 
-p1 = [3, 5, 15, 25]
-p2 = [0, 0.2, 0.3, 0.4]
-p3 = [0, 0.2, 0.3, 0.4]
-p4 = [1, 2, 3]
-p5 = [0, 1]
+# parameters of models which we want to search
+def create_parameters():
+    parameters = []
+
+    input_size = [3]
+    hidden_dropout = [0.5, 1]
+    visible_dropout = [0.8, 1]
+    NO_dense_layer = [1, 2, 3]
+    increase_filters = [0, 1]
+
+    learning_rate = [0.1, 0.01, 0.001]
+    batch_size = [16, 32, 64, 128]
+
+    for i in range(len(input_size)):
+        for i2 in range(len(hidden_dropout)):
+            for i3 in range(len(visible_dropout)):
+                for i4 in range(len(NO_dense_layer)):
+                    for i5 in range(len(increase_filters)):
+                        # increase filters doesn't mean if input_size is 3. because there is only one block.
+                        if (input_size[i] == 3 and increase_filters[i5] == 1):
+                            continue
+
+                        for i6 in range(len(learning_rate)):
+                            for i7 in range(len(batch_size)):
+                                parameters.append((input_size[i], hidden_dropout[i2], visible_dropout[i3], NO_dense_layer[i4], increase_filters[i5], learning_rate[i6], batch_size[i7]))
+
+    return parameters
+
+    # ### old version of parameters
+    # for i in range(len(p1)):
+    #     for i2 in range(len(p2)):
+    #         for i3 in range(len(p3)):
+    #             for i4 in range(len(p4)):
+    #                 for i5 in range(len(p5)):
+    #                     parameters.append((p1[i], p2[i2], p3[i3], p4[i4], p5[i5]))
 
 ################################################################ START
 
@@ -946,11 +978,13 @@ def process_function(parameters,
         visible_dropout = parameters[i][2] 
         NO_dense_layer = parameters[i][3]
         increase_filters = parameters[i][4]
+        learning_rate = parameters[i][5]
+        batch_size = parameters[i][6]
 
-        log('Model testing with parameters {0}'.format((input_size, hidden_dropout, visible_dropout, NO_dense_layer, increase_filters)))
+        log('Model testing with parameters {0}'.format((input_size, hidden_dropout, visible_dropout, NO_dense_layer, increase_filters, learning_rate, batch_size)))
         NO_blocks = floor(log2(input_size))
-        model = create_model(input_size, hidden_dropout, visible_dropout, NO_blocks, NO_dense_layer, increase_filters)
-        train_data(model, shared_x_train, shared_y_train, shared_x_validation, shared_y_validation, 2, input_size)
+        model = create_model(input_size, hidden_dropout, visible_dropout, NO_blocks, NO_dense_layer, increase_filters, learning_rate)
+        train_data(model, shared_x_train, shared_y_train, shared_x_validation, shared_y_validation, 2, input_size, batch_size)
         result = evaluate_data(model, shared_x_validation, shared_y_validation, input_size, normal_min, normal_max)
 
         log('result for Pixels, MAE:{0}, MAPE:{1}, MASE:{2}'.format(result[0], result[1], result[2]))
@@ -1067,14 +1101,7 @@ if __name__ == "__main__":
 
     ################################################################ creating parameters
 
-    parameters = []
-
-    for i in range(len(p1)):
-        for i2 in range(len(p2)):
-            for i3 in range(len(p3)):
-                for i4 in range(len(p4)):
-                    for i5 in range(len(p5)):
-                        parameters.append((p1[i], p2[i2], p3[i3], p4[i4], p5[i5]))
+    parameters = create_parameters()
 
     ################################################################ creating processes
 
