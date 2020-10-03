@@ -1,7 +1,7 @@
 # base imports
 import csv
 import os
-import progressbar
+# import progressbar
 
 # self imports
 import debug
@@ -25,7 +25,7 @@ class mediumClass:
     def generate_allSocialDistancingData(self):
         statesData = self.csvHandler._loadData('states.csv')[0]
         for state in statesData:
-            fips = int(state['state-fips'], 10)
+            fips = int(state['state_fips'], 10)
             self.downloadHandler.get_socialDistancingData(fips, 'temp.json')
             # First step, create socialDistancing.csv file
             if state == statesData[0]:
@@ -39,7 +39,7 @@ class mediumClass:
     def clean_stations(self):
         stationsData = []
         fieldnames = []
-        with open(_CSV_Directory_ + 'stations.csv') as csvFile:
+        with open(_CSV_Directory_ + 'temp-stations.csv') as csvFile:
             csvDriver = csv.DictReader(csvFile)
             fieldnames = csvDriver.fieldnames
             for row in csvDriver:
@@ -59,19 +59,19 @@ class mediumClass:
         debug.debug_print("SUCCESS: useless stations removed", 2)
 
     def generate_allWeatherData(self, startDate, endDate):
-        stationsData = self.csvHandler._loadData('stations.csv')[0]
+        stationsData = self.csvHandler._loadData('temp-stations.csv')[0]
 
         numberOfStations = len(stationsData)
-        progressBarWidget = [progressbar.Percentage(),
-        ' ',
-        progressbar.Bar('#', '|', '|'),
-        ' ',
-        progressbar.Variable('FIPS', width=12, precision=12),
-        ' ',
-        progressbar.Variable('ID', width=12, precision=12),
-        ]
-        progressBar = progressbar.ProgressBar(maxval=numberOfStations, widgets=progressBarWidget, redirect_stdout=True)
-        progressBar.start()
+        # progressBarWidget = [progressbar.Percentage(),
+        # ' ',
+        # progressbar.Bar('#', '|', '|'),
+        # ' ',
+        # progressbar.Variable('FIPS', width=12, precision=12),
+        # ' ',
+        # progressbar.Variable('ID', width=12, precision=12),
+        # ]
+        # progressBar = progressbar.ProgressBar(maxval=numberOfStations, widgets=progressBarWidget, redirect_stdout=True)
+        # progressBar.start()
 
         step = 0
         try:
@@ -89,14 +89,14 @@ class mediumClass:
 
             stationID = stationsData[i]['id'].split(':')[1]
             countyFips = stationsData[i]['county_fips']
-            progressBar.update(i, FIPS=countyFips, ID=stationID)
+            # progressBar.update(i, FIPS=countyFips, ID=stationID)
             # First step, create weather.csv file
             if i == 0:
-                self.downloadHandler.get_countyWeatherData(countyFips, stationID, startDate, endDate, 'weather.csv')
+                self.downloadHandler.get_countyWeatherData(countyFips, stationID, startDate, endDate, 'new-weather.csv')
             # Other steps, merge new data to weather.csv file
             else:
                 self.downloadHandler.get_countyWeatherData(countyFips, stationID, startDate, endDate, 'temp.csv')
-                self.csvHandler.merge_csvFiles_addRows('weather.csv', 'temp.csv', 'weather.csv')
+                self.csvHandler.merge_csvFiles_addRows('new-weather.csv', 'temp.csv', 'new-weather.csv')
 
-        progressBar.finish()
+        # progressBar.finish()
         debug.debug_print("SUCCESS: data extracted (weather data)", 2)

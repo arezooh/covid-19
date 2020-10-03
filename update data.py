@@ -7,11 +7,15 @@ from sklearn.impute import IterativeImputer
 from sklearn.impute import SimpleImputer
 from sklearn.impute import KNNImputer
 import datetime
+import os
+
 # self imports
 import debug
 import handlers
 import extractor
 import medium
+
+first_run = 0
 
 def get_csv(web_addres,file_address):
     url=web_addres
@@ -23,6 +27,14 @@ def get_csv(web_addres,file_address):
     csv_file.close
 
 if __name__ == "__main__":
+    
+    if first_run:
+        
+        if os.path.exists("./weather.log"):
+            os.remove("./weather.log")
+        else:
+            print("The file does not exist")
+        
     # downloadHandler.get_socialDistancingData(2, 'sd-state%02d.json' % (2))
     # downloadHandler.get_confirmAndDeathData( + 'confirmAndDeath.json')
     # csvHandler.simplify_csvFile('csvFiles/latitude.csv', 'csvFiles/simple-lat.csv', ['county_fips', 'lat'])
@@ -34,9 +46,10 @@ if __name__ == "__main__":
     # jsonHandler.transform_jsonToCsv_socialDistancingData('sd-state02.json',  + 'socialDistancing-s02.csv')
     
     # get Social Distancing data
-    
-    medium = mediumClass()
-    medium.generate_allSocialDistancingData('temp.csv')
+    if first_run:
+        
+        mediumObject = medium.mediumClass()
+        mediumObject.generate_allSocialDistancingData()
 
     # jsonHandler.transform_jsonToCsv_confirmAndDeathData('confirmAndDeath.json', 'temp-confirmAndDeath.csv')
     # downloadHandler.get_allStations('stations.csv')
@@ -55,12 +68,28 @@ if __name__ == "__main__":
     #       |--|
     
     
-#     weather=pd.read_csv('./csvFiles/weather.csv')
-#     weather=weather.dropna(subset=['DATE'])
-#     weather['DATE']=weather['DATE'].apply(lambda x: datetime.datetime.strptime(x,'%Y-%m-%d'))
-#     startdate = datetime.datetime.strftime(max(weather['DATE'] - datetime.timedelta(days=10)) ,'%Y-%m-%d')
-#     today = datetime.datetime.now()
-#     enddate = datetime.datetime.strftime(today ,'%Y-%m-%d')
+    weather=pd.read_csv('./csvFiles/weather.csv')
+    weather=weather.dropna(subset=['DATE'])
+    weather['DATE']=weather['DATE'].apply(lambda x: datetime.datetime.strptime(x,'%Y-%m-%d'))
+    startdate = datetime.datetime.strftime(max(weather['DATE'] - datetime.timedelta(days=10)) ,'%Y-%m-%d')
+    print('weather start date: ',startdate)
+    today = datetime.datetime.now()
+    enddate = datetime.datetime.strftime(today ,'%Y-%m-%d')
+    print('weather end date: ',enddate)
+    stations = pd.read_csv('./csvFiles/stations.csv')
+    print ('stations.shape',stations.shape)
+    
+    if first_run:
+        new_weather = pd.DataFrame(columns=weather.columns)
+        new_weather.to_csv('./csvFiles/new-weather.csv')
+        stations.to_csv('./csvFiles/temp-stations.csv')
+    else:
+        weather=pd.read_csv('./csvFiles/new-weather.csv')
+        stations2=stations.copy()
+        stations2['id']=stations2['id'].apply(lambda x: x[6:])
+        ind=stations2[~(stations2['county_fips'].isin(weather['county_fips'].unique()[:-1]))].index
+        stations=stations.iloc[ind,:]
+        stations.to_csv('./csvFiles/temp-stations.csv', index=False)
     
     # get weather data
 
@@ -71,18 +100,18 @@ if __name__ == "__main__":
     # mediumObject = medium.mediumClass()
     # mediumObject.downloadHandler.get_airlines()
     
-#     # get confirmed cases data
-#     get_csv('https://usafactsstatic.blob.core.windows.net/public/data/covid-19/covid_confirmed_usafacts.csv',\
-#         './csvFiles/covid_confirmed_cases.csv')
-#     # get deaths data
-#     get_csv('https://usafactsstatic.blob.core.windows.net/public/data/covid-19/covid_deaths_usafacts.csv',\
-#             './csvFiles/covid_deaths.csv')
-#     # get tests data
-#     get_csv('https://covidtracking.com/api/v1/states/daily.csv',\
-#             './csvFiles/daily-state-test.csv')
+    # get confirmed cases data
+    get_csv('https://usafactsstatic.blob.core.windows.net/public/data/covid-19/covid_confirmed_usafacts.csv',\
+        './csvFiles/covid_confirmed_cases.csv')
+    # get deaths data
+    get_csv('https://usafactsstatic.blob.core.windows.net/public/data/covid-19/covid_deaths_usafacts.csv',\
+            './csvFiles/covid_deaths.csv')
+    # get tests data
+    get_csv('https://covidtracking.com/api/v1/states/daily.csv',\
+            './csvFiles/daily-state-test.csv')
     
     ########################### add new weather to weather file
-    new_weather=pd.read_csv('csvFiles/new_weather.csv')
+    new_weather=pd.read_csv('csvFiles/new-weather.csv')
     weather=pd.read_csv('csvFiles/weather.csv')
     weather=weather.append(new_weather)
     weather=weather.drop_duplicates(subset=['county_fips','STATION','DATE'])
