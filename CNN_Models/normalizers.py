@@ -3,7 +3,7 @@ from numpy import array, zeros, save, load, copyto
 
 ################################################################ Classes
 
-class normalizer:
+class minMax_normalizer:
 
     def __init__(self):
         self.minV = -1
@@ -100,7 +100,7 @@ def normal_x(train, validation, final_test):
         if (b >= 6 and ((b - 6) % 4 == 0 or (b - 6) % 4 == 1)):
             normalizers.append(standardizer())
         else:
-            normalizers.append(normalizer())
+            normalizers.append(minMax_normalizer())
 
     for i in range(data_shape[0]):
         for j in range(data_shape[1]):
