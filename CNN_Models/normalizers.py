@@ -95,39 +95,14 @@ def normal_x(train, validation, final_test):
     no_validation = validation.shape[0]
     no_final_test = final_test.shape[0]
 
-    normalizers = []
-    for b in range(data_shape[3]):
-        if (b >= 6 and ((b - 6) % 4 == 0 or (b - 6) % 4 == 1)):
-            normalizers.append(standardizer())
-        else:
-            normalizers.append(minMax_normalizer())
+    minMax_obj = minMax_normalizer()
+    log_obj = logarithmic_normalizer()
 
+    # update minMax_obj for longitude data
     for i in range(data_shape[0]):
         for j in range(data_shape[1]):
             for a in range(data_shape[2]):
-                for b in range(data_shape[3]):
-                    if (b >= 6 and ((b - 6) % 4 == 0 or (b - 6) % 4 == 1)):
-                        normalizers[b].update_mean(train[i][j][a][b])
-                    else:
-                        normalizers[b].update(train[i][j][a][b])
-
-    # calculate standardizers mean
-    for b in range(6, data_shape[3], 4):
-            normalizers[b].calculate_mean()
-            normalizers[b + 1].calculate_mean()
-
-    # update standardizers deviation
-    for i in range(data_shape[0]):
-        for j in range(data_shape[1]):
-            for a in range(data_shape[2]):
-                for b in range(6, data_shape[3], 4):
-                    normalizers[b].update_deviation(train[i][j][a][b])
-                    normalizers[b + 1].update_deviation(train[i][j][a][b + 1])
-
-    # calculate standardizers deviation
-    for b in range(6, data_shape[3], 4):
-            normalizers[b].calculate_deviation()
-            normalizers[b + 1].calculate_deviation()
+                minMax_obj.update(train[i][j][a][2])
 
     normal_train = zeros((data_shape[0], data_shape[1], data_shape[2], data_shape[3]))
     normal_validation = zeros((no_validation, data_shape[1], data_shape[2], data_shape[3]))
@@ -137,23 +112,20 @@ def normal_x(train, validation, final_test):
         for j in range(data_shape[1]):
             for a in range(data_shape[2]):
                 for b in range(data_shape[3]):
-                    if (b >= 6 and ((b - 6) % 4 == 0 or (b - 6) % 4 == 1)):
-                        normal_train[i][j][a][b] = normalizers[b].standardize(train[i][j][a][b])
+                    # normal other data with logarithm
+                    if (b != 2):
+                        normal_train[i][j][a][b] = log_obj.normal(train[i][j][a][b])
                         if (i < no_validation):
-                            normal_validation[i][j][a][b] = normalizers[b].standardize(validation[i][j][a][b])
+                            normal_validation[i][j][a][b] = log_obj.normal(validation[i][j][a][b])
                         if (i < no_final_test):
-                            normal_final_test[i][j][a][b] = normalizers[b].standardize(final_test[i][j][a][b])
+                            normal_final_test[i][j][a][b] = log_obj.normal(final_test[i][j][a][b])
+                    # normal longitude data with minMax
                     else:
-                        normal_train[i][j][a][b] = normalizers[b].normal(train[i][j][a][b])
+                        normal_train[i][j][a][b] = minMax_obj.normal(train[i][j][a][b])
                         if (i < no_validation):
-                            normal_validation[i][j][a][b] = normalizers[b].normal(validation[i][j][a][b])
+                            normal_validation[i][j][a][b] = minMax_obj.normal(validation[i][j][a][b])
                         if (i < no_final_test):
-                            normal_final_test[i][j][a][b] = normalizers[b].normal(final_test[i][j][a][b])
-
-    # check deviation and mean
-    for b in range(6, data_shape[3], 4):
-        normalizers[b].check(b)
-        normalizers[b + 1].check(b + 1)
+                            normal_final_test[i][j][a][b] = minMax_obj.normal(final_test[i][j][a][b])
 
     return (normal_train, normal_validation, normal_final_test)
 
@@ -162,24 +134,7 @@ def normal_y(train, validation, final_test):
     no_validation = validation.shape[0]
     no_final_test = final_test.shape[0]
 
-    obj_normalizer = standardizer()
-    
-    for i in range(data_shape[0]):
-        for j in range(data_shape[1]):
-            for a in range(data_shape[2]):
-                obj_normalizer.update_mean(train[i][j][a])
-
-    # calculate standardizers mean
-    obj_normalizer.calculate_mean()
-    
-    # update standardizers deviation
-    for i in range(data_shape[0]):
-        for j in range(data_shape[1]):
-            for a in range(data_shape[2]):
-                obj_normalizer.update_deviation(train[i][j][a])
-                
-    # calculate standardizers deviation
-    obj_normalizer.calculate_deviation()
+    obj_normalizer = logarithmic_normalizer()
 
     normal_train = zeros((data_shape[0], data_shape[1], data_shape[2], 1))
     normal_validation = zeros((no_validation, data_shape[1], data_shape[2], 1))
@@ -188,22 +143,18 @@ def normal_y(train, validation, final_test):
     for i in range(data_shape[0]):
         for j in range(data_shape[1]):
             for a in range(data_shape[2]):
-                normal_train[i][j][a][0] = obj_normalizer.standardize(train[i][j][a])
+                normal_train[i][j][a][0] = obj_normalizer.normal(train[i][j][a])
                 if (i < no_validation):
-                    normal_validation[i][j][a][0] = obj_normalizer.standardize(validation[i][j][a])
+                    normal_validation[i][j][a][0] = obj_normalizer.normal(validation[i][j][a])
                 if (i < no_final_test):
-                    normal_final_test[i][j][a][0] = obj_normalizer.standardize(final_test[i][j][a])
+                    normal_final_test[i][j][a][0] = obj_normalizer.normal(final_test[i][j][a])
 
-    obj_normalizer.check(100)
-    standard_mean, standard_deviation = obj_normalizer.get_mean_deviation()
+    return (normal_train, normal_validation, normal_final_test)
 
-    return (normal_train, normal_validation, normal_final_test, standard_mean, standard_deviation)
-
-def inverse_normal_y(normal_data, standard_mean, standard_deviation):
+def inverse_normal_y(normal_data):
     data_shape = normal_data.shape
 
-    obj_normalizer = standardizer()
-    obj_normalizer.set_mean_deviation(standard_mean, standard_deviation)
+    obj_normalizer = logarithmic_normalizer()
 
     data = zeros(data_shape)
 
@@ -211,7 +162,7 @@ def inverse_normal_y(normal_data, standard_mean, standard_deviation):
         for j in range(data_shape[1]):
             for a in range(data_shape[2]):
                 for b in range(data_shape[3]):
-                    data[i][j][a][b] = (obj_normalizer.inverse_standardize(normal_data[i][j][a][b]))
+                    data[i][j][a][b] = (obj_normalizer.inverse_normal(normal_data[i][j][a][b]))
 
     return data
 

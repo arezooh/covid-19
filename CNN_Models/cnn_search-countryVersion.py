@@ -36,6 +36,8 @@ import sharedmem
 from numpy.random import seed
 from tensorflow.random import set_seed
 
+from normalizers import normal_x, normal_y, inverse_normal_y
+
 ################################################################ Defines
 
 _CSV_Directory_ = ''
@@ -59,84 +61,6 @@ def log(str):
     t = datetime.datetime.now().isoformat()
     with open('log', 'a') as logFile:
         logFile.write('[{0}][{1}] {2}\n'.format(t, getpid(), str))
-
-################################################################ Classes
-
-class normalizer:
-
-    def __init__(self):
-        self.minV = -1
-        self.maxV = -1
-
-    def update(self, value):
-        if self.minV == -1 and self.maxV == -1:
-            self.minV = value
-            self.maxV = value
-
-        elif value < self.minV:
-            self.minV = value
-
-        elif value > self.maxV:
-            self.maxV = value
-
-    def normal(self, value):
-        if (self.maxV > self.minV):
-            return (value - self.minV) / (self.maxV - self.minV)
-        else:
-            return self.maxV
-
-    def get_min_max(self):
-        return (self.minV, self.maxV)
-
-    def set_min_max(self, minV, maxV):
-        self.minV = minV
-        self.maxV = maxV
-
-    def inverse_normal(self, value):
-        return (value * (self.maxV - self.minV)) + self.minV
-
-class standardizer:
-
-    def __init__(self):
-        self.sum = 0
-        self.sum_deviation = 0
-        self.count = 0
-        self.mean = 0
-        self.deviation = 0
-
-    def update_mean(self, value):
-        self.sum += value
-        self.count += 1
-
-    def calculate_mean(self):
-        if (self.count != 0):
-            self.mean = self.sum / self.count
-
-    def update_deviation(self, value):
-        self.sum_deviation += pow(value - self.mean, 2)
-
-    def calculate_deviation(self):
-        if (self.count != 0):
-            self.deviation = sqrt(self.sum_deviation / self.count)
-
-    def standardize(self, value):
-        if (self.deviation == 0):
-            return 0
-        return (value - self.mean) / self.deviation
-
-    def inverse_standardize(self, value):
-        return (value * self.deviation) + self.mean
-
-    def get_mean_deviation(self):
-        return (self.mean, self.deviation)
-
-    def set_mean_deviation(self, mean, deviation):
-        self.mean = mean
-        self.deviation = deviation
-
-    def check(self, b):
-        if (self.mean == 0 and self.deviation == 0):
-            log('mean and deviation zero in b={0} | sum={1}, sum_deviation={2}, count={3}'.format(b, self.sum, self.sum_deviation, self.count))
 
 ################################################################ Functions
 
@@ -421,9 +345,9 @@ def train_data(model, x_train, y_train, x_validation, y_validation, NO_epochs, i
             model.fit(subX_trian, subY_train, batch_size=batch_size, epochs=NO_epochs, verbose=0, validation_data=(subX_validation, subY_validation))
 
 # This function extract windows with "input_size" size from image, evaluate model with the windows data
-def evaluate_data(model, x_test, y_test, input_size, normal_min, normal_max):
+def evaluate_data(model, x_test, y_test, input_size):
     data_shape = x_test.shape
-    y_test_org = inverse_normal_y(y_test, normal_min, normal_max)
+    y_test_org = inverse_normal_y(y_test)
 
     if (data_shape[0] != 21):
         log('datashape[0] supposed to be 21, but its {0}'.format(data_shape[0]))
@@ -462,7 +386,7 @@ def evaluate_data(model, x_test, y_test, input_size, normal_min, normal_max):
 
             subY_predict_normal = model.predict(subX_test)
             pred_shape = subY_predict_normal.shape
-            subY_predict = inverse_normal_y(subY_predict_normal, normal_min, normal_max)
+            subY_predict = inverse_normal_y(subY_predict_normal)
 
             for k in range(pred_shape[0]):
                 sum_org += y_test_org[k][i][j][0]
@@ -641,132 +565,6 @@ def send_log():
     except Exception as e:
         log('sending log file via email failed')
         raise Exception(e)
-
-# get a 4D numpy array and normalize it
-def normal_x(train, validation, final_test):
-    data_shape = train.shape
-    no_validation = validation.shape[0]
-    no_final_test = final_test.shape[0]
-
-    normalizers = []
-    for b in range(data_shape[3]):
-        if (b >= 6 and ((b - 6) % 4 == 0 or (b - 6) % 4 == 1)):
-            normalizers.append(standardizer())
-        else:
-            normalizers.append(normalizer())
-
-    for i in range(data_shape[0]):
-        for j in range(data_shape[1]):
-            for a in range(data_shape[2]):
-                for b in range(data_shape[3]):
-                    if (b >= 6 and ((b - 6) % 4 == 0 or (b - 6) % 4 == 1)):
-                        normalizers[b].update_mean(train[i][j][a][b])
-                    else:
-                        normalizers[b].update(train[i][j][a][b])
-
-    # calculate standardizers mean
-    for b in range(6, data_shape[3], 4):
-            normalizers[b].calculate_mean()
-            normalizers[b + 1].calculate_mean()
-
-    # update standardizers deviation
-    for i in range(data_shape[0]):
-        for j in range(data_shape[1]):
-            for a in range(data_shape[2]):
-                for b in range(6, data_shape[3], 4):
-                    normalizers[b].update_deviation(train[i][j][a][b])
-                    normalizers[b + 1].update_deviation(train[i][j][a][b + 1])
-
-    # calculate standardizers deviation
-    for b in range(6, data_shape[3], 4):
-            normalizers[b].calculate_deviation()
-            normalizers[b + 1].calculate_deviation()
-
-    normal_train = zeros((data_shape[0], data_shape[1], data_shape[2], data_shape[3]))
-    normal_validation = zeros((no_validation, data_shape[1], data_shape[2], data_shape[3]))
-    normal_final_test = zeros((no_final_test, data_shape[1], data_shape[2], data_shape[3]))
-
-    for i in range(data_shape[0]):
-        for j in range(data_shape[1]):
-            for a in range(data_shape[2]):
-                for b in range(data_shape[3]):
-                    if (b >= 6 and ((b - 6) % 4 == 0 or (b - 6) % 4 == 1)):
-                        normal_train[i][j][a][b] = normalizers[b].standardize(train[i][j][a][b])
-                        if (i < no_validation):
-                            normal_validation[i][j][a][b] = normalizers[b].standardize(validation[i][j][a][b])
-                        if (i < no_final_test):
-                            normal_final_test[i][j][a][b] = normalizers[b].standardize(final_test[i][j][a][b])
-                    else:
-                        normal_train[i][j][a][b] = normalizers[b].normal(train[i][j][a][b])
-                        if (i < no_validation):
-                            normal_validation[i][j][a][b] = normalizers[b].normal(validation[i][j][a][b])
-                        if (i < no_final_test):
-                            normal_final_test[i][j][a][b] = normalizers[b].normal(final_test[i][j][a][b])
-
-    # check deviation and mean
-    for b in range(6, data_shape[3], 4):
-        normalizers[b].check(b)
-        normalizers[b + 1].check(b + 1)
-
-    return (normal_train, normal_validation, normal_final_test)
-
-def normal_y(train, validation, final_test):
-    data_shape = train.shape
-    no_validation = validation.shape[0]
-    no_final_test = final_test.shape[0]
-
-    obj_normalizer = standardizer()
-    
-    for i in range(data_shape[0]):
-        for j in range(data_shape[1]):
-            for a in range(data_shape[2]):
-                obj_normalizer.update_mean(train[i][j][a])
-
-    # calculate standardizers mean
-    obj_normalizer.calculate_mean()
-    
-    # update standardizers deviation
-    for i in range(data_shape[0]):
-        for j in range(data_shape[1]):
-            for a in range(data_shape[2]):
-                obj_normalizer.update_deviation(train[i][j][a])
-                
-    # calculate standardizers deviation
-    obj_normalizer.calculate_deviation()
-
-    normal_train = zeros((data_shape[0], data_shape[1], data_shape[2], 1))
-    normal_validation = zeros((no_validation, data_shape[1], data_shape[2], 1))
-    normal_final_test = zeros((no_final_test, data_shape[1], data_shape[2], 1))
-
-    for i in range(data_shape[0]):
-        for j in range(data_shape[1]):
-            for a in range(data_shape[2]):
-                normal_train[i][j][a][0] = obj_normalizer.standardize(train[i][j][a])
-                if (i < no_validation):
-                    normal_validation[i][j][a][0] = obj_normalizer.standardize(validation[i][j][a])
-                if (i < no_final_test):
-                    normal_final_test[i][j][a][0] = obj_normalizer.standardize(final_test[i][j][a])
-
-    obj_normalizer.check(100)
-    standard_mean, standard_deviation = obj_normalizer.get_mean_deviation()
-
-    return (normal_train, normal_validation, normal_final_test, standard_mean, standard_deviation)
-
-def inverse_normal_y(normal_data, standard_mean, standard_deviation):
-    data_shape = normal_data.shape
-
-    obj_normalizer = standardizer()
-    obj_normalizer.set_mean_deviation(standard_mean, standard_deviation)
-
-    data = zeros(data_shape)
-
-    for i in range(data_shape[0]):
-        for j in range(data_shape[1]):
-            for a in range(data_shape[2]):
-                for b in range(data_shape[3]):
-                    data[i][j][a][b] = (obj_normalizer.inverse_standardize(normal_data[i][j][a][b]))
-
-    return data
 
 # This function init number of parallel processes with number of cpu
 def init_no_processes():
@@ -949,8 +747,6 @@ def process_function(parameters,
             process_number, 
             start, 
             end, 
-            normal_min, 
-            normal_max, 
             shared_x_train, 
             shared_y_train, 
             shared_x_validation, 
@@ -985,7 +781,7 @@ def process_function(parameters,
         NO_blocks = floor(log2(input_size))
         model = create_model(input_size, hidden_dropout, visible_dropout, NO_blocks, NO_dense_layer, increase_filters, learning_rate)
         train_data(model, shared_x_train, shared_y_train, shared_x_validation, shared_y_validation, 2, input_size, batch_size)
-        result = evaluate_data(model, shared_x_validation, shared_y_validation, input_size, normal_min, normal_max)
+        result = evaluate_data(model, shared_x_validation, shared_y_validation, input_size)
 
         log('result for Pixels, MAE:{0}, MAPE:{1}, MASE:{2}'.format(result[0], result[1], result[2]))
         log('result for Country, MAE:{0}, MAPE:{1}, MASE:{2}'.format(result[3], result[4], result[5]))
@@ -999,7 +795,7 @@ def process_function(parameters,
             country_best_model = i
             country_best_result = (result[3], result[4], result[5])
 
-        result = evaluate_data(model, shared_x_final_test, shared_y_final_test, input_size, normal_min, normal_max)
+        result = evaluate_data(model, shared_x_final_test, shared_y_final_test, input_size)
         save_process_result_ft(process_number, (input_size, hidden_dropout, visible_dropout, NO_dense_layer, increase_filters), result)
 
         if (pixel_best_model_ft == -1 or result[2] < pixel_best_result_ft[2]):
@@ -1052,7 +848,7 @@ if __name__ == "__main__":
     log('normalizing data')
 
     normal_x_dataTrain, normal_x_dataValidation, normal_x_dataFinalTest = normal_x(x_dataTrain, x_dataValidation, x_dataFinalTest)
-    normal_y_dataTrain, normal_y_dataValidation, normal_y_dataFinalTest, normal_min, normal_max = normal_y(y_dataTrain, y_dataValidation, y_dataFinalTest)
+    normal_y_dataTrain, normal_y_dataValidation, normal_y_dataFinalTest = normal_y(y_dataTrain, y_dataValidation, y_dataFinalTest)
 
     ################################################################ clearing memory
 
@@ -1114,8 +910,6 @@ if __name__ == "__main__":
             i, 
             i * model_per_process, 
             min((i + 1) * model_per_process, len(parameters)), 
-            normal_min, 
-            normal_max, 
             normal_x_dataTrain, 
             normal_y_dataTrain, 
             normal_x_dataValidation, 
