@@ -155,12 +155,11 @@ def add_real_values(data,address,temporal_mode,target_name,weekly_r,daily_r,scen
 
 
 def plot(data,address):
+    plt.rc('font', size=100)
     data=data[~pd.isna(data['Real'])].drop_duplicates(subset=['the day of the target variable'])
     dates=data['the day of the target variable'].unique().tolist()[40:]
     plot_with = len(dates) + 2
     fig, ax = plt.subplots(figsize=(plot_with, 40))
-    # fig, ax = plt.subplots(figsize=(20,5))
-    plt.rc('font', size=100)
     plt.plot(dates,data['Real'].tolist()[40:],label='Real number of deaths', linewidth=5.0)
     plt.plot(dates,data['Prediction'].tolist()[40:],label='Predicted number of deaths', linewidth=5.0)
     line_position = dates.index('25 Sep 2020')
