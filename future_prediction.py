@@ -556,17 +556,16 @@ def make_original_data(data,target_mode):
 
 ########################################################### push results to github
 def push(message):
-    if push_flag == 1:
-        try:
-            cmd.run("git pull", check=True, shell=True)
-            print("everything has been pulled")
-            cmd.run("git add .", check=True, shell=True)
-            cmd.run(f"git commit -m '{message}'", check=True, shell=True)
-            cmd.run("git push", check=True, shell=True)
-            print('pushed.')
+    try:
+        cmd.run("git pull", check=True, shell=True)
+        print("everything has been pulled")
+        cmd.run("git add .", check=True, shell=True)
+        cmd.run(f"git commit -m '{message}'", check=True, shell=True)
+        cmd.run("git push", check=True, shell=True)
+        print('pushed.')
 
-        except:
-            print('could not push')
+    except:
+        print('could not push')
 
 ##################################################################################################### main 
 if __name__ == "__main__":
