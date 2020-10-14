@@ -177,12 +177,12 @@ def plot(data,address):
     plt.close()
     
 ########################################################### push results to github
-def push():
+def push(message):
     
     cmd.run("git pull", check=True, shell=True)
     print("everything has been pulled")
     cmd.run("git add .", check=True, shell=True)
-    cmd.run(f"git commit -m 'Predictions'", check=True, shell=True)
+    cmd.call(["git", "commit", "-m", "'{}'".format(message), "--allow-empty"], shell=True)
     cmd.run("git push", check=True, shell=True)
     print('pushed.')
 
@@ -271,7 +271,7 @@ def main():
     weekly_output_csv.to_csv("US-Weekly-Deaths-Prediction.csv")
     scenarios_output_csv.to_csv("Different-Scenarios.csv", index=False)
     
-    push()
+    push("Predictions")
 
 if __name__ == "__main__":
     main()
