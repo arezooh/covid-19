@@ -3,3 +3,6 @@ __pycache__/
 open_git.bat
 sitemakeHistoricalData.py
 models.py
+weekly_backup.csv
+daily_backup.csv
+errors.csv
