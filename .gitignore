@@ -6,3 +6,9 @@ models.py
 weekly_backup.csv
 daily_backup.csv
 errors.csv
+weather.log
+schedule.bat
+scenarios_backup.csv
+debug.log
+international-covid-confirmed-data.csv
+international-covid-death-data.csv
