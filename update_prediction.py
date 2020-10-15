@@ -195,9 +195,9 @@ def main():
     weekly_r = [4]
     daily_r = [14]
 
-    weekly_output_csv = pd.read_csv(address + "weekly_backup.csv")
-    daily_output_csv = pd.read_csv(address + "daily_backup.csv")
-    scenarios_output_csv = pd.read_csv(address + "scenarios_backup.csv")
+    weekly_output_csv = pd.read_csv("weekly_backup.csv")
+    daily_output_csv = pd.read_csv("daily_backup.csv")
+    scenarios_output_csv = pd.read_csv("scenarios_backup.csv")
 
     # add real values of previous days
     weekly_output_csv = add_real_values(weekly_output_csv,address,'weekly',
