@@ -110,7 +110,9 @@ def add_real_values(data,address,temporal_mode,target_name,weekly_r,daily_r,scen
                   weekly_part['run_code'] = 'w'+str(r*7)
                 real_values_df = real_values_df.append(weekly_part)
 
-        data = pd.merge(data, real_values_df, how='left', left_on=['datetime','run_code'],right_on=['date','run_code'])
+        data = pd.merge(data, real_values_df, how='left', left_on=['datetime','run_code'],
+                        right_on=['date','run_code'])
+        data = data.drop(['county_fips'],axis=1)
         print(data)
         new_ind=~pd.isnull(data[target_name])
         # add real values
