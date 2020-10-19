@@ -81,7 +81,8 @@ def add_real_values(data,address,temporal_mode,target_name,weekly_r,daily_r,scen
         previous_prediction_date = datetime.datetime.strptime(date,"%Y-%m-%d")
         
         
-        temp = temporal_data[['county_fips','date',target_name]]
+        temp = temporal_data[['county_fips',
+                              'date',target_name]]
 
         real_values_df = pd.DataFrame(columns=['date',target_name])
         if temporal_mode == 'daily':
@@ -110,10 +111,12 @@ def add_real_values(data,address,temporal_mode,target_name,weekly_r,daily_r,scen
                   weekly_part['run_code'] = 'w'+str(r*7)
                 real_values_df = real_values_df.append(weekly_part)
 
-        data = pd.merge(data, real_values_df, how='left', left_on=['datetime','run_code'],
-                        right_on=['date','run_code'])
-        data = data.drop(['county_fips'],axis=1)
-        print(data)
+        print(data.columns)
+        print(real_values_df.columns)
+        data = pd.merge(data, real_values_df, how='left', left_on=['datetime','run_code','county_fips'],
+                        right_on=['date','run_code','county_fips'])
+        
+        print(data.columns)
         new_ind=~pd.isnull(data[target_name])
         # add real values
         data.loc[new_ind,'Real'] = data.loc[~pd.isnull(data[target_name]),target_name]
@@ -272,7 +275,7 @@ def main():
     weekly_output_csv.to_csv("US-Weekly-Deaths-Prediction.csv")
     scenarios_output_csv.to_csv("Different-Scenarios.csv", index=False)
     
-    push("Predictions updated")
+    push("Prediction!s updated")
 
 if __name__ == "__main__":
     main()
