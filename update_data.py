@@ -15,7 +15,7 @@ import handlers
 import extractor
 import medium
 
-first_run = 1
+first_run = 0
 
 def get_csv(web_addres,file_address):
     url=web_addres
