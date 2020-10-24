@@ -1,7 +1,21 @@
 from math import log, exp, sqrt
 from numpy import array, zeros, save, load, copyto
 
-################################################################ Classes
+import datetime
+from os import getpid
+
+normalize_methods = ['minMax', 'standard', 'logarithm']
+current_method = 2
+
+# Use this function to log states of code, helps to find bugs
+def log_normal(str):
+    t = datetime.datetime.now().isoformat()
+    with open('log', 'a') as logFile:
+        logFile.write('[{0}][{1}] {2}\n'.format(t, getpid(), str))
+
+#########################################################################
+################################################################# Classes
+#########################################################################
 
 class minMax_normalizer:
 
@@ -77,7 +91,7 @@ class standardizer:
 
     def check(self, b):
         if (self.mean == 0 and self.deviation == 0):
-            log('mean and deviation zero in b={0} | sum={1}, sum_deviation={2}, count={3}'.format(b, self.sum, self.sum_deviation, self.count))
+            log_normal('mean and deviation zero in b={0} | sum={1}, sum_deviation={2}, count={3}'.format(b, self.sum, self.sum_deviation, self.count))
 
 class logarithmic_normalizer:
 
@@ -87,7 +101,9 @@ class logarithmic_normalizer:
     def inverse_normal(self, value):
         return exp(value) - 1
 
-################################################################ 
+#########################################################################
+################################################################ Normal X
+#########################################################################
 
 # get a 4D numpy array and normalize it
 def normal_x(train, validation, final_test):
@@ -95,75 +111,309 @@ def normal_x(train, validation, final_test):
     no_validation = validation.shape[0]
     no_final_test = final_test.shape[0]
 
-    minMax_obj = minMax_normalizer()
-    log_obj = logarithmic_normalizer()
-
-    # update minMax_obj for longitude data
-    for i in range(data_shape[0]):
-        for j in range(data_shape[1]):
-            for a in range(data_shape[2]):
-                minMax_obj.update(train[i][j][a][2])
-
     normal_train = zeros((data_shape[0], data_shape[1], data_shape[2], data_shape[3]))
     normal_validation = zeros((no_validation, data_shape[1], data_shape[2], data_shape[3]))
     normal_final_test = zeros((no_final_test, data_shape[1], data_shape[2], data_shape[3]))
 
-    for i in range(data_shape[0]):
-        for j in range(data_shape[1]):
-            for a in range(data_shape[2]):
-                for b in range(data_shape[3]):
-                    # normal other data with logarithm
-                    if (b != 2):
-                        normal_train[i][j][a][b] = log_obj.normal(train[i][j][a][b])
+    ################################################
+    ################################# Min-Max Method
+    ################################################
+
+    if (normalize_methods[current_method] == 'minMax'):
+        normalizers = []
+
+        for b in range(data_shape[3]):
+            normalizers.append(minMax_normalizer())
+
+        # update minMax_obj for longitude data
+        for i in range(data_shape[0]):
+            for j in range(data_shape[1]):
+                for a in range(data_shape[2]):
+                    for b in range(data_shape[3]):
+                        normalizers[b].update(train[i][j][a][b])
+
+        for i in range(data_shape[0]):
+            for j in range(data_shape[1]):
+                for a in range(data_shape[2]):
+                    for b in range(data_shape[3]):
+                        normal_train[i][j][a][b] = normalizers[b].normal(train[i][j][a][b])
                         if (i < no_validation):
-                            normal_validation[i][j][a][b] = log_obj.normal(validation[i][j][a][b])
+                            normal_validation[i][j][a][b] = normalizers[b].normal(validation[i][j][a][b])
                         if (i < no_final_test):
-                            normal_final_test[i][j][a][b] = log_obj.normal(final_test[i][j][a][b])
-                    # normal longitude data with minMax
-                    else:
-                        normal_train[i][j][a][b] = minMax_obj.normal(train[i][j][a][b])
-                        if (i < no_validation):
-                            normal_validation[i][j][a][b] = minMax_obj.normal(validation[i][j][a][b])
-                        if (i < no_final_test):
-                            normal_final_test[i][j][a][b] = minMax_obj.normal(final_test[i][j][a][b])
+                            normal_final_test[i][j][a][b] = normalizers[b].normal(final_test[i][j][a][b])
+
+    ################################################
+    ################################ Standard Method
+    ################################################
+    # Standard: death and confirmed 
+    # MinMax: others
+
+    elif (normalize_methods[current_method] == 'standard'):
+        normalizers = []
+
+        for b in range(data_shape[3]):
+            if (b >= 6 and ((b - 6) % 4 == 0 or (b - 6) % 4 == 1)):
+                normalizers.append(standardizer())
+            else:
+                normalizers.append(minMax_normalizer())
+
+        for i in range(data_shape[0]):
+            for j in range(data_shape[1]):
+                for a in range(data_shape[2]):
+                    for b in range(data_shape[3]):
+                        if (b >= 6 and ((b - 6) % 4 == 0 or (b - 6) % 4 == 1)):
+                            normalizers[b].update_mean(train[i][j][a][b])
+                        else:
+                            normalizers[b].update(train[i][j][a][b])
+
+        # calculate standardizers mean
+        for b in range(6, data_shape[3], 4):
+                normalizers[b].calculate_mean()
+                normalizers[b + 1].calculate_mean()
+
+        # update standardizers deviation
+        for i in range(data_shape[0]):
+            for j in range(data_shape[1]):
+                for a in range(data_shape[2]):
+                    for b in range(6, data_shape[3], 4):
+                        normalizers[b].update_deviation(train[i][j][a][b])
+                        normalizers[b + 1].update_deviation(train[i][j][a][b + 1])
+
+        # calculate standardizers deviation
+        for b in range(6, data_shape[3], 4):
+                normalizers[b].calculate_deviation()
+                normalizers[b + 1].calculate_deviation()
+
+        for i in range(data_shape[0]):
+            for j in range(data_shape[1]):
+                for a in range(data_shape[2]):
+                    for b in range(data_shape[3]):
+                        if (b >= 6 and ((b - 6) % 4 == 0 or (b - 6) % 4 == 1)):
+                            normal_train[i][j][a][b] = normalizers[b].standardize(train[i][j][a][b])
+                            if (i < no_validation):
+                                normal_validation[i][j][a][b] = normalizers[b].standardize(validation[i][j][a][b])
+                            if (i < no_final_test):
+                                normal_final_test[i][j][a][b] = normalizers[b].standardize(final_test[i][j][a][b])
+                        else:
+                            normal_train[i][j][a][b] = normalizers[b].normal(train[i][j][a][b])
+                            if (i < no_validation):
+                                normal_validation[i][j][a][b] = normalizers[b].normal(validation[i][j][a][b])
+                            if (i < no_final_test):
+                                normal_final_test[i][j][a][b] = normalizers[b].normal(final_test[i][j][a][b])
+
+        # check deviation and mean
+        for b in range(6, data_shape[3], 4):
+            normalizers[b].check(b)
+            normalizers[b + 1].check(b + 1)
+
+    ################################################
+    ############################### Logarithm Method
+    ################################################
+
+    elif (normalize_methods[current_method] == 'logarithm'):
+        minMax_obj = minMax_normalizer()
+        log_obj = logarithmic_normalizer()
+
+        # update minMax_obj for longitude data
+        for i in range(data_shape[0]):
+            for j in range(data_shape[1]):
+                for a in range(data_shape[2]):
+                    minMax_obj.update(train[i][j][a][2])
+
+        for i in range(data_shape[0]):
+            for j in range(data_shape[1]):
+                for a in range(data_shape[2]):
+                    for b in range(data_shape[3]):
+                        # normal other data with logarithm
+                        if (b != 2):
+                            normal_train[i][j][a][b] = log_obj.normal(train[i][j][a][b])
+                            if (i < no_validation):
+                                normal_validation[i][j][a][b] = log_obj.normal(validation[i][j][a][b])
+                            if (i < no_final_test):
+                                normal_final_test[i][j][a][b] = log_obj.normal(final_test[i][j][a][b])
+                        # normal longitude data with minMax
+                        else:
+                            normal_train[i][j][a][b] = minMax_obj.normal(train[i][j][a][b])
+                            if (i < no_validation):
+                                normal_validation[i][j][a][b] = minMax_obj.normal(validation[i][j][a][b])
+                            if (i < no_final_test):
+                                normal_final_test[i][j][a][b] = minMax_obj.normal(final_test[i][j][a][b])
+
+    ################################################
+    ######################################## Default
+    ################################################
+
+    else:
+        raise Exception('normalize method not found')
 
     return (normal_train, normal_validation, normal_final_test)
+
+#########################################################################
+################################################################ Normal Y
+#########################################################################
 
 def normal_y(train, validation, final_test):
     data_shape = train.shape
     no_validation = validation.shape[0]
     no_final_test = final_test.shape[0]
 
-    obj_normalizer = logarithmic_normalizer()
+    first_normal_param = 0
+    second_normal_param = 0
 
     normal_train = zeros((data_shape[0], data_shape[1], data_shape[2], 1))
     normal_validation = zeros((no_validation, data_shape[1], data_shape[2], 1))
     normal_final_test = zeros((no_final_test, data_shape[1], data_shape[2], 1))
 
-    for i in range(data_shape[0]):
-        for j in range(data_shape[1]):
-            for a in range(data_shape[2]):
-                normal_train[i][j][a][0] = obj_normalizer.normal(train[i][j][a])
-                if (i < no_validation):
-                    normal_validation[i][j][a][0] = obj_normalizer.normal(validation[i][j][a])
-                if (i < no_final_test):
-                    normal_final_test[i][j][a][0] = obj_normalizer.normal(final_test[i][j][a])
+    ################################################
+    ################################# Min-Max Method
+    ################################################
 
-    return (normal_train, normal_validation, normal_final_test)
+    if (normalize_methods[current_method] == 'minMax'):
 
-def inverse_normal_y(normal_data):
+        obj_normalizer = minMax_normalizer()
+
+        for i in range(data_shape[0]):
+            for j in range(data_shape[1]):
+                for a in range(data_shape[2]):
+                    obj_normalizer.update(train[i][j][a])
+
+        for i in range(data_shape[0]):
+            for j in range(data_shape[1]):
+                for a in range(data_shape[2]):
+                    normal_train[i][j][a][0] = obj_normalizer.normal(train[i][j][a])
+                    if (i < no_validation):
+                        normal_validation[i][j][a][0] = obj_normalizer.normal(validation[i][j][a])
+                    if (i < no_final_test):
+                        normal_final_test[i][j][a][0] = obj_normalizer.normal(final_test[i][j][a])
+
+        first_normal_param, second_normal_param = obj_normalizer.get_min_max()
+
+    ################################################
+    ################################ Standard Method
+    ################################################
+    # Standard: death and confirmed 
+    # MinMax: others
+
+    elif (normalize_methods[current_method] == 'standard'):
+
+        obj_normalizer = standardizer()
+        
+        for i in range(data_shape[0]):
+            for j in range(data_shape[1]):
+                for a in range(data_shape[2]):
+                    obj_normalizer.update_mean(train[i][j][a])
+
+        # calculate standardizers mean
+        obj_normalizer.calculate_mean()
+        
+        # update standardizers deviation
+        for i in range(data_shape[0]):
+            for j in range(data_shape[1]):
+                for a in range(data_shape[2]):
+                    obj_normalizer.update_deviation(train[i][j][a])
+                    
+        # calculate standardizers deviation
+        obj_normalizer.calculate_deviation()
+
+        for i in range(data_shape[0]):
+            for j in range(data_shape[1]):
+                for a in range(data_shape[2]):
+                    normal_train[i][j][a][0] = obj_normalizer.standardize(train[i][j][a])
+                    if (i < no_validation):
+                        normal_validation[i][j][a][0] = obj_normalizer.standardize(validation[i][j][a])
+                    if (i < no_final_test):
+                        normal_final_test[i][j][a][0] = obj_normalizer.standardize(final_test[i][j][a])
+
+        obj_normalizer.check(100)
+        first_normal_param, second_normal_param = obj_normalizer.get_mean_deviation()
+
+    ################################################
+    ############################### Logarithm Method
+    ################################################
+
+    elif (normalize_methods[current_method] == 'logarithm'):
+
+        obj_normalizer = logarithmic_normalizer()
+
+        for i in range(data_shape[0]):
+            for j in range(data_shape[1]):
+                for a in range(data_shape[2]):
+                    normal_train[i][j][a][0] = obj_normalizer.normal(train[i][j][a])
+                    if (i < no_validation):
+                        normal_validation[i][j][a][0] = obj_normalizer.normal(validation[i][j][a])
+                    if (i < no_final_test):
+                        normal_final_test[i][j][a][0] = obj_normalizer.normal(final_test[i][j][a])
+
+    ################################################
+    ######################################## Default
+    ################################################
+
+    else:
+        raise Exception('normalize method not found')
+
+    return (normal_train, normal_validation, normal_final_test, first_normal_param, second_normal_param)
+
+#########################################################################
+######################################################## Inverse Normal Y
+#########################################################################
+
+def inverse_normal_y(normal_data, first_normal_param, second_normal_param):
     data_shape = normal_data.shape
-
-    obj_normalizer = logarithmic_normalizer()
 
     data = zeros(data_shape)
 
-    for i in range(data_shape[0]):
-        for j in range(data_shape[1]):
-            for a in range(data_shape[2]):
-                for b in range(data_shape[3]):
-                    data[i][j][a][b] = (obj_normalizer.inverse_normal(normal_data[i][j][a][b]))
+    ################################################
+    ################################# Min-Max Method
+    ################################################
+
+    if (normalize_methods[current_method] == 'minMax'):
+        obj_normalizer = minMax_normalizer()
+        obj_normalizer.set_min_max(first_normal_param, second_normal_param)
+
+        for i in range(data_shape[0]):
+            for j in range(data_shape[1]):
+                for a in range(data_shape[2]):
+                    for b in range(data_shape[3]):
+                        data[i][j][a][b] = obj_normalizer.normal(normal_data[i][j][a][b])
+
+    ################################################
+    ################################ Standard Method
+    ################################################
+    # Standard: death and confirmed 
+    # MinMax: others
+
+    elif (normalize_methods[current_method] == 'standard'):
+        obj_normalizer = standardizer()
+        obj_normalizer.set_mean_deviation(first_normal_param, second_normal_param)
+
+        for i in range(data_shape[0]):
+            for j in range(data_shape[1]):
+                for a in range(data_shape[2]):
+                    for b in range(data_shape[3]):
+                        data[i][j][a][b] = obj_normalizer.inverse_standardize(normal_data[i][j][a][b])
+
+    ################################################
+    ############################### Logarithm Method
+    ################################################
+
+    elif (normalize_methods[current_method] == 'logarithm'):
+        obj_normalizer = logarithmic_normalizer()
+
+        for i in range(data_shape[0]):
+            for j in range(data_shape[1]):
+                for a in range(data_shape[2]):
+                    for b in range(data_shape[3]):
+                        data[i][j][a][b] = (obj_normalizer.inverse_normal(normal_data[i][j][a][b]))
+
+    ################################################
+    ######################################## Default
+    ################################################
+
+    else:
+        raise Exception('normalize method not found')
 
     return data
 
-################################################################
+#########################################################################
+#########################################################################
+#########################################################################
