@@ -275,7 +275,7 @@ def main():
     weekly_output_csv.to_csv("US-Weekly-Deaths-Prediction.csv")
     scenarios_output_csv.to_csv("Different-Scenarios.csv", index=False)
     
-    push("Prediction!s updated")
+    push("Predictions updated")
 
 if __name__ == "__main__":
     main()
