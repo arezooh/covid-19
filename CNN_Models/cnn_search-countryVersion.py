@@ -501,13 +501,10 @@ def send_email(*attachments):
             if ctype is None or encoding is not None:
                 ctype = 'application/octet-stream'
             maintype, subtype = ctype.split('/', 1)
-            # in case of a text file
-            if maintype == 'text':
-                part = MIMEText(f.read(), _subtype=subtype)
-            # any other file
-            else:
-                part = MIMEBase(maintype, subtype)
-                part.set_payload(f.read())
+
+            part = MIMEBase(maintype, subtype)
+            part.set_payload(f.read())
+
             encoders.encode_base64(part)
             part.add_header('Content-Disposition', 'attachment; filename="%s"' % os.path.basename(file_name))
             message.attach(part)
@@ -520,7 +517,7 @@ def send_email(*attachments):
         server.login(sender_email, password)
         server.sendmail(sender_email, receiver_email+CC_email , text)
 
-def send_private_email(attachments):
+def send_private_email(*attachments):
     subject = "Server results"
     body = " "
     sender_email = "covidserver1@gmail.com"
@@ -545,13 +542,10 @@ def send_private_email(attachments):
             if ctype is None or encoding is not None:
                 ctype = 'application/octet-stream'
             maintype, subtype = ctype.split('/', 1)
-            # in case of a text file
-            if maintype == 'text':
-                part = MIMEText(f.read(), _subtype=subtype)
-            # any other file
-            else:
-                part = MIMEBase(maintype, subtype)
-                part.set_payload(f.read())
+
+            part = MIMEBase(maintype, subtype)
+            part.set_payload(f.read())
+            
             encoders.encode_base64(part)
             part.add_header('Content-Disposition', 'attachment; filename="%s"' % os.path.basename(file_name))
             message.attach(part)
@@ -569,24 +563,23 @@ def send_result(process_numbers):
     for process_number in process_numbers:
         filename = _RESULTS_DIR_ + 'process{0}_ft.txt'.format(process_number)
         files.append(filename)
-
     try:
         send_email(files)
-    except:
-        log('sending result of processes {0} via email failed'.format(process_numbers))
+    except Exception as e:
+        log('sending result of processes {0} via email failed: {1}'.format(process_numbers, e))
 
 def send_private_result(process_number):
     try:
-        filename = _RESULTS_DIR_ + 'process{0}_ft.txt'.format(process_number)
-        send_private_email(filename)
-        filename = 'log'
-        send_private_email(filename)
-    except:
-        log('sending result of process {0} via email failed'.format(process_number))
+        process_filename = _RESULTS_DIR_ + 'process{0}.txt'.format(process_number)
+        process_ft_filename = _RESULTS_DIR_ + 'process{0}_ft.txt'.format(process_number)
+        log_filename = 'log'
+        send_private_email(process_filename, process_filename, log_filename)
+    except Exception as e:
+        log('sending result of processes {0} via email failed: {1}'.format(process_number, e))
 
 def send_log():
     try:
-        send_email('log')
+        send_private_email('log')
     except Exception as e:
         log('sending log file via email failed')
         raise Exception(e)
