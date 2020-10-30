@@ -42,7 +42,7 @@ def create_parameters():
     input_size = [3, 5]
     hidden_dropout = [0.5, 1]
     visible_dropout = [0.8, 1]
-    NO_dense_layer = [1, 2]
+    NO_dense_layer = [2, 1]
     increase_filters = [0]
 
     learning_rate = [0.1, 0.01]
