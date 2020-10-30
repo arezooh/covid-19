@@ -8,4 +8,4 @@ email
 smtplib
 ssl
 mimetypes
-sharedmem
+progressbar

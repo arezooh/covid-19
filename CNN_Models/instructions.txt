@@ -10,7 +10,15 @@
 
 	pip install -r requirements.txt
 
-4. run code
+6. remove old data and old results
+
+	rm -rf results/
+	rm -f log
+	rm -f x_instances.npy, y_instances.npy, distribution.json
+	rm -f process*
+	rm -f last_process.txt
+
+5. run code
 
 	python3 cnn_search-countryVersion.py
 	// or
@@ -18,4 +26,4 @@
 
 	// if any errors occured, please send me log file and error itself.
 
-5. the result will send by email. It also save into "log" and files like "process0.txt" and "process0_ft.txt"
+6. the result will send by email. It also save into "log" and files like "process0.txt" and "process0_ft.txt"
