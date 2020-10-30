@@ -16,6 +16,7 @@
 	rm -f log
 	rm -f x_instances.npy, y_instances.npy, distribution.json
 	rm -f process*
+	rm -f last_process.txt
 
 5. run code
 

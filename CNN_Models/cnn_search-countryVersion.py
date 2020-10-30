@@ -573,7 +573,7 @@ def send_private_result(process_number):
         process_filename = _RESULTS_DIR_ + 'process{0}.txt'.format(process_number)
         process_ft_filename = _RESULTS_DIR_ + 'process{0}_ft.txt'.format(process_number)
         log_filename = 'log'
-        send_private_email(process_filename, process_filename, log_filename)
+        send_private_email(process_filename, process_ft_filename, log_filename)
     except Exception as e:
         log('sending result of processes {0} via email failed: {1}'.format(process_number, e))
 
