@@ -446,12 +446,12 @@ def save_process_result(process_number, parameters, result):
     with open(_RESULTS_DIR_ + 'process{0}.txt'.format(process_number), 'a') as resultFile:
         str_parameters = '[{0}][{1}]\n\t--model parameters: {2}\n\t'.format(t, getpid(), parameters)
         str_result_pixel = '--result for Pixels: MAE:{0}, MAPE:{1}, MASE:{2}\n\t'.format(result[0], result[1], result[2]) 
-        str_result_country = '--result for Country, MAE:{0}, MAPE:{1}, MASE:{2}\n\t'.format(result[3], result[4], result[5])
+        str_result_country = '--result for Country, MAE:{0}, MAPE:{1}, MASE:{2}\n'.format(result[3], result[4], result[5])
         resultFile.write(str_parameters + str_result_pixel + str_result_country)
 
 def save_best_result(process_number, parameters_pixel, result_pixel, parameters_country, result_country):
     with open(_RESULTS_DIR_ + 'process{0}.txt'.format(process_number), 'a') as resultFile:
-        str_split = '========================================================'
+        str_split = '========================================================\n'
         str_parameters_pixel = 'Best Pixel result\n\t--model parameters: {0}\n\t'.format(parameters_pixel)
         str_result_pixel = '--result for Pixels: MAE:{0}, MAPE:{1}, MASE:{2}\n\t'.format(result_pixel[0], result_pixel[1], result_pixel[2]) 
         str_parameters_country = 'Best Country result\n\t--model parameters: {0}\n\t'.format(parameters_country)
@@ -463,12 +463,12 @@ def save_process_result_ft(process_number, parameters, result):
     with open(_RESULTS_DIR_ + 'process{0}_ft.txt'.format(process_number), 'a') as resultFile:
         str_parameters = '[{0}][{1}]\n\t--model parameters: {2}\n\t'.format(t, getpid(), parameters)
         str_result_pixel = '--result for Pixels: MAE:{0}, MAPE:{1}, MASE:{2}\n\t'.format(result[0], result[1], result[2]) 
-        str_result_country = '--result for Country, MAE:{0}, MAPE:{1}, MASE:{2}\n\t'.format(result[3], result[4], result[5])
+        str_result_country = '--result for Country, MAE:{0}, MAPE:{1}, MASE:{2}\n'.format(result[3], result[4], result[5])
         resultFile.write(str_parameters + str_result_pixel + str_result_country)
 
 def save_best_result_ft(process_number, parameters_pixel, result_pixel, parameters_country, result_country):
     with open(_RESULTS_DIR_ + 'process{0}_ft.txt'.format(process_number), 'a') as resultFile:
-        str_split = '========================================================'
+        str_split = '========================================================\n'
         str_parameters_pixel = 'Best Pixel result\n\t--model parameters: {0}\n\t'.format(parameters_pixel)
         str_result_pixel = '--result for Pixels: MAE:{0}, MAPE:{1}, MASE:{2}\n\t'.format(result_pixel[0], result_pixel[1], result_pixel[2]) 
         str_parameters_country = 'Best Country result\n\t--model parameters: {0}\n\t'.format(parameters_country)
@@ -748,7 +748,7 @@ def process_function(parameters,
         increase_filters = parameters[i][4]
         learning_rate = parameters[i][5]
         batch_size = parameters[i][6]
-        pooling_type = ['MaxPooling', 'AveragePooling']
+        pooling_type = parameters[i][7]
 
         log('Model testing with parameters {0}'.format((input_size, hidden_dropout, visible_dropout, NO_dense_layer, increase_filters, learning_rate, batch_size, pooling_type)))
         NO_blocks = floor(log2(input_size))
@@ -758,7 +758,7 @@ def process_function(parameters,
 
         log('result for Pixels, MAE:{0}, MAPE:{1}, MASE:{2}'.format(result[0], result[1], result[2]))
         log('result for Country, MAE:{0}, MAPE:{1}, MASE:{2}'.format(result[3], result[4], result[5]))
-        save_process_result(process_number, (input_size, hidden_dropout, visible_dropout, NO_dense_layer, increase_filters), result)
+        save_process_result(process_number, parameters[i], result)
 
         if (pixel_best_model == -1 or result[2] < pixel_best_result[2]):
             pixel_best_model = i
@@ -769,7 +769,7 @@ def process_function(parameters,
             country_best_result = (result[3], result[4], result[5])
 
         result = evaluate_data(model, shared_x_final_test, shared_y_final_test, input_size, first_normal_param, second_normal_param)
-        save_process_result_ft(process_number, (input_size, hidden_dropout, visible_dropout, NO_dense_layer, increase_filters), result)
+        save_process_result_ft(process_number, parameters[i], result)
 
         if (pixel_best_model_ft == -1 or result[2] < pixel_best_result_ft[2]):
             pixel_best_model_ft = i
