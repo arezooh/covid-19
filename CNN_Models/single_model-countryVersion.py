@@ -22,7 +22,7 @@ from normalizers import normal_x, normal_y, inverse_normal_y
 
 ################################################################ Globals
 
-_RESULTS_DIR_ = './results/'
+_RESULTS_DIR_ = './results_single/'
 _PROGRESS_BAR_WIDGET_ = [progressbar.Percentage(), ' ', progressbar.Bar('=', '[', ']'), ' ']
 _NUMPY_SEED_ = 580
 _TENSORFLOW_SEED_ = 870
@@ -59,7 +59,7 @@ def create_model(inputSize, hiddenDropout, visibleDropout, noBlocks, noDenseLaye
     model = keras.Sequential()
 
     # Layers before first block
-    model.add(tf.keras.layers.Conv2D(filters=noFilters, kernel_size = (3,3), padding='same', activation='relu', input_shape=(inputSize, inputSize, 62)))
+    model.add(tf.keras.layers.Conv2D(filters=noFilters, kernel_size = (3,3), padding='same', input_shape=(inputSize, inputSize, 62)))
     if (visibleDropout != 0):
         model.add(Dropout(visibleDropout))
 
@@ -67,8 +67,8 @@ def create_model(inputSize, hiddenDropout, visibleDropout, noBlocks, noDenseLaye
     for i in range(noBlocks):
         if (increaseFilters == 1):
             noFilters = 64 * pow(2, i)
-        model.add(Conv2D(filters=noFilters, kernel_size = (3,3), padding='same', activation="relu"))
-        model.add(Conv2D(filters=noFilters, kernel_size = (3,3), padding='same', activation="relu"))
+        model.add(Conv2D(filters=noFilters, kernel_size = (3,3), padding='same'))
+        model.add(Conv2D(filters=noFilters, kernel_size = (3,3), padding='same'))
         model.add(MaxPooling2D(pool_size=(2,2)))
         model.add(BatchNormalization())
         if (hiddenDropout != 0):
@@ -76,12 +76,12 @@ def create_model(inputSize, hiddenDropout, visibleDropout, noBlocks, noDenseLaye
 
     # Layers after last block
     for i in range(noDenseLayer - 1):
-        model.add(Dense(512,activation="relu"))
+        model.add(Dense(512))
     # Last layer
-    model.add(Dense(1,activation="relu"))
+    model.add(Dense(1))
 
     model_optimizer = keras.optimizers.Adam(learning_rate=learning_rate)
-    model.compile(loss='mean_squared_error', optimizer=model_optimizer)
+    model.compile(loss='mape', optimizer=model_optimizer)
     return model
 
 # This function extract windows with "input_size" size from image, train model with the windows data
@@ -133,9 +133,9 @@ def train_data(model, x_train, y_train, x_validation, y_validation, NO_epochs, i
 
 # This function extract windows with "input_size" size from image, evaluate model with the windows data
 # Note: the data in here is padded.
-def evaluate_data_sd(model, x_data, y_data, input_size):
+def evaluate_data_sd(model, x_data, y_data, input_size, pixcels, standard_mean, standard_deviation):
     data_shape = x_data.shape
-    y_data_org = inverse_normal_y(y_data)
+    y_data_org = inverse_normal_y(y_data, standard_mean, standard_deviation)
 
     sum_org = 0
     sum_predict = 0
@@ -164,7 +164,43 @@ def evaluate_data_sd(model, x_data, y_data, input_size):
 
             subY_predict_normal = model.predict(subX)
             pred_shape = subY_predict_normal.shape
-            subY_predict = inverse_normal_y(subY_predict_normal)
+            subY_predict = inverse_normal_y(subY_predict_normal, standard_mean, standard_deviation)
+            
+            if (i == pixcels[0][0] and j == pixcels[0][1]):
+                try:
+                    save(_RESULTS_DIR_ + 'subX_36061', subX)
+
+                except:
+                    print('failed to save subX')
+					
+                layer_weights = [layer.get_weights() for layer in model.layers]
+                layer_weights = array(layer_weights)
+
+                try:
+                    save(_RESULTS_DIR_ + 'layers_weights', layer_weights)
+
+                except:
+                    print('failed to save weights')
+                    
+                log('layers weights saved for pixcel: {0}'.format(pixcels[0]))
+                
+                feature_extractor = keras.Model(
+                    inputs=model.inputs,
+                    outputs=[layer.output for layer in model.layers],
+                )
+                layer_outs = feature_extractor(subX)
+
+                try:
+                    save(_RESULTS_DIR_ + 'layer_outs', layer_outs)
+
+                except:
+                    str_output = 'outputs:\n{0}\n=========\nsubx:\n{1}'.format(layer_outs, subX)
+                    with open(_RESULTS_DIR_ + 'layers_output', 'w') as fd:
+                        fd.write(str_output)
+
+                    log('layers output saved for pixcel: {0}'.format(pixcels[0]))
+            
+            first_day_prediction_country += subY_predict[0][0][0][0]
 
             for k in range(pred_shape[0]):
                 if (k >= pred_shape[0] - 21):
@@ -192,6 +228,15 @@ def evaluate_data_sd(model, x_data, y_data, input_size):
     MAPE_pixel = sum_MAPE / sum_org
     MASE_pixel = MAE_pixel / (sum_MASE / (21 * data_shape[1] * data_shape[2]))
 
+    # minus bias from country predictions
+    min_prediction = country_pred[0]
+    for i in range(data_shape[0]):
+        if (country_pred[i] < min_prediction):
+            min_prediction = country_pred[i]
+
+    for i in range(data_shape[0]):
+        country_pred[i] -= min_prediction
+
     # calculating country errors
     for k in range(21):
         sum_MAE_country += abs(country_org[k - 21] - country_pred[k - 21])
@@ -209,6 +254,20 @@ def evaluate_data_sd(model, x_data, y_data, input_size):
     results = (MAE_pixel, MAPE_pixel, MASE_pixel, MAE_country, MAPE_country, MASE_country)
 
     return (results, country_org, country_pred)
+
+def county_pixcels(county_fips):
+    gridIntersection = cnn_search.loadJsonFile(cnn_search._GRID_INTERSECTION_FILENAME_)
+    pixcels = []
+
+    for x in range(len(gridIntersection)):
+        for y in range(len(gridIntersection[x])):
+            for county in gridIntersection[x][y]:
+                if county['fips'] == county_fips:
+                    pixcels.append((x, y, county_fips))
+                elif (type(county['fips']) != type(county_fips)):
+                    raise Exception ('type mismatch for county_fips')
+
+    return(pixcels)
 
 def plot_chart(fips, prediction, original):
     start_day = (cnn_search.startDay + datetime.timedelta(days=14))
@@ -230,7 +289,8 @@ def plot_chart(fips, prediction, original):
 
     fig.savefig(_RESULTS_DIR_ + 'result_{0}.png'.format(fips))
 
-def predict_counties_result(counties_fips, model, normal_x_data, normal_y_data, input_size):
+def predict_counties_result(counties_fips, model, normal_x_data, normal_y_data, input_size, standard_mean, standard_deviation):
+    pixcels = county_pixcels(36061)
     min_x = 0
     min_y = 0
     max_x = 300
@@ -241,7 +301,7 @@ def predict_counties_result(counties_fips, model, normal_x_data, normal_y_data, 
     result, country_org, country_pred = evaluate_data_sd(model, 
         pad_subImage(normal_x_data, input_size, min_x, min_y, max_x, max_y),
         pad_subImage(normal_y_data, input_size, min_x, min_y, max_x, max_y),
-        input_size,)
+        input_size, pixcels, standard_mean, standard_deviation)
 
     # create results directory if it's missing
     if (os.path.exists('results') == False):
@@ -292,7 +352,7 @@ if __name__ == "__main__":
     log('normalizing data')
 
     normal_x_dataTrain, normal_x_dataValidation, normal_x_dataTest = normal_x(x_dataTrain, x_dataValidation, x_dataTest)
-    normal_y_dataTrain, normal_y_dataValidation, normal_y_dataTest = normal_y(y_dataTrain, y_dataValidation, y_dataTest)
+    normal_y_dataTrain, normal_y_dataValidation, normal_y_dataTest, standard_mean, standard_deviation = normal_y(y_dataTrain, y_dataValidation, y_dataTest)
 
     data_shape = normal_x_dataTrain.shape
     no_train = normal_x_dataTrain.shape[0]
@@ -324,7 +384,7 @@ if __name__ == "__main__":
         model, 
         append(append(normal_x_dataTrain, normal_x_dataValidation).reshape(no_train + no_validation, data_shape[1], data_shape[2], data_shape[3]), normal_x_dataTest).reshape(no_train + no_validation + no_test, data_shape[1], data_shape[2], data_shape[3]), 
         append(append(normal_y_dataTrain, normal_y_dataValidation).reshape(no_train + no_validation, data_shape[1], data_shape[2], 1), normal_y_dataTest).reshape(no_train + no_validation + no_test, data_shape[1], data_shape[2], 1), 
-        input_size)
+        input_size, standard_mean, standard_deviation)
 
 
         
