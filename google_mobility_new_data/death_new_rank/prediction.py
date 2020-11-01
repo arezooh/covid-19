@@ -50,7 +50,7 @@ push_flag = 0
 # set the size of test set. validation and train sets will have 30/70 proportion from the remaining days (optional),
 # the default values are |test_set| = |val_set| = r, |train_set| = the remaining days
 test_size = 21
-maxHistory = 49
+maxHistory = 6 * 7
 maxC = 100  # maximum number of covariates to be considered
 
 
