@@ -140,23 +140,23 @@ def plot_chart(fips, prediction, original):
 
 def predict_counties_result(counties_fips, model, normal_x_data, normal_y_data, input_size, normal_min, normal_max):
     pixcels = []
-    min_x = -1
-    min_y = -1
-    max_x = -1
-    max_y = -1
+    min_x = 0
+    min_y = 0
+    max_x = 300
+    max_y = 300
 
-    for fips in counties_fips:
-        pixcels.extend(county_pixcels(fips))
+    # for fips in counties_fips:
+    #     pixcels.extend(county_pixcels(fips))
 
-    for pixcel in pixcels:
-        if (min_x == -1 or pixcel[0] < min_x):
-            min_x = pixcel[0]
-        if (min_y == -1 or pixcel[1] < min_y):
-            min_y = pixcel[1]
-        if (max_x == -1 or pixcel[0] > max_x):
-            max_x = pixcel[0]
-        if (max_y == -1 or pixcel[1] > max_y):
-            max_y = pixcel[1]
+    # for pixcel in pixcels:
+    #     if (min_x == -1 or pixcel[0] < min_x):
+    #         min_x = pixcel[0]
+    #     if (min_y == -1 or pixcel[1] < min_y):
+    #         min_y = pixcel[1]
+    #     if (max_x == -1 or pixcel[0] > max_x):
+    #         max_x = pixcel[0]
+    #     if (max_y == -1 or pixcel[1] > max_y):
+    #         max_y = pixcel[1]
 
     log('MIN x:{0}, y:{1} | MAX x:{2}, y:{3}'.format(min_x, min_y, max_x, max_y))
 
@@ -261,8 +261,8 @@ def calculate_county_error_sd(test_start_day, predictions):
 
     # calculate state errors
     for i in range(79):
-        sum_MAE_state += abs(sum_org_state - sum_predict_state)
-        sum_MASE_state += abs(sum_org_state - sum_simple_state)
+        sum_MAE_state += abs(sum_org_state[i] - sum_predict_state[i])
+        sum_MASE_state += abs(sum_org_state[i] - sum_simple_state[i])
 
     MAE_state = sum_MAE_state / states_count
     MAPE_state = sum_MAE_state / sum_org
