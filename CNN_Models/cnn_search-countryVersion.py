@@ -12,7 +12,7 @@ from math import log2, floor, ceil, sqrt
 import pandas as pd
 import tensorflow as tf
 from tensorflow import keras
-from tensorflow.keras.layers import Conv2D, Dense, BatchNormalization, MaxPooling2D, Dropout
+from tensorflow.keras.layers import Conv2D, Dense, BatchNormalization, MaxPooling2D, Dropout, AveragePooling2D
 
 from sklearn.preprocessing import MinMaxScaler
 from sklearn.metrics import r2_score
@@ -30,11 +30,13 @@ from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 import mimetypes
 import os
-
-import sharedmem
+import progressbar
 
 from numpy.random import seed
 from tensorflow.random import set_seed
+
+from normalizers import normal_x, normal_y, inverse_normal_y
+from parameters import create_parameters
 
 ################################################################ Defines
 
@@ -46,12 +48,16 @@ _COUNTIES_DATA_FIX_ = '../csvFiles/full-fixed-data.csv'
 _COUNTIES_DATA_TEMPORAL_ = '../csvFiles/full-temporal-data.csv'
 _CONUTIES_FIPS_ = '../csvFiles/full-data-county-fips.csv'
 _DISTRIBUTION_FILENAME_ = './distribution.json'
+_RESULTS_DIR_ = 'results/'
 
 _NO_PARALLEL_PROCESSES_ = 4
-_NO_PROCESSES_ = 80
+_NO_PROCESSES_ = 64
+_NO_PROCESSES_Per_EMAIL_ = 16
 
 _NUMPY_SEED_ = 580
 _TENSORFLOW_SEED_ = 870
+
+_PROGRESS_BAR_WIDGET_ = [progressbar.Percentage(), ' ', progressbar.Bar('=', '[', ']'), ' ']
 
 ################################################################ Log Function
 # Use this function to log states of code, helps to find bugs
@@ -59,84 +65,6 @@ def log(str):
     t = datetime.datetime.now().isoformat()
     with open('log', 'a') as logFile:
         logFile.write('[{0}][{1}] {2}\n'.format(t, getpid(), str))
-
-################################################################ Classes
-
-class normalizer:
-
-    def __init__(self):
-        self.minV = -1
-        self.maxV = -1
-
-    def update(self, value):
-        if self.minV == -1 and self.maxV == -1:
-            self.minV = value
-            self.maxV = value
-
-        elif value < self.minV:
-            self.minV = value
-
-        elif value > self.maxV:
-            self.maxV = value
-
-    def normal(self, value):
-        if (self.maxV > self.minV):
-            return (value - self.minV) / (self.maxV - self.minV)
-        else:
-            return self.maxV
-
-    def get_min_max(self):
-        return (self.minV, self.maxV)
-
-    def set_min_max(self, minV, maxV):
-        self.minV = minV
-        self.maxV = maxV
-
-    def inverse_normal(self, value):
-        return (value * (self.maxV - self.minV)) + self.minV
-
-class standardizer:
-
-    def __init__(self):
-        self.sum = 0
-        self.sum_deviation = 0
-        self.count = 0
-        self.mean = 0
-        self.deviation = 0
-
-    def update_mean(self, value):
-        self.sum += value
-        self.count += 1
-
-    def calculate_mean(self):
-        if (self.count != 0):
-            self.mean = self.sum / self.count
-
-    def update_deviation(self, value):
-        self.sum_deviation += pow(value - self.mean, 2)
-
-    def calculate_deviation(self):
-        if (self.count != 0):
-            self.deviation = sqrt(self.sum_deviation / self.count)
-
-    def standardize(self, value):
-        if (self.deviation == 0):
-            return 0
-        return (value - self.mean) / self.deviation
-
-    def inverse_standardize(self, value):
-        return (value * self.deviation) + self.mean
-
-    def get_mean_deviation(self):
-        return (self.mean, self.deviation)
-
-    def set_mean_deviation(self, mean, deviation):
-        self.mean = mean
-        self.deviation = deviation
-
-    def check(self, b):
-        if (self.mean == 0 and self.deviation == 0):
-            log('mean and deviation zero in b={0} | sum={1}, sum_deviation={2}, count={3}'.format(b, self.sum, self.sum_deviation, self.count))
 
 ################################################################ Functions
 
@@ -331,7 +259,7 @@ def parse_data_into_instance(data):
 
     return (instance, result)
 
-def create_model(inputSize, hiddenDropout, visibleDropout, noBlocks, noDenseLayer, increaseFilters):
+def create_model(inputSize, hiddenDropout, visibleDropout, noBlocks, noDenseLayer, increaseFilters, learning_rate, pooling_type):
     # Set random seeds to make situation equal for all models 
     seed(_NUMPY_SEED_)
     set_seed(_TENSORFLOW_SEED_)
@@ -340,30 +268,37 @@ def create_model(inputSize, hiddenDropout, visibleDropout, noBlocks, noDenseLaye
     model = keras.Sequential()
 
     # Layers before first block
-    model.add(tf.keras.layers.Conv2D(filters=noFilters, kernel_size = (3,3), padding='same', activation='relu', input_shape=(inputSize, inputSize, 62)))
-    if (visibleDropout != 0):
+    model.add(tf.keras.layers.Conv2D(filters=noFilters, kernel_size = (3,3), padding='same', input_shape=(inputSize, inputSize, 62)))
+    if (visibleDropout != 1):
         model.add(Dropout(visibleDropout))
 
     # layers in Blocks
     for i in range(noBlocks):
         if (increaseFilters == 1):
             noFilters = 64 * pow(2, i)
-        model.add(Conv2D(filters=noFilters, kernel_size = (3,3), padding='same', activation="relu"))
-        model.add(Conv2D(filters=noFilters, kernel_size = (3,3), padding='same', activation="relu"))
-        model.add(MaxPooling2D(pool_size=(2,2)))
+        model.add(Conv2D(filters=noFilters, kernel_size = (3,3), padding='same'))
+        model.add(Conv2D(filters=noFilters, kernel_size = (3,3), padding='same'))
+
+        if (pooling_type == 'MaxPooling'):
+            model.add(MaxPooling2D(pool_size=(2,2)))
+        elif (pooling_type == 'AveragePooling'):
+            model.add(AveragePooling2D(pool_size=(2,2)))
+        else:
+            log('Unknown Pooling type {0} | Default Pooling is using: MaxPooling'.format(pooling_type))
+            model.add(MaxPooling2D(pool_size=(2,2)))
+
         model.add(BatchNormalization())
-        if (hiddenDropout != 0):
+        if (hiddenDropout != 1):
             model.add(Dropout(hiddenDropout))
 
     # Layers after last block
     for i in range(noDenseLayer - 1):
-        model.add(Dense(512,activation="relu"))
+        model.add(Dense(512))
     # Last layer
-    model.add(Dense(1,activation="relu"))
+    model.add(Dense(1))
 
-    model.compile('adam', 'mean_squared_error', metrics=['accuracy'])
-    # model.compile(loss=keras.losses.poisson, optimizer=keras.optimizers.Adam(), metrics=['accuracy'])
-    # model.compile(optimizer='adam', loss=tf.keras.losses.Poisson())
+    model_optimizer = keras.optimizers.Adam(learning_rate=learning_rate)
+    model.compile(loss='mape', optimizer=model_optimizer)
     return model
 
 # This function expand the image, to get output size equal to input size
@@ -383,7 +318,7 @@ def pad_data(data, input_size):
     return array(padded_data)
 
 # This function extract windows with "input_size" size from image, train model with the windows data
-def train_data(model, x_train, y_train, x_validation, y_validation, NO_epochs, input_size):
+def train_data(model, x_train, y_train, x_validation, y_validation, NO_epochs, input_size, batch_size):
     data_shape = x_train.shape
     y_shape = y_train.shape
     no_validation = x_validation.shape[0]
@@ -419,12 +354,12 @@ def train_data(model, x_train, y_train, x_validation, y_validation, NO_epochs, i
             subX_validation = x_validation[0:data_shape[0], i:i+input_size, j:j+input_size, 0:data_shape[3]]
             subY_validation = y_validation[0:data_shape[0], i:i+input_size, j:j+input_size, 0:y_shape[3]]
 
-            model.fit(subX_trian, subY_train, batch_size=32, epochs=NO_epochs, verbose=0, validation_data=(subX_validation, subY_validation))
+            model.fit(subX_trian, subY_train, batch_size=batch_size, epochs=NO_epochs, verbose=0, validation_data=(subX_validation, subY_validation))
 
 # This function extract windows with "input_size" size from image, evaluate model with the windows data
-def evaluate_data(model, x_test, y_test, input_size, normal_min, normal_max):
+def evaluate_data(model, x_test, y_test, input_size, first_normal_param, second_normal_param):
     data_shape = x_test.shape
-    y_test_org = inverse_normal_y(y_test, normal_min, normal_max)
+    y_test_org = inverse_normal_y(y_test, first_normal_param, second_normal_param)
 
     if (data_shape[0] != 21):
         log('datashape[0] supposed to be 21, but its {0}'.format(data_shape[0]))
@@ -463,7 +398,7 @@ def evaluate_data(model, x_test, y_test, input_size, normal_min, normal_max):
 
             subY_predict_normal = model.predict(subX_test)
             pred_shape = subY_predict_normal.shape
-            subY_predict = inverse_normal_y(subY_predict_normal, normal_min, normal_max)
+            subY_predict = inverse_normal_y(subY_predict_normal, first_normal_param, second_normal_param)
 
             for k in range(pred_shape[0]):
                 sum_org += y_test_org[k][i][j][0]
@@ -480,6 +415,15 @@ def evaluate_data(model, x_test, y_test, input_size, normal_min, normal_max):
     MAE_pixel = sum_MAE / (data_shape[0] * data_shape[1] * data_shape[2])
     MAPE_pixel = sum_MAPE / sum_org
     MASE_pixel = MAE_pixel / (sum_MASE / (data_shape[0] * data_shape[1] * data_shape[2]))
+    
+    # minus bias (min_prediction) from country predictions
+    min_prediction = sum_predict_country[0]
+    for i in range(data_shape[0]):
+        if (sum_predict_country[i] < min_prediction):
+            min_prediction = sum_predict_country[i]
+
+    for i in range(data_shape[0]):
+        sum_predict_country[i] -= min_prediction
 
     # calculating country errors
     for k in range(data_shape[0]):
@@ -499,35 +443,37 @@ def evaluate_data(model, x_test, y_test, input_size, normal_min, normal_max):
 
 def save_process_result(process_number, parameters, result):
     t = datetime.datetime.now().isoformat()
-    with open('process{0}.txt'.format(process_number), 'a') as resultFile:
+    with open(_RESULTS_DIR_ + 'process{0}.txt'.format(process_number), 'a') as resultFile:
         str_parameters = '[{0}][{1}]\n\t--model parameters: {2}\n\t'.format(t, getpid(), parameters)
         str_result_pixel = '--result for Pixels: MAE:{0}, MAPE:{1}, MASE:{2}\n\t'.format(result[0], result[1], result[2]) 
-        str_result_country = '--result for Country, MAE:{0}, MAPE:{1}, MASE:{2}\n\t'.format(result[3], result[4], result[5])
+        str_result_country = '--result for Country, MAE:{0}, MAPE:{1}, MASE:{2}\n'.format(result[3], result[4], result[5])
         resultFile.write(str_parameters + str_result_pixel + str_result_country)
 
 def save_best_result(process_number, parameters_pixel, result_pixel, parameters_country, result_country):
-    with open('process{0}.txt'.format(process_number), 'a') as resultFile:
+    with open(_RESULTS_DIR_ + 'process{0}.txt'.format(process_number), 'a') as resultFile:
+        str_split = '========================================================\n'
         str_parameters_pixel = 'Best Pixel result\n\t--model parameters: {0}\n\t'.format(parameters_pixel)
         str_result_pixel = '--result for Pixels: MAE:{0}, MAPE:{1}, MASE:{2}\n\t'.format(result_pixel[0], result_pixel[1], result_pixel[2]) 
         str_parameters_country = 'Best Country result\n\t--model parameters: {0}\n\t'.format(parameters_country)
         str_result_country = '--result for Country, MAE:{0}, MAPE:{1}, MASE:{2}\n'.format(result_country[0], result_country[1], result_country[2])
-        resultFile.write(str_parameters_pixel + str_result_pixel + str_parameters_country + str_result_country)
+        resultFile.write(str_split + str_parameters_pixel + str_result_pixel + str_parameters_country + str_result_country)
 
 def save_process_result_ft(process_number, parameters, result):
     t = datetime.datetime.now().isoformat()
-    with open('process{0}_ft.txt'.format(process_number), 'a') as resultFile:
+    with open(_RESULTS_DIR_ + 'process{0}_ft.txt'.format(process_number), 'a') as resultFile:
         str_parameters = '[{0}][{1}]\n\t--model parameters: {2}\n\t'.format(t, getpid(), parameters)
         str_result_pixel = '--result for Pixels: MAE:{0}, MAPE:{1}, MASE:{2}\n\t'.format(result[0], result[1], result[2]) 
-        str_result_country = '--result for Country, MAE:{0}, MAPE:{1}, MASE:{2}\n\t'.format(result[3], result[4], result[5])
+        str_result_country = '--result for Country, MAE:{0}, MAPE:{1}, MASE:{2}\n'.format(result[3], result[4], result[5])
         resultFile.write(str_parameters + str_result_pixel + str_result_country)
 
 def save_best_result_ft(process_number, parameters_pixel, result_pixel, parameters_country, result_country):
-    with open('process{0}_ft.txt'.format(process_number), 'a') as resultFile:
+    with open(_RESULTS_DIR_ + 'process{0}_ft.txt'.format(process_number), 'a') as resultFile:
+        str_split = '========================================================\n'
         str_parameters_pixel = 'Best Pixel result\n\t--model parameters: {0}\n\t'.format(parameters_pixel)
         str_result_pixel = '--result for Pixels: MAE:{0}, MAPE:{1}, MASE:{2}\n\t'.format(result_pixel[0], result_pixel[1], result_pixel[2]) 
         str_parameters_country = 'Best Country result\n\t--model parameters: {0}\n\t'.format(parameters_country)
         str_result_country = '--result for Country, MAE:{0}, MAPE:{1}, MASE:{2}\n'.format(result_country[0], result_country[1], result_country[2])
-        resultFile.write(str_parameters_pixel + str_result_pixel + str_parameters_country + str_result_country)
+        resultFile.write(str_split + str_parameters_pixel + str_result_pixel + str_parameters_country + str_result_country)
 
 # From prediction.py file
 def send_email(*attachments):
@@ -555,13 +501,10 @@ def send_email(*attachments):
             if ctype is None or encoding is not None:
                 ctype = 'application/octet-stream'
             maintype, subtype = ctype.split('/', 1)
-            # in case of a text file
-            if maintype == 'text':
-                part = MIMEText(f.read(), _subtype=subtype)
-            # any other file
-            else:
-                part = MIMEBase(maintype, subtype)
-                part.set_payload(f.read())
+
+            part = MIMEBase(maintype, subtype)
+            part.set_payload(f.read())
+
             encoders.encode_base64(part)
             part.add_header('Content-Disposition', 'attachment; filename="%s"' % os.path.basename(file_name))
             message.attach(part)
@@ -574,7 +517,7 @@ def send_email(*attachments):
         server.login(sender_email, password)
         server.sendmail(sender_email, receiver_email+CC_email , text)
 
-def send_private_email(attachments):
+def send_private_email(*attachments):
     subject = "Server results"
     body = " "
     sender_email = "covidserver1@gmail.com"
@@ -599,13 +542,10 @@ def send_private_email(attachments):
             if ctype is None or encoding is not None:
                 ctype = 'application/octet-stream'
             maintype, subtype = ctype.split('/', 1)
-            # in case of a text file
-            if maintype == 'text':
-                part = MIMEText(f.read(), _subtype=subtype)
-            # any other file
-            else:
-                part = MIMEBase(maintype, subtype)
-                part.set_payload(f.read())
+
+            part = MIMEBase(maintype, subtype)
+            part.set_payload(f.read())
+            
             encoders.encode_base64(part)
             part.add_header('Content-Disposition', 'attachment; filename="%s"' % os.path.basename(file_name))
             message.attach(part)
@@ -621,153 +561,28 @@ def send_private_email(attachments):
 def send_result(process_numbers):
     files = []
     for process_number in process_numbers:
-        filename = 'process{0}_ft.txt'.format(process_number)
+        filename = _RESULTS_DIR_ + 'process{0}_ft.txt'.format(process_number)
         files.append(filename)
-
     try:
         send_email(files)
-    except:
-        log('sending result of processes {0} via email failed'.format(process_numbers))
+    except Exception as e:
+        log('sending result of processes {0} via email failed: {1}'.format(process_numbers, e))
 
 def send_private_result(process_number):
     try:
-        filename = 'process{0}_ft.txt'.format(process_number)
-        send_private_email(filename)
-    except:
-        log('sending result of process {0} via email failed'.format(process_number))
+        process_filename = _RESULTS_DIR_ + 'process{0}.txt'.format(process_number)
+        process_ft_filename = _RESULTS_DIR_ + 'process{0}_ft.txt'.format(process_number)
+        log_filename = 'log'
+        send_private_email(process_filename, process_ft_filename, log_filename)
+    except Exception as e:
+        log('sending result of processes {0} via email failed: {1}'.format(process_number, e))
 
 def send_log():
     try:
-        send_email('log')
+        send_private_email('log')
     except Exception as e:
         log('sending log file via email failed')
         raise Exception(e)
-
-# get a 4D numpy array and normalize it
-def normal_x(train, validation, final_test):
-    data_shape = train.shape
-    no_validation = validation.shape[0]
-    no_final_test = final_test.shape[0]
-
-    normalizers = []
-    for b in range(data_shape[3]):
-        if (b >= 6 and ((b - 6) % 4 == 0 or (b - 6) % 4 == 1)):
-            normalizers.append(standardizer())
-        else:
-            normalizers.append(normalizer())
-
-    for i in range(data_shape[0]):
-        for j in range(data_shape[1]):
-            for a in range(data_shape[2]):
-                for b in range(data_shape[3]):
-                    if (b >= 6 and ((b - 6) % 4 == 0 or (b - 6) % 4 == 1)):
-                        normalizers[b].update_mean(train[i][j][a][b])
-                    else:
-                        normalizers[b].update(train[i][j][a][b])
-
-    # calculate standardizers mean
-    for b in range(6, data_shape[3], 4):
-            normalizers[b].calculate_mean()
-            normalizers[b + 1].calculate_mean()
-
-    # update standardizers deviation
-    for i in range(data_shape[0]):
-        for j in range(data_shape[1]):
-            for a in range(data_shape[2]):
-                for b in range(6, data_shape[3], 4):
-                    normalizers[b].update_deviation(train[i][j][a][b])
-                    normalizers[b + 1].update_deviation(train[i][j][a][b + 1])
-
-    # calculate standardizers deviation
-    for b in range(6, data_shape[3], 4):
-            normalizers[b].calculate_deviation()
-            normalizers[b + 1].calculate_deviation()
-
-    normal_train = zeros((data_shape[0], data_shape[1], data_shape[2], data_shape[3]))
-    normal_validation = zeros((no_validation, data_shape[1], data_shape[2], data_shape[3]))
-    normal_final_test = zeros((no_final_test, data_shape[1], data_shape[2], data_shape[3]))
-
-    for i in range(data_shape[0]):
-        for j in range(data_shape[1]):
-            for a in range(data_shape[2]):
-                for b in range(data_shape[3]):
-                    if (b >= 6 and ((b - 6) % 4 == 0 or (b - 6) % 4 == 1)):
-                        normal_train[i][j][a][b] = normalizers[b].standardize(train[i][j][a][b])
-                        if (i < no_validation):
-                            normal_validation[i][j][a][b] = normalizers[b].standardize(validation[i][j][a][b])
-                        if (i < no_final_test):
-                            normal_final_test[i][j][a][b] = normalizers[b].standardize(final_test[i][j][a][b])
-                    else:
-                        normal_train[i][j][a][b] = normalizers[b].normal(train[i][j][a][b])
-                        if (i < no_validation):
-                            normal_validation[i][j][a][b] = normalizers[b].normal(validation[i][j][a][b])
-                        if (i < no_final_test):
-                            normal_final_test[i][j][a][b] = normalizers[b].normal(final_test[i][j][a][b])
-
-    # check deviation and mean
-    for b in range(6, data_shape[3], 4):
-        normalizers[b].check(b)
-        normalizers[b + 1].check(b + 1)
-
-    return (normal_train, normal_validation, normal_final_test)
-
-def normal_y(train, validation, final_test):
-    data_shape = train.shape
-    no_validation = validation.shape[0]
-    no_final_test = final_test.shape[0]
-
-    obj_normalizer = standardizer()
-    
-    for i in range(data_shape[0]):
-        for j in range(data_shape[1]):
-            for a in range(data_shape[2]):
-                obj_normalizer.update_mean(train[i][j][a])
-
-    # calculate standardizers mean
-    obj_normalizer.calculate_mean()
-    
-    # update standardizers deviation
-    for i in range(data_shape[0]):
-        for j in range(data_shape[1]):
-            for a in range(data_shape[2]):
-                obj_normalizer.update_deviation(train[i][j][a])
-                
-    # calculate standardizers deviation
-    obj_normalizer.calculate_deviation()
-
-    normal_train = zeros((data_shape[0], data_shape[1], data_shape[2], 1))
-    normal_validation = zeros((no_validation, data_shape[1], data_shape[2], 1))
-    normal_final_test = zeros((no_final_test, data_shape[1], data_shape[2], 1))
-
-    for i in range(data_shape[0]):
-        for j in range(data_shape[1]):
-            for a in range(data_shape[2]):
-                normal_train[i][j][a][0] = obj_normalizer.standardize(train[i][j][a])
-                if (i < no_validation):
-                    normal_validation[i][j][a][0] = obj_normalizer.standardize(validation[i][j][a])
-                if (i < no_final_test):
-                    normal_final_test[i][j][a][0] = obj_normalizer.standardize(final_test[i][j][a])
-
-    obj_normalizer.check(100)
-    standard_mean, standard_deviation = obj_normalizer.get_mean_deviation()
-
-    return (normal_train, normal_validation, normal_final_test, standard_mean, standard_deviation)
-
-def inverse_normal_y(normal_data, standard_mean, standard_deviation):
-    data_shape = normal_data.shape
-
-    obj_normalizer = standardizer()
-    obj_normalizer.set_mean_deviation(standard_mean, standard_deviation)
-
-    data = zeros(data_shape)
-
-    for i in range(data_shape[0]):
-        for j in range(data_shape[1]):
-            for a in range(data_shape[2]):
-                for b in range(data_shape[3]):
-                    data[i][j][a][b] = (obj_normalizer.inverse_standardize(normal_data[i][j][a][b]))
-
-    return data
 
 # This function init number of parallel processes with number of cpu
 def init_no_processes():
@@ -817,6 +632,7 @@ def calculate_county_error(test_start_day, predictions):
 
     return (MAE, MAPE, MASE)
 
+
 ################################################################ Globals
 
 startDay = datetime.datetime.strptime('2020-01-22', '%Y-%m-%d')
@@ -830,21 +646,6 @@ countiesData_fix = {}
 gridIntersection = loadJsonFile(_GRID_INTERSECTION_FILENAME_)
 countiesData_temporal = loadCounties(_COUNTIES_DATA_TEMPORAL_)
 countiesData_fix = loadCounties(_COUNTIES_DATA_FIX_)
-
-################################################################
-# We change 5 parameters to find best model (for now, we can't change number of blocks(NO_blocks))
-# input_size = [3, 5, 15, 25] where image size is 300*300
-# hidden_dropout = [0, 0.2, 0.3, 0.4]
-# visible_dropout = [0, 0.2, 0.3, 0.4]
-# NO_dense_layer = [1, 2, 3]
-# increase_filters = [0, 1]
-################################################################
-
-p1 = [3, 5, 15, 25]
-p2 = [0, 0.2, 0.3, 0.4]
-p3 = [0, 0.2, 0.3, 0.4]
-p4 = [1, 2, 3]
-p5 = [0, 1]
 
 ################################################################ START
 
@@ -917,16 +718,15 @@ def process_function(parameters,
             process_number, 
             start, 
             end, 
-            normal_min, 
-            normal_max, 
             shared_x_train, 
             shared_y_train, 
             shared_x_validation, 
             shared_y_validation, 
             shared_x_final_test, 
-            shared_y_final_test, ):
+            shared_y_final_test,
+            first_normal_param,
+            second_normal_param, ):
     log('Process {1} started | parameters {0}'.format((start, end), process_number))
-    print('[*] Process {0} started'.format(process_number))
 
     pixel_best_model = -1
     pixel_best_result = (-1, -1, -1)
@@ -946,16 +746,19 @@ def process_function(parameters,
         visible_dropout = parameters[i][2] 
         NO_dense_layer = parameters[i][3]
         increase_filters = parameters[i][4]
+        learning_rate = parameters[i][5]
+        batch_size = parameters[i][6]
+        pooling_type = parameters[i][7]
 
-        log('Model testing with parameters {0}'.format((input_size, hidden_dropout, visible_dropout, NO_dense_layer, increase_filters)))
+        log('Model testing with parameters {0}'.format((input_size, hidden_dropout, visible_dropout, NO_dense_layer, increase_filters, learning_rate, batch_size, pooling_type)))
         NO_blocks = floor(log2(input_size))
-        model = create_model(input_size, hidden_dropout, visible_dropout, NO_blocks, NO_dense_layer, increase_filters)
-        train_data(model, shared_x_train, shared_y_train, shared_x_validation, shared_y_validation, 2, input_size)
-        result = evaluate_data(model, shared_x_validation, shared_y_validation, input_size, normal_min, normal_max)
+        model = create_model(input_size, hidden_dropout, visible_dropout, NO_blocks, NO_dense_layer, increase_filters, learning_rate, pooling_type)
+        train_data(model, shared_x_train, shared_y_train, shared_x_validation, shared_y_validation, 2, input_size, batch_size)
+        result = evaluate_data(model, shared_x_validation, shared_y_validation, input_size, first_normal_param, second_normal_param)
 
         log('result for Pixels, MAE:{0}, MAPE:{1}, MASE:{2}'.format(result[0], result[1], result[2]))
         log('result for Country, MAE:{0}, MAPE:{1}, MASE:{2}'.format(result[3], result[4], result[5]))
-        save_process_result(process_number, (input_size, hidden_dropout, visible_dropout, NO_dense_layer, increase_filters), result)
+        save_process_result(process_number, parameters[i], result)
 
         if (pixel_best_model == -1 or result[2] < pixel_best_result[2]):
             pixel_best_model = i
@@ -965,8 +768,8 @@ def process_function(parameters,
             country_best_model = i
             country_best_result = (result[3], result[4], result[5])
 
-        result = evaluate_data(model, shared_x_final_test, shared_y_final_test, input_size, normal_min, normal_max)
-        save_process_result_ft(process_number, (input_size, hidden_dropout, visible_dropout, NO_dense_layer, increase_filters), result)
+        result = evaluate_data(model, shared_x_final_test, shared_y_final_test, input_size, first_normal_param, second_normal_param)
+        save_process_result_ft(process_number, parameters[i], result)
 
         if (pixel_best_model_ft == -1 or result[2] < pixel_best_result_ft[2]):
             pixel_best_model_ft = i
@@ -979,8 +782,6 @@ def process_function(parameters,
     log('Process {0} done'.format(process_number))
     save_best_result(process_number, parameters[pixel_best_model], pixel_best_result, parameters[country_best_model], country_best_result)
     save_best_result_ft(process_number, parameters[pixel_best_model_ft], pixel_best_result_ft, parameters[country_best_model_ft], country_best_result_ft)
-    
-    print('[+] Process {0} done'.format(process_number))
 
 ################################################################ main
 
@@ -1018,63 +819,24 @@ if __name__ == "__main__":
     log('normalizing data')
 
     normal_x_dataTrain, normal_x_dataValidation, normal_x_dataFinalTest = normal_x(x_dataTrain, x_dataValidation, x_dataFinalTest)
-    normal_y_dataTrain, normal_y_dataValidation, normal_y_dataFinalTest, normal_min, normal_max = normal_y(y_dataTrain, y_dataValidation, y_dataFinalTest)
+    normal_y_dataTrain, normal_y_dataValidation, normal_y_dataFinalTest, first_normal_param, second_normal_param = normal_y(y_dataTrain, y_dataValidation, y_dataFinalTest)
 
     ################################################################ clearing memory
 
     del x_instances, x_dataTrain, x_dataValidation, x_dataFinalTest
     del y_instances, y_dataTrain, y_dataValidation, y_dataFinalTest
 
-    ################################################################ copy data to shared memory
-
-    # log('copying data to shared memory')
-
-    # shared_x_train = sharedmem.empty(normal_x_dataTrain.shape)
-    # copyto(shared_x_train, normal_x_dataTrain)
-    # del normal_x_dataTrain
-
-    # shared_y_train = sharedmem.empty(normal_y_dataTrain.shape)
-    # copyto(shared_y_train, normal_y_dataTrain)
-    # del normal_y_dataTrain
-
-    # shared_x_validation = sharedmem.empty(normal_x_dataValidation.shape)
-    # copyto(shared_x_validation, normal_x_dataValidation)
-    # del normal_x_dataValidation
-
-    # shared_y_validation = sharedmem.empty(normal_y_dataValidation.shape)
-    # copyto(shared_y_validation, normal_y_dataValidation)
-    # del normal_y_dataValidation
-
-    # shared_x_test = sharedmem.empty(normal_x_dataTest.shape)
-    # copyto(shared_x_test, normal_x_dataTest)
-    # del normal_x_dataTest
-
-    # shared_y_test = sharedmem.empty(normal_y_dataTest.shape)
-    # copyto(shared_y_test, normal_y_dataTest)
-    # del normal_y_dataTest
-
-    # shared_x_final_test = sharedmem.empty(normal_x_dataFinalTest.shape)
-    # copyto(shared_x_final_test, normal_x_dataFinalTest)
-    # del normal_x_dataFinalTest
-
-    # shared_y_final_test = sharedmem.empty(normal_y_dataFinalTest.shape)
-    # copyto(shared_y_final_test, normal_y_dataFinalTest)
-    # del normal_y_dataFinalTest
-
     log('Phase of testing models started')
 
     print('[*] Number of parallel processes: {0}'.format(_NO_PARALLEL_PROCESSES_))
 
-    ################################################################ creating parameters
+    ################################################################ creating parameters and results directory
 
-    parameters = []
+    parameters = create_parameters()
 
-    for i in range(len(p1)):
-        for i2 in range(len(p2)):
-            for i3 in range(len(p3)):
-                for i4 in range(len(p4)):
-                    for i5 in range(len(p5)):
-                        parameters.append((p1[i], p2[i2], p3[i3], p4[i4], p5[i5]))
+    # create results directory if it's missing
+    if (os.path.exists(_RESULTS_DIR_) == False):
+        os.mkdir(_RESULTS_DIR_)
 
     ################################################################ creating processes
 
@@ -1087,14 +849,14 @@ if __name__ == "__main__":
             i, 
             i * model_per_process, 
             min((i + 1) * model_per_process, len(parameters)), 
-            normal_min, 
-            normal_max, 
             normal_x_dataTrain, 
             normal_y_dataTrain, 
             normal_x_dataValidation, 
             normal_y_dataValidation, 
             normal_x_dataFinalTest, 
-            normal_y_dataFinalTest, )))
+            normal_y_dataFinalTest,
+            first_normal_param,
+            second_normal_param, )))
 
     start_process = 0
     try:
@@ -1102,6 +864,12 @@ if __name__ == "__main__":
             start_process = int(fd.read(), 10) + 1
     except:
         start_process = 0
+
+    # progressbar
+    progressBar = progressbar.ProgressBar(maxval=_NO_PROCESSES_, widgets=_PROGRESS_BAR_WIDGET_)
+    progressBar.start()
+
+    progressBar.update(start_process)
 
     # Start parallel processes
     for i in range(_NO_PARALLEL_PROCESSES_):
@@ -1111,17 +879,21 @@ if __name__ == "__main__":
     # Wait till 1 process done, then start the next one
     for i in range(_NO_PROCESSES_ - start_process - _NO_PARALLEL_PROCESSES_):
         processes[i + start_process].join()
+        progressBar.update(i + start_process)
         send_private_result(i + start_process)
         save_last_process(i + start_process)
         processes[i + start_process + _NO_PARALLEL_PROCESSES_].start()
 
-        if ((i + start_process) % 20 == 0 and i != 0):
-            send_result(range(max(start_process, i + start_process - 20), i + start_process))
+        if ((i + start_process) % _NO_PROCESSES_Per_EMAIL_ == 0 and i != 0):
+            send_result(range(max(start_process, i + start_process - _NO_PROCESSES_Per_EMAIL_), i + start_process))
 
     # Wait for all processes done
     for i in range(_NO_PARALLEL_PROCESSES_):
         processes[_NO_PROCESSES_ - _NO_PARALLEL_PROCESSES_ + i].join()
+        progressBar.update(_NO_PROCESSES_ - _NO_PARALLEL_PROCESSES_ + i)
         save_last_process(_NO_PROCESSES_ - _NO_PARALLEL_PROCESSES_ + i)
+
+    progressBar.finish()
 
     log('All processes done')
     send_log()
