@@ -394,7 +394,7 @@ def get_best_loss_mode(counties_best_loss_list):
 ########################################################### generate data for best h and c
 
 def generate_data(h, numberOfCovariates, covariates_names, numberOfSelectedCounties):
-    data = makeHistoricalData(h, r, test_size, 'death', 'mrmr', spatial_mode, target_mode, './', future_features, pivot)
+    data = makeHistoricalData(h, r, test_size, 'confirmed', 'mrmr', spatial_mode, target_mode, './', future_features, pivot)
     data = clean_data(data, numberOfSelectedCounties, spatial_mode)
 
     X_train, X_test, y_train, y_test = preprocess(data, spatial_mode, 0)
