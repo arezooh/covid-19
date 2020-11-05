@@ -50,7 +50,7 @@ push_flag = 0
 # set the size of test set. validation and train sets will have 30/70 proportion from the remaining days (optional),
 # the default values are |test_set| = |val_set| = r, |train_set| = the remaining days
 test_size = 21
-maxHistory = 7 * 6
+maxHistory = 5 * 7
 maxC = 100  # maximum number of covariates to be considered
 
 
@@ -64,12 +64,13 @@ def splitData(numberOfCounties, main_data, target, spatial_mode, mode):
     baseNumberOfDays = (main_data.groupby(['county_fips']).size()).min()
     test_size = r
     if target_mode == 'weeklyaverage':
-        test_size = 7
-        val_size = round(0.3 * (baseNumberOfDays - test_size))
-
+        test_size = 1
+        val_size = 1
+        # val_size = round(0.3 * (baseNumberOfDays - test_size))
     else:
         test_size = 21 #
-        val_size = round(0.3 * (baseNumberOfDays - test_size))
+        val_size = 1
+        # val_size = round(0.3 * (baseNumberOfDays - test_size))
 
     if mode == 'val':
 #         if not future_mode:  # the default state
@@ -394,7 +395,7 @@ def get_best_loss_mode(counties_best_loss_list):
 ########################################################### generate data for best h and c
 
 def generate_data(h, numberOfCovariates, covariates_names, numberOfSelectedCounties):
-    data = makeHistoricalData(h, r, test_size, 'confirmed', 'mrmr', spatial_mode, target_mode, './', future_features, pivot)
+    data = makeHistoricalData(h, r, test_size, 'death', 'mrmr', spatial_mode, target_mode, './', future_features, pivot, int(argv[1]))
     data = clean_data(data, numberOfSelectedCounties, spatial_mode)
 
     X_train, X_test, y_train, y_test = preprocess(data, spatial_mode, 0)
@@ -662,7 +663,7 @@ def get_errors(h, c, method, y_prediction, y_prediction_train, y_test_date, y_tr
     # but in test mode its not possible because each method has different h(best_h)
     if mode == 'test':
         regular_data = makeHistoricalData(h, r, test_size, target_name, 'mrmr', spatial_mode, 'regular', './',
-                                          future_features, pivot)
+                                          future_features, pivot, int(argv[1]))
         regular_data = clean_data(regular_data, numberOfSelectedCounties, spatial_mode)
         temp_1, temp_2, regular_y_train_date, regular_y_test_date = preprocess(regular_data, spatial_mode, 0)
 
@@ -800,10 +801,10 @@ def get_errors(h, c, method, y_prediction, y_prediction_train, y_test_date, y_tr
 
     second_error = sum(abs(y_prediction - y_test))
     ### compute adjusted R squared error
-    SS_Residual = sum((y_test - y_prediction.reshape(-1)) ** 2)
-    SS_Total = sum((y_test - np.mean(y_test)) ** 2)
-    r_squared = 1 - (float(SS_Residual)) / SS_Total
-    adj_r_squared = 1 - (1 - r_squared) * (len(y_test) - 1) / (len(y_test) - c - 1)
+    # SS_Residual = sum((y_test - y_prediction.reshape(-1)) ** 2)
+    # SS_Total = sum((y_test - np.mean(y_test)) ** 2)
+    # r_squared = 1 - (float(SS_Residual)) / SS_Total
+    adj_r_squared = 1# - (1 - r_squared) * (len(y_test) - 1) / (len(y_test) - c - 1)
     print("Adjusted R Squared Error of ", method, " for h =", h, "and #covariates =", c, ": %.2f" % adj_r_squared)
 
     MASE_numerator = sum(abs(y_prediction_temp - y_test_temp)) / len(y_test)
@@ -823,12 +824,12 @@ def get_errors(h, c, method, y_prediction, y_prediction_train, y_test_date, y_tr
     y_prediction_temp_country[y_test_country == 0] += 1
     # meanPercentageOfAbsoluteError = sum((abs(y_prediction_temp - y_test_temp) / y_test_temp) * 100) / len(y_test)
     ### compute adjusted R squared error
-    SS_Residual = sum((y_test_country - y_prediction_country.reshape(-1)) ** 2)
-    SS_Total = sum((y_test_country - np.mean(y_test_country)) ** 2)
-    r_squared = 1 - (float(SS_Residual)) / SS_Total
+    # SS_Residual = sum((y_test_country - y_prediction_country.reshape(-1)) ** 2)
+    # SS_Total = sum((y_test_country - np.mean(y_test_country)) ** 2)
+    # r_squared = 1 - (float(SS_Residual)) / SS_Total
     if len(y_test_country) - c - 1 > 0:
-        country_errors['adj_r_squared'] = 1 - (1 - r_squared) * (len(y_test_country) - 1) / (
-                len(y_test_country) - c - 1)
+        country_errors['adj_r_squared'] = 1 # - (1 - r_squared) * (len(y_test_country) - 1) / (
+                #len(y_test_country) - c - 1)
     else:
         country_errors['adj_r_squared'] = 1
     MASE_numerator = sum(abs(y_prediction_temp_country - y_test_temp_country)) / len(y_test_country)
@@ -1194,9 +1195,10 @@ def main(maxHistory):
     none_mixed_methods = ['GBM', 'GLM', 'KNN', 'NN']
     # none_mixed_methods = ['GBM']
     mixed_methods = ['MM_GLM', 'MM_NN']
-    target_name = 'confirmed'
+    target_name = 'death'
     base_data = makeHistoricalData(0, r, test_size, target_name, 'mrmr', spatial_mode, target_mode, './',
-                                   future_features, pivot)
+                                   future_features, pivot, int(argv[1]))
+    base_data.to_csv('./' + str(argv[1]) + '/' + 'data.csv')
     print("base data before clean shape: ", base_data.shape)
     base_data_before_clean_columns = base_data.columns.values
     base_data = clean_data(base_data, numberOfSelectedCounties, spatial_mode)
@@ -1224,7 +1226,7 @@ def main(maxHistory):
     best_h = {method: {error: 0 for error in error_names} for method in methods}
     best_c = {method: {error: 0 for error in error_names} for method in methods}
     # best_loss = {method: None for method in ['GBM', 'NN', 'MM_NN']}
-    best_loss = {'GBM': 'poisson', 'MM_NN': 'poisson', 'NN': 'MeanAbsoluteError'}
+    best_loss = {'GBM': 'poisson', 'MM_NN': 'MeanAbsoluteError', 'NN': 'poisson'}
 
     columns_table_t = ['best_h', 'best_c', 'mean absolute error', 'percentage of absolute error',
                        'adjusted R squared error',
@@ -1247,7 +1249,7 @@ def main(maxHistory):
         print(100 * "#")
         print("h =", h)
         data = makeHistoricalData(h, r, test_size, target_name, 'mrmr', spatial_mode, target_mode, './',
-                                  future_features, pivot)
+                                  future_features, pivot, int(argv[1]))
         print("data before clean shape:", data.shape)
         # pre-process and split the data, 'date's have dates info
         data = clean_data(data, numberOfSelectedCounties, spatial_mode)
@@ -1271,7 +1273,7 @@ def main(maxHistory):
         if target_mode not in ['regular',
                                'weeklyaverage']:  # we need regular data to return predicted values to first state
             regular_data = makeHistoricalData(h, r, test_size, target_name, 'mrmr', spatial_mode, 'regular', './',
-                                              future_features, pivot)
+                                              future_features, pivot, int(argv[1]))
             regular_data = clean_data(regular_data, numberOfSelectedCounties, spatial_mode)
         else:
             regular_data = data
@@ -1322,12 +1324,12 @@ def main(maxHistory):
 
         # find best loss
         # print(best_loss)
-        if (h == 1):
-            best_loss = update_best_loss('none_mixed_model', spatial_mode, None, best_loss, X_train_train_to_use,
-                                         X_train_val_to_use, \
-                                         y_train_train, y_train_val, None, None,
-                                         data.columns.drop(['Target', 'date of day t', 'county_fips']), \
-                                         numberOfCovariates, maxC)
+        # if (h == 1):
+        #     best_loss = update_best_loss('none_mixed_model', spatial_mode, None, best_loss, X_train_train_to_use,
+        #                                   X_train_val_to_use, \
+        #                                   y_train_train, y_train_val, None, None,
+        #                                   data.columns.drop(['Target', 'date of day t', 'county_fips']), \
+        #                                   numberOfCovariates, maxC)
         print(best_loss)
 
         print('force_features len: ', len(force_features))
@@ -1393,10 +1395,10 @@ def main(maxHistory):
         my_shelf.close()
 
         # find best loss
-        if h == 1:
-            best_loss = update_best_loss('mixed_model', spatial_mode, None, best_loss, None, None, y_train_train, \
-                                         y_train_val, y_prediction_train, y_prediction, None, \
-                                         numberOfCovariates, maxC)
+        # if h == 1:
+        #     best_loss = update_best_loss('mixed_model', spatial_mode, None, best_loss, None, None, y_train_train, \
+        #                                   y_train_val, y_prediction_train, y_prediction, None, \
+        #                                   numberOfCovariates, maxC)
         print(best_loss)
 
         # initiate loom for parallel processing
@@ -1557,7 +1559,7 @@ def main(maxHistory):
     ################################################################################################################# test zone
     test_process(h, r, test_size, target_name, spatial_mode, target_mode, best_h, best_c, historical_X_train, \
                  historical_X_test, historical_y_train_date, historical_y_test_date, best_loss, \
-                 numberOfSelectedCounties, covariatold_rankes_names, maxHistory, train_val_MASE_denominator, \
+                 numberOfSelectedCounties, covariates_names, maxHistory, train_val_MASE_denominator, \
                  val_test_MASE_denominator, future_mode, test_address, env_address, mail_address)
     print(best_loss)
 
@@ -1582,13 +1584,13 @@ if __name__ == "__main__":
             force_features.append('future-' + future_features[f])
 
     # make directories for saving the results
-    validation_address = './' + 'results/counties=' + str(numberOfSelectedCountiesname) + ' max_history=' + str(
+    validation_address = './' + str(argv[1]) + '/' + 'results/counties=' + str(numberOfSelectedCountiesname) + ' max_history=' + str(
         maxHistory) + '/validation/'
-    test_address = './' + 'results/counties=' + str(numberOfSelectedCountiesname) + ' max_history=' + str(
+    test_address = './' + str(argv[1]) + '/' + 'results/counties=' + str(numberOfSelectedCountiesname) + ' max_history=' + str(
         maxHistory) + '/test/'
-    env_address = './' + 'results/counties=' + str(numberOfSelectedCountiesname) + ' max_history=' + str(
+    env_address = './' + str(argv[1]) + '/' + 'results/counties=' + str(numberOfSelectedCountiesname) + ' max_history=' + str(
         maxHistory) + '/session_parameters/'
-    mail_address = './results/counties=' + str(numberOfSelectedCountiesname) + ' max_history=' + str(
+    mail_address = './' + str(argv[1]) + '/' + 'results/counties=' + str(numberOfSelectedCountiesname) + ' max_history=' + str(
         maxHistory) + '/email'
 
     if not os.path.exists(mail_address):
@@ -1600,7 +1602,7 @@ if __name__ == "__main__":
     if not os.path.exists(env_address):
         os.makedirs(env_address)
     push('new folders added')
-    models_to_log = ['NN', 'GLM', 'GBM', 'KNN']  # models we want to make the features logarithmic for them, we remove KNN
+    models_to_log = ['NN', 'GLM', 'GBM']  # models we want to make the features logarithmic for them, we remove KNN
     main(maxHistory)
     end = time.time()
     push('final results added')

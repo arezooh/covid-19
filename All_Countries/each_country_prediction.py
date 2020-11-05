@@ -34,7 +34,7 @@ import datetime
 import statistics
 import tensorflow as tf
 from numpy.random import seed
-
+from zipfile import ZipFile
 seed(1)
 tf.random.set_seed(1)
 
@@ -50,7 +50,7 @@ push_flag = 0
 # set the size of test set. validation and train sets will have 30/70 proportion from the remaining days (optional),
 # the default values are |test_set| = |val_set| = r, |train_set| = the remaining days
 test_size = 21
-maxHistory = 7 * 6
+# maxHistory = 7
 maxC = 100  # maximum number of covariates to be considered
 
 
@@ -66,7 +66,7 @@ def splitData(numberOfCounties, main_data, target, spatial_mode, mode):
     if target_mode == 'weeklyaverage':
         test_size = 7
         val_size = round(0.3 * (baseNumberOfDays - test_size))
-
+        
     else:
         test_size = 21 #
         val_size = round(0.3 * (baseNumberOfDays - test_size))
@@ -133,7 +133,7 @@ def clean_data(data, numberOfSelectedCounties, spatial_mode):
                                         axis=1)  # , 'date of day t'
         elif pivot == 'country':
             main_data = using_data
-
+            
     elif (spatial_mode == 'state'):
         main_data = using_data.drop(['county_name', 'state_name'],
                                     axis=1)
@@ -174,8 +174,8 @@ def mase_denominator(r, h, data, target_name, target_mode, numberOfSelectedCount
                                                                                                        spatial_mode, 1)
     train_val_df = (y_train_train_date.append(y_train_val_date).reset_index(drop=True)).sort_values(by=['date of day t', 'county_fips'])
     val_test_df = (train_val_df.append(y_test_date).reset_index(drop=True)).sort_values(by=['date of day t', 'county_fips'])
-
-
+    
+    
     train_val = train_val_df.tail(len(y_train_train_date))
     train_train = train_val_df.iloc[:-r,:].tail(len(y_train_train_date))
     test = val_test_df.tail(len(y_test_date))
@@ -393,8 +393,9 @@ def get_best_loss_mode(counties_best_loss_list):
 
 ########################################################### generate data for best h and c
 
-def generate_data(h, numberOfCovariates, covariates_names, numberOfSelectedCounties):
-    data = makeHistoricalData(h, r, test_size, 'confirmed', 'mrmr', spatial_mode, target_mode, './', future_features, pivot)
+def generate_data(h, numberOfCovariates, covariates_names, numberOfSelectedCounties, nameOfCountry):
+    data = makeHistoricalData(h, r, test_size, 'death', 'mrmr', spatial_mode, target_mode, './',
+                              future_features, pivot, nameOfCountry)
     data = clean_data(data, numberOfSelectedCounties, spatial_mode)
 
     X_train, X_test, y_train, y_test = preprocess(data, spatial_mode, 0)
@@ -629,7 +630,7 @@ def real_prediction_plot(df, r, test_size, target_name, target_mode, best_h, max
 
 ########################################################### get errors for each model in each h and c
 def get_errors(h, c, method, y_prediction, y_prediction_train, y_test_date, y_train_date, regular_data,
-               MASE_denominator, numberOfSelectedCounties, target_name, mode):
+               MASE_denominator, numberOfSelectedCounties, target_name, mode, nameOfCountry):
     # y_test_date and y_train_date are a dataframes with columns ['date of day t', 'county_fips', 'Target']
     # set negative predictions to zero
     y_prediction[y_prediction < 0] = 0
@@ -658,11 +659,11 @@ def get_errors(h, c, method, y_prediction, y_prediction_train, y_test_date, y_tr
         numberOfSelectedCounties = len(y_test_date['county_fips'].unique())
 
     # we need data with regular target to return modified target to its original state
-    # in validation mode we read regular data in main function and passed to get_error to avoid redundancy
+    # in validation mode we read regular data in main function and passed to get_error to avoid redundancy 
     # but in test mode its not possible because each method has different h(best_h)
     if mode == 'test':
         regular_data = makeHistoricalData(h, r, test_size, target_name, 'mrmr', spatial_mode, 'regular', './',
-                                          future_features, pivot)
+                                          future_features, pivot, nameOfCountry)
         regular_data = clean_data(regular_data, numberOfSelectedCounties, spatial_mode)
         temp_1, temp_2, regular_y_train_date, regular_y_test_date = preprocess(regular_data, spatial_mode, 0)
 
@@ -1003,7 +1004,7 @@ def flatten(data=None, h=None, c=None, method=None, covariates_list=None, state=
 def test_process(h, r, test_size, target_name, spatial_mode, target_mode, best_h, best_c, historical_X_train, \
                  historical_X_test, historical_y_train_date, historical_y_test_date, best_loss, \
                  numberOfSelectedCounties, covariates_names, maxHistory, train_val_MASE_denominator, \
-                 val_test_MASE_denominator, future_mode, test_address, env_address, mail_address):
+                 val_test_MASE_denominator, future_mode, test_address, env_address, mail_address, nameOfCountry):
     columns_table_t = ['best_h', 'best_c', 'mean absolute error', 'percentage of absolute error',
                        'adjusted R squared error',
                        'second error', 'mean absolute scaled error']
@@ -1035,7 +1036,8 @@ def test_process(h, r, test_size, target_name, spatial_mode, target_mode, best_h
             best_h[method]['MAPE'],
             best_c[method]['MAPE'], method, y_prediction[method], y_prediction_train[method],
             historical_y_test_date[method], historical_y_train_date[method],
-            None, val_test_MASE_denominator[best_h[method]['MAPE']], numberOfSelectedCounties, target_name, mode='test')
+            None, val_test_MASE_denominator[best_h[method]['MAPE']],
+            numberOfSelectedCounties, target_name, mode='test', nameOfCountry=nameOfCountry)
 
         table_data.append([best_h[method]['MAPE'], best_c[method]['MAPE'], round(meanAbsoluteError, 2),
                            round(percentageOfAbsoluteError, 2), round(adj_r_squared, 2), round(second_error, 2),
@@ -1067,7 +1069,7 @@ def test_process(h, r, test_size, target_name, spatial_mode, target_mode, best_h
         X_train, X_test, y_train_date, y_test_date[mixed_method] = generate_data(best_h[mixed_method]['MAPE'],
                                                                                  best_c[mixed_method]['MAPE'],
                                                                                  covariates_names,
-                                                                                 numberOfSelectedCounties)
+                                                                                 numberOfSelectedCounties, nameOfCountry)
         y_test_date_temp = y_test_date[mixed_method]
         y_train[mixed_method] = y_train_date
         y_test[mixed_method] = y_test_date_temp
@@ -1077,27 +1079,28 @@ def test_process(h, r, test_size, target_name, spatial_mode, target_mode, best_h
         for method in none_mixed_methods:
             X_train_to_use[method] = X_train.copy()
             X_test_to_use[method] = X_test.copy()
-            if method in models_to_log:
-                # make temporal and some fixed covariates logarithmic
-                negative_features = ['temperature', 'Retail', 'Grocery', 'Parks', 'Transit', 'Workplace', 'Residential']
-                for covar in mixed_model_covariates_names:
-                    if (' t' in covar) and (covar.split(' ')[0] not in negative_features) and (
-                            covar not in ['county_fips', 'date of day t']):
-                        X_train_to_use[method][covar] = np.log((X_train_to_use[method][covar] + 1).astype(float))
-                        X_test_to_use[method][covar] = np.log((X_test_to_use[method][covar] + 1).astype(float))
-
-                fix_log_list = ['total_population', 'population_density', 'area', 'median_household_income',
-                                'houses_density', 'airport_distance', 'deaths_per_100000']
-                for covar in fix_log_list:
-                    if covar in mixed_model_covariates_names:
-                        X_train_to_use[method][covar] = np.log((X_train_to_use[method][covar] + 1).astype(float))
-                        X_test_to_use[method][covar] = np.log((X_test_to_use[method][covar] + 1).astype(float))
+            # if method in models_to_log:
+            #     # make temporal and some fixed covariates logarithmic
+            #     negative_features = ['Retail', 'Grocery', 'Parks', 'Transit', 'Workplace', 'Residential']
+            #     for covar in mixed_model_covariates_names:
+            #         if (' t' in covar) and (covar.split(' ')[0] not in negative_features) and (
+            #                 covar not in ['county_fips', 'date of day t']):
+            #             X_train_to_use[method][covar] = np.log((X_train_to_use[method][covar] + 1).astype(float))
+            #             X_test_to_use[method][covar] = np.log((X_test_to_use[method][covar] + 1).astype(float))
+            #
+            #     fix_log_list = ['total_population', 'population_density', 'area', 'median_household_income',
+            #                     'houses_density', 'airport_distance', 'deaths_per_100000']
+            #     for covar in fix_log_list:
+            #         if covar in mixed_model_covariates_names:
+            #             X_train_to_use[method][covar] = np.log((X_train_to_use[method][covar] + 1).astype(float))
+            #             X_test_to_use[method][covar] = np.log((X_test_to_use[method][covar] + 1).astype(float))
 
             X_train_dict[method] = X_train_to_use[method]
             X_test_dict[method] = X_test_to_use[method]
             y_train_dict[method] = y_train[mixed_method]
             y_test_dict[method] = y_test[mixed_method]
-
+            if method == 'KNN':
+                X_train_to_use['KNN'].to_csv('KNN.csv')
         GBM, GLM, KNN, NN = run_algorithms(X_train_dict, X_test_dict, y_train_dict, y_test_dict, best_loss, 0,
                                            spatial_mode, None)
         y_prediction['GBM'], y_prediction_train['GBM'] = GBM
@@ -1122,14 +1125,14 @@ def test_process(h, r, test_size, target_name, spatial_mode, target_mode, best_h
         y_test_MM_dict[mixed_method] = np.array(y_test_MM_dict[mixed_method]['Target']).reshape(-1)
         y_train_MM_dict[mixed_method] = np.array(y_train_MM_dict[mixed_method]['Target']).reshape(-1)
     # save the entire session
-    filename = env_address + 'test.out'
-    my_shelf = shelve.open(filename, 'n')  # 'n' for new
-    for key in dir():
-        try:
-            my_shelf[key] = locals()[key]
-        except:
-            print('ERROR shelving: {0}'.format(key))
-    my_shelf.close()
+    # filename = env_address + 'test.out'
+    # my_shelf = shelve.open(filename, 'n')  # 'n' for new
+    # for key in dir():
+    #     try:
+    #         my_shelf[key] = locals()[key]
+    #     except:
+    #         print('ERROR shelving: {0}'.format(key))
+    # my_shelf.close()
     # mixed model with linear regression and neural network
     MM_GLM, MM_NN = run_mixed_models(X_train_MM_dict, X_test_MM_dict, y_train_MM_dict, y_test_MM_dict, best_loss)
     y_prediction['MM_GLM'], y_prediction_train['MM_GLM'] = MM_GLM
@@ -1140,7 +1143,7 @@ def test_process(h, r, test_size, target_name, spatial_mode, target_mode, best_h
             best_c[mixed_method]['MAPE'], mixed_method, y_prediction[mixed_method], y_prediction_train[mixed_method],
             y_test_date[mixed_method], y_train[mixed_method], None,
             val_test_MASE_denominator[best_h[mixed_method]['MAPE']],
-            numberOfSelectedCounties, target_name, mode='test')
+            numberOfSelectedCounties, target_name, mode='test', nameOfCountry= nameOfCountry)
 
         table_data.append([best_h[mixed_method]['MAPE'], best_c[mixed_method]['MAPE'], round(meanAbsoluteError, 2),
                            round(percentageOfAbsoluteError, 2),
@@ -1161,8 +1164,8 @@ def test_process(h, r, test_size, target_name, spatial_mode, target_mode, best_h
         prediction = list(y_prediction_train[method]) + list(y_prediction[method])
         method_real_pred_df['prediction'] = prediction
         df_for_prediction_plot[method] = method_real_pred_df
-
-
+        
+        
     if pivot != 'country' :
         real_prediction_plot(df_for_prediction_plot, r, test_size, target_name, target_mode, best_h, maxHistory,
                              spatial_mode, methods, future_mode, numberOfSelectedCounties)
@@ -1175,28 +1178,29 @@ def test_process(h, r, test_size, target_name, spatial_mode, target_mode, best_h
     # send_email(zip_file_name + '.zip')
 
     # save the entire session
-    filename = env_address + 'test.out'
-    my_shelf = shelve.open(filename, 'n')  # 'n' for new
-    for key in dir():
-        try:
-            my_shelf[key] = locals()[key]
-        except:
-            print('ERROR shelving: {0}'.format(key))
-    my_shelf.close()
+    # filename = env_address + 'test.out'
+    # my_shelf = shelve.open(filename, 'n')  # 'n' for new
+    # for key in dir():
+    #     try:
+    #         my_shelf[key] = locals()[key]
+    #     except:
+    #         print('ERROR shelving: {0}'.format(key))
+    # my_shelf.close()
 
 
 ########################################################### main
-def main(maxHistory):
+def main(maxHistory, nameOfCountry):
     print("main started")
+    print(nameOfCountry)
     history = [i for i in range(1, maxHistory + 1)]
     print("history: ", history)
     methods = ['GBM', 'GLM', 'KNN', 'NN', 'MM_GLM', 'MM_NN']
     none_mixed_methods = ['GBM', 'GLM', 'KNN', 'NN']
     # none_mixed_methods = ['GBM']
     mixed_methods = ['MM_GLM', 'MM_NN']
-    target_name = 'confirmed'
+    target_name = 'death'
     base_data = makeHistoricalData(0, r, test_size, target_name, 'mrmr', spatial_mode, target_mode, './',
-                                   future_features, pivot)
+                                   future_features, pivot, nameOfCountry)
     print("base data before clean shape: ", base_data.shape)
     base_data_before_clean_columns = base_data.columns.values
     base_data = clean_data(base_data, numberOfSelectedCounties, spatial_mode)
@@ -1210,7 +1214,7 @@ def main(maxHistory):
     # covariates_names.remove('daily-country-test-per-1000 t')
     numberOfCovariates = len(covariates_names)
     print('number of covariates: ', numberOfCovariates)
-    # print(covariates_names)
+    print(covariates_names)
 
     y_prediction = {'GBM': {}, 'GLM': {}, 'KNN': {}, 'NN': {}, 'MM_GLM': {}, 'MM_NN': {}}
     y_prediction_train = {'GBM': {}, 'GLM': {}, 'KNN': {}, 'NN': {}, 'MM_GLM': {}, 'MM_NN': {}}
@@ -1247,7 +1251,7 @@ def main(maxHistory):
         print(100 * "#")
         print("h =", h)
         data = makeHistoricalData(h, r, test_size, target_name, 'mrmr', spatial_mode, target_mode, './',
-                                  future_features, pivot)
+                                  future_features, pivot, nameOfCountry)
         print("data before clean shape:", data.shape)
         # pre-process and split the data, 'date's have dates info
         data = clean_data(data, numberOfSelectedCounties, spatial_mode)
@@ -1284,32 +1288,33 @@ def main(maxHistory):
                                                                                    numberOfSelectedCounties,
                                                                                    spatial_mode)
         # print(train_val_MASE_denominator)
-
+        X_train_train.to_csv('tt.csv')
+        X_train_val.to_csv('tv.csv')
         for method in methods:
             X_train_train_to_use[method] = X_train_train.copy()
             X_train_val_to_use[method] = X_train_val.copy()
             X_test_to_use[method] = X_test.copy()
-            if method in models_to_log:
-                # make temporal and some fixed covariates logarithmic
-                negative_features = ['temperature', 'Retail', 'Grocery', 'Parks', 'Transit', 'Workplace', 'Residential']
-                for covar in covariates_names:
-                    if (' t' in covar) and (covar.split(' ')[0] not in negative_features):
-                        # print(covar)
-                        X_train_train_to_use[method][covar] = np.log(
-                            (X_train_train_to_use[method][covar] + 1).astype(float))
-                        X_train_val_to_use[method][covar] = np.log(
-                            (X_train_val_to_use[method][covar] + 1).astype(float))
-                        X_test_to_use[method][covar] = np.log((X_test_to_use[method][covar] + 1).astype(float))
-
-                fix_log_list = ['total_population', 'population_density', 'area', 'median_household_income',
-                                'houses_density', 'airport_distance', 'deaths_per_100000']
-                for covar in fix_log_list:
-                    if covar in covariates_names:
-                        X_train_train_to_use[method][covar] = np.log(
-                            (X_train_train_to_use[method][covar] + 1).astype(float))
-                        X_train_val_to_use[method][covar] = np.log(
-                            (X_train_val_to_use[method][covar] + 1).astype(float))
-                        X_test_to_use[method][covar] = np.log((X_test_to_use[method][covar] + 1).astype(float))
+            # if method in models_to_log:
+            #     # make temporal and some fixed covariates logarithmic
+            #     negative_features = ['Retail', 'Grocery', 'Parks', 'Transit', 'Workplace', 'Residential']
+            #     for covar in covariates_names:
+            #         if (' t' in covar) and (covar.split(' ')[0] not in negative_features):
+            #             # print(covar)
+            #             X_train_train_to_use[method][covar] = np.log(
+            #                 (X_train_train_to_use[method][covar] + 1).astype(float))
+            #             X_train_val_to_use[method][covar] = np.log(
+            #                 (X_train_val_to_use[method][covar] + 1).astype(float))
+            #             X_test_to_use[method][covar] = np.log((X_test_to_use[method][covar] + 1).astype(float))
+            #
+            #     fix_log_list = ['total_population', 'population_density', 'area', 'median_household_income',
+            #                     'houses_density', 'airport_distance', 'deaths_per_100000']
+            #     for covar in fix_log_list:
+            #         if covar in covariates_names:
+            #             X_train_train_to_use[method][covar] = np.log(
+            #                 (X_train_train_to_use[method][covar] + 1).astype(float))
+            #             X_train_val_to_use[method][covar] = np.log(
+            #                 (X_train_val_to_use[method][covar] + 1).astype(float))
+            #             X_test_to_use[method][covar] = np.log((X_test_to_use[method][covar] + 1).astype(float))
 
         y_train_date = (pd.DataFrame(y_train_train_date).append(pd.DataFrame(y_train_val_date))).reset_index(drop=True)
         y_train_train = np.array(y_train_train_date['Target']).reshape(-1)
@@ -1322,6 +1327,12 @@ def main(maxHistory):
 
         # find best loss
         # print(best_loss)
+        # for method in methods:
+        #     knn = X_train_val_to_use[method].copy()
+        #     knn.to_csv(str(method)+'.csv')
+        #     print('method:', method)
+        #     print('y-train', y_train_train)
+        #     print('y-val', y_train_val)
         if (h == 1):
             best_loss = update_best_loss('none_mixed_model', spatial_mode, None, best_loss, X_train_train_to_use,
                                          X_train_val_to_use, \
@@ -1336,7 +1347,8 @@ def main(maxHistory):
         print('covariates_list len:', len(covariates_list))
         # covariates are sorted by their correlation with Target. We start from the first important covariate and
         # in each loop we add the next important one
-
+        X_train_train.to_csv('tt.csv')
+        X_train_val.to_csv('tv.csv')
         loom = ProcessLoom(max_runner_cap=len(base_data.columns) * len(none_mixed_methods) + 5)
         indx_c = 0
         for c in covariates_names:  # iterate through sorted covariates
@@ -1347,15 +1359,16 @@ def main(maxHistory):
                 cov_temp = covariate.split(' ')[0]
                 if pure_name == cov_temp and pure_name not in force_features:
                     covariates_list.append(covariate)
-            # print('covariates_list:', covariates_list)
+            print('covariates_list 1361:', covariates_list)
             for method in none_mixed_methods:
                 X_train_train_temp = X_train_train_to_use[method][covariates_list]
                 X_train_val_temp = X_train_val_to_use[method][covariates_list]
-                # print(X_train_train_temp.columns.values)
-                # print('X_train_train_temp shape:', X_train_train_temp.shape)
-                # print('X_train_val_temp shape:', X_train_val_temp.shape)
-                # print('y_train_train shape:', y_train_train.shape)
-                # print('y_train_val shape:', y_train_val.shape)
+                print(method)
+                print(X_train_train_temp.columns.values)
+                print('X_train_train_temp shape:', X_train_train_temp.shape)
+                print('X_train_val_temp shape:', X_train_val_temp.shape)
+                print('y_train_train shape:', y_train_train.shape)
+                print('y_train_val shape:', y_train_val.shape)
                 loom.add_function(parallel_run,
                                   [method, X_train_train_temp, X_train_val_temp, y_train_train, y_train_val, best_loss,
                                    indx_c])
@@ -1383,14 +1396,14 @@ def main(maxHistory):
         #     print(y_prediction[method][(h, 4)].shape)
 
         # save the entire session for each h and c
-        filename = env_address + 'validation.out'
-        my_shelf = shelve.open(filename, 'n')  # 'n' for new
-        for key in dir():
-            try:
-                my_shelf[key] = locals()[key]
-            except:
-                print('ERROR shelving: {0}'.format(key))
-        my_shelf.close()
+        # filename = env_address + 'validation.out'
+        # my_shelf = shelve.open(filename, 'n')  # 'n' for new
+        # for key in dir():
+        #     try:
+        #         my_shelf[key] = locals()[key]
+        #     except:
+        #         print('ERROR shelving: {0}'.format(key))
+        # my_shelf.close()
 
         # find best loss
         if h == 1:
@@ -1442,14 +1455,14 @@ def main(maxHistory):
         #     print(y_prediction[method][(h, 4)].shape)
 
         # save the entire session for each h and c
-        filename = env_address + 'validation.out'
-        my_shelf = shelve.open(filename, 'n')  # 'n' for new
-        for key in dir():
-            try:
-                my_shelf[key] = locals()[key]
-            except:
-                print('ERROR shelving: {0}'.format(key))
-        my_shelf.close()
+        # filename = env_address + 'validation.out'
+        # my_shelf = shelve.open(filename, 'n')  # 'n' for new
+        # for key in dir():
+        #     try:
+        #         my_shelf[key] = locals()[key]
+        #     except:
+        #         print('ERROR shelving: {0}'.format(key))
+        # my_shelf.close()
 
         number_of_improved_methods = 0  # we count number_of_improved_methods to run test if no method have improved in current h
 
@@ -1482,7 +1495,7 @@ def main(maxHistory):
                     get_errors(h, indx_c, method, y_prediction[method][(h, indx_c)],
                                y_prediction_train[method][(h, indx_c)], y_train_val_date,
                                y_train_train_date, regular_data, train_val_MASE_denominator[h],
-                               numberOfSelectedCounties, target_name, mode='val')
+                               numberOfSelectedCounties, target_name, mode='val', nameOfCountry=nameOfCountry)
 
                 # find best errors
                 for error in error_names:
@@ -1506,23 +1519,23 @@ def main(maxHistory):
             if indx_c == maxC:
                 break
             # save the entire session for each h and c
-            filename = env_address + 'validation.out'
-            my_shelf = shelve.open(filename, 'n')  # 'n' for new
-            for key in dir():
-                try:
-                    my_shelf[key] = locals()[key]
-                except:
-                    print('ERROR shelving: {0}'.format(key))
-            my_shelf.close()
+            # filename = env_address + 'validation.out'
+            # my_shelf = shelve.open(filename, 'n')  # 'n' for new
+            # for key in dir():
+            #     try:
+            #         my_shelf[key] = locals()[key]
+            #     except:
+            #         print('ERROR shelving: {0}'.format(key))
+            # my_shelf.close()
         # save the entire session for each h
-        filename = env_address + 'validation.out'
-        my_shelf = shelve.open(filename, 'n')  # 'n' for new
-        for key in dir():
-            try:
-                my_shelf[key] = locals()[key]
-            except:
-                print('ERROR shelving: {0}'.format(key))
-        my_shelf.close()
+        # filename = env_address + 'validation.out'
+        # my_shelf = shelve.open(filename, 'n')  # 'n' for new
+        # for key in dir():
+        #     try:
+        #         my_shelf[key] = locals()[key]
+        #     except:
+        #         print('ERROR shelving: {0}'.format(key))
+        # my_shelf.close()
 
         # push the file of outputs
         push('logs of h=' + str(h) + ' added')
@@ -1533,7 +1546,7 @@ def main(maxHistory):
             test_process(h, r, test_size, target_name, spatial_mode, target_mode, best_h, best_c, historical_X_train, \
                          historical_X_test, historical_y_train_date, historical_y_test_date, best_loss, \
                          numberOfSelectedCounties, covariates_names, maxHistory, train_val_MASE_denominator, \
-                         val_test_MASE_denominator, future_mode, test_address, env_address, mail_address)
+                         val_test_MASE_denominator, future_mode, test_address, env_address, mail_address, nameOfCountry)
 
     # plot table for best results
     table_data = []
@@ -1557,38 +1570,50 @@ def main(maxHistory):
     ################################################################################################################# test zone
     test_process(h, r, test_size, target_name, spatial_mode, target_mode, best_h, best_c, historical_X_train, \
                  historical_X_test, historical_y_train_date, historical_y_test_date, best_loss, \
-                 numberOfSelectedCounties, covariatold_rankes_names, maxHistory, train_val_MASE_denominator, \
-                 val_test_MASE_denominator, future_mode, test_address, env_address, mail_address)
+                 numberOfSelectedCounties, covariates_names, maxHistory, train_val_MASE_denominator, \
+                 val_test_MASE_denominator, future_mode, test_address, env_address, mail_address, nameOfCountry)
     print(best_loss)
 
 if __name__ == "__main__":
 
     begin = time.time()
+    country = argv[1:][0]
+    print('country: ', country)
+    # zipFileName = 'GoogleMobility_Cases_Deaths_Daily.zip'
+    # Countries = [file for file in ZipFile(zipFileName).namelist()]
+    # Countries_names = [x.replace('GoogleMobility_Cases_Deaths_Daily/', '').replace('.csv', '') for x in Countries][1:]
     future_mode = False
     future_features = []
-    if r >= 28:
-        # future_mode = True
-        future_features = ['social-distancing-travel-distance-grade', 'social-distancing-encounters-grade',
-                           'social-distancing-total-grade']  # sorted by their mrmr rank
+    # if r >= 28:
+    #     # future_mode = True
+    #     future_features = ['social-distancing-travel-distance-grade', 'social-distancing-encounters-grade',
+    #                        'social-distancing-total-grade']  # sorted by their mrmr rank
+    maxHistory = 5
     if target_mode in ['weeklyaverage','augmentedweeklyaverage']:
         r //= 7
-        maxHistory //= 7
+        # maxHistoty = 10 - r
+        # maxHistory //= 7
+        print('max history: ', maxHistory)
         test_size //= 7
 
     force_features = []
-    force_mode = 0  # with force_mode we determine how many future feature have to be forced (be used in all eterations)
+    force_mode = 0  # with force_mode we determine how many future feature have to be forced (be used in all iterations)
     if future_mode:
         for f in range(force_mode):
             force_features.append('future-' + future_features[f])
 
+
+    # push('new folders added')
+    models_to_log = ['NN', 'GLM', 'GBM'] #,'KNN' # models we want to make the features logarithmic for them, we remove KNN
+    # for country in Countries_names:
     # make directories for saving the results
-    validation_address = './' + 'results/counties=' + str(numberOfSelectedCountiesname) + ' max_history=' + str(
+    validation_address = './' + 'results/country=' + str(country) + ' max_history=' + str(
         maxHistory) + '/validation/'
-    test_address = './' + 'results/counties=' + str(numberOfSelectedCountiesname) + ' max_history=' + str(
+    test_address = './' + 'results/country=' + str(country) + ' max_history=' + str(
         maxHistory) + '/test/'
-    env_address = './' + 'results/counties=' + str(numberOfSelectedCountiesname) + ' max_history=' + str(
+    env_address = './' + 'results/country=' + str(country) + ' max_history=' + str(
         maxHistory) + '/session_parameters/'
-    mail_address = './results/counties=' + str(numberOfSelectedCountiesname) + ' max_history=' + str(
+    mail_address = './results/country=' + str(country) + ' max_history=' + str(
         maxHistory) + '/email'
 
     if not os.path.exists(mail_address):
@@ -1599,9 +1624,9 @@ if __name__ == "__main__":
         os.makedirs(validation_address)
     if not os.path.exists(env_address):
         os.makedirs(env_address)
-    push('new folders added')
-    models_to_log = ['NN', 'GLM', 'GBM', 'KNN']  # models we want to make the features logarithmic for them, we remove KNN
-    main(maxHistory)
+    #call main
+    main(maxHistory, country)
+
     end = time.time()
-    push('final results added')
+    # push('final results added')
     print("The total time of execution in minutes: ", round((end - begin) / 60, 2))
