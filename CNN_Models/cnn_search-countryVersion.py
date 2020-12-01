@@ -362,8 +362,19 @@ def train_data(model, x_train, y_train, x_validation, y_validation, NO_epochs, i
 
             model.fit(subX_trian, subY_train, batch_size=batch_size, epochs=NO_epochs, verbose=0, validation_data=(subX_validation, subY_validation))
 
+    # minus bias from country predictions
+    country_pred = []
+    for i in range(data_shape[1]):
+        for j in range(data_shape[2]):
+            subX = x_train[0:1, i:i+input_size, j:j+input_size, 0:data_shape[3]]
+            subY_predict_normal = model.predict(subX)
+
+            country_pred.append(subY_predict_normal)
+
+    return country_pred
+
 # This function extract windows with "input_size" size from image, evaluate model with the windows data
-def evaluate_data(model, x_test, y_test, input_size, first_normal_param, second_normal_param):
+def evaluate_data(model, x_test, y_test, input_size, first_normal_param, second_normal_param, country_prediction_day0):
     data_shape = x_test.shape
     y_test_org = inverse_normal_y(y_test, first_normal_param, second_normal_param)
 
@@ -423,10 +434,14 @@ def evaluate_data(model, x_test, y_test, input_size, first_normal_param, second_
     MASE_pixel = MAE_pixel / (sum_MASE / (data_shape[0] * data_shape[1] * data_shape[2]))
     
     # minus bias (min_prediction) from country predictions
-    min_prediction = sum_predict_country[0]
-    for i in range(data_shape[0]):
-        if (sum_predict_country[i] < min_prediction):
-            min_prediction = sum_predict_country[i]
+    min_prediction = 0
+    for i in range(data_shape[1]):
+        for j in range(data_shape[2]):
+            subY_predict_normal = country_prediction_day0[i * data_shape[2] + j]
+            pred_shape = subY_predict_normal.shape
+            subY_predict = inverse_normal_y(subY_predict_normal, first_normal_param, second_normal_param)
+
+            min_prediction += subY_predict[0][0][0][0]
 
     for i in range(data_shape[0]):
         sum_predict_country[i] -= min_prediction
@@ -760,8 +775,8 @@ def process_function(parameters,
         log('Model testing with parameters {0}'.format((input_size, hidden_dropout, visible_dropout, NO_dense_layer, increase_filters, learning_rate, batch_size, pooling_type, architecture_type)))
         NO_blocks = floor(log2(input_size))
         model = create_model(input_size, hidden_dropout, visible_dropout, NO_blocks, NO_dense_layer, increase_filters, learning_rate, pooling_type, architecture_type)
-        train_data(model, shared_x_train, shared_y_train, shared_x_validation, shared_y_validation, 2, input_size, batch_size)
-        result = evaluate_data(model, shared_x_validation, shared_y_validation, input_size, first_normal_param, second_normal_param)
+        country_prediction_day0 = train_data(model, shared_x_train, shared_y_train, shared_x_validation, shared_y_validation, 2, input_size, batch_size)
+        result = evaluate_data(model, shared_x_validation, shared_y_validation, input_size, first_normal_param, second_normal_param, country_prediction_day0)
 
         log('result for Pixels, MAE:{0}, MAPE:{1}, MASE:{2}'.format(result[0], result[1], result[2]))
         log('result for Country, MAE:{0}, MAPE:{1}, MASE:{2}'.format(result[3], result[4], result[5]))
@@ -775,7 +790,7 @@ def process_function(parameters,
             country_best_model = i
             country_best_result = (result[3], result[4], result[5])
 
-        result = evaluate_data(model, shared_x_final_test, shared_y_final_test, input_size, first_normal_param, second_normal_param)
+        result = evaluate_data(model, shared_x_final_test, shared_y_final_test, input_size, first_normal_param, second_normal_param, country_prediction_day0)
         save_process_result_ft(process_number, parameters[i], result)
 
         if (pixel_best_model_ft == -1 or result[2] < pixel_best_result_ft[2]):
