@@ -77,3 +77,27 @@ def create_parameters():
                                             )
 
     return parameters
+
+################################################################
+# history: [7-15)
+# covariate: [7-11)
+
+# 40 cases
+# split to 64 processes
+# each one run 6 cases
+################################################################
+
+# parameters of models which we want to search
+def create_parameters_historyCovariate():
+    parameters = []
+
+    history_start = 7
+    history_end = 15
+    covariate_start = 7
+    covariate_end = 11
+
+    for i0 in range(history_start, history_end):
+        for i1 in range(covariate_start, covariate_end):
+            parameters.append(i0, i1)
+
+    return parameters
