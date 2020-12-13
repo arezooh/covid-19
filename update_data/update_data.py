@@ -42,7 +42,7 @@ def get_zip(url, save_path, chunk_size=128):
 
 if __name__ == "__main__":
     
-    if first_run and weather_flag:
+    if weather_flag:
         
         if os.path.exists("./weather.log"):
             os.remove("./weather.log")
