@@ -28,12 +28,11 @@ def get_csv(web_addres,file_address):
 
 if __name__ == "__main__":
     
-    if first_run:
-        
-        if os.path.exists("./weather.log"):
-            os.remove("./weather.log")
-        else:
-            print("The file does not exist")
+
+    if os.path.exists("./weather.log"):
+        os.remove("./weather.log")
+    else:
+        print("The file does not exist")
         
     # downloadHandler.get_socialDistancingData(2, 'sd-state%02d.json' % (2))
     # downloadHandler.get_confirmAndDeathData( + 'confirmAndDeath.json')
