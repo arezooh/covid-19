@@ -22,7 +22,7 @@ first_run = 0
 weather_flag = 0 # decide for downloading weather data or not
 
 save_address = csv_address
-if weather_flag = 0:
+if weather_flag == 0:
     save_address = csv_address + 'weatherless/'
 
 def get_csv(web_addres,file_address):
