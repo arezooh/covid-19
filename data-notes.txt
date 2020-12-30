@@ -117,3 +117,4 @@ temporal-data.csv:
 		death:
 				number of covid-19 deaths
 				Source: https://usafacts.org/visualizations/coronavirus-covid-19-spread-map/
+
