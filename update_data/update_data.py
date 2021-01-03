@@ -18,12 +18,14 @@ import medium
 
 csv_address = '../csvFiles/'
 
-first_run = 0
-weather_flag = 0 # decide for downloading weather data or not
+first_run = 1
+weather_flag = 1 # decide for downloading weather data or not
 
 save_address = csv_address
 if weather_flag == 0:
     save_address = csv_address + 'weatherless/'
+if not os.path.exists(save_address):
+    os.makedirs(save_address)
 
 def get_csv(web_addres,file_address):
     url=web_addres
@@ -95,7 +97,7 @@ if __name__ == "__main__":
 
         if first_run:
             new_weather = pd.DataFrame(columns=weather.columns)
-            new_weather.to_csv(csv_address+'new-weather.csv')
+            new_weather.to_csv(csv_address+'new-weather.csv',index=False)
             stations.to_csv(csv_address+'temp-stations.csv')
         else:
             weather=pd.read_csv(csv_address+'new-weather.csv')
