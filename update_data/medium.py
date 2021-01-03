@@ -91,12 +91,12 @@ class mediumClass:
             countyFips = stationsData[i]['county_fips']
             # progressBar.update(i, FIPS=countyFips, ID=stationID)
             # First step, create weather.csv file
-            if i == 0:
-                self.downloadHandler.get_countyWeatherData(countyFips, stationID, startDate, endDate, 'new-weather.csv')
-            # Other steps, merge new data to weather.csv file
-            else:
-                self.downloadHandler.get_countyWeatherData(countyFips, stationID, startDate, endDate, 'temp.csv')
-                self.csvHandler.merge_csvFiles_addRows('new-weather.csv', 'temp.csv', 'new-weather.csv')
+##            if i == 0:
+##                self.downloadHandler.get_countyWeatherData(countyFips, stationID, startDate, endDate, 'new-weather.csv')
+##            # Other steps, merge new data to weather.csv file
+##            else:
+            self.downloadHandler.get_countyWeatherData(countyFips, stationID, startDate, endDate, 'temp.csv')
+            self.csvHandler.merge_csvFiles_addRows('new-weather.csv', 'temp.csv', 'new-weather.csv')
 
         # progressBar.finish()
         debug.debug_print("SUCCESS: data extracted (weather data)", 2)
