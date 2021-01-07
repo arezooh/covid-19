@@ -403,7 +403,7 @@ if __name__ == "__main__":
     unimputed_data=unimputed_data[unimputed_data['date']<=max_date]
 
     #data['date']=data['date'].apply(lambda x: x.strftime('%m/%d/%y'))
-    unimputed_data['date']=unimputed_data['date'].apply(lambda x: x.strftime('%m/%d/%y'))
+    unimputed_data['date']=unimputed_data['date'].apply(lambda x: x.strftime('%y/%m/%d'))
     unimputed_data.to_csv(save_address+'unimputed-temporal-data.csv',index=False)
 
     ########################################################################## imputation
@@ -436,7 +436,7 @@ if __name__ == "__main__":
         data.loc[(data['date']<datetime.datetime(2020,2,15)),feature]=0
         
     
-    data['date']=data['date'].apply(lambda x: x.strftime('%m/%d/%y'))
+    data['date']=data['date'].apply(lambda x: x.strftime('%y/%m/%d'))
 
 
     # impute covariates with KNN imputer
