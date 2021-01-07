@@ -4,7 +4,7 @@ import pandas as pd
 import numpy as np
 
 def main():
-    
+ 
     template = pd.DataFrame(columns = ['Unnamed: 0','date of day t','county_fips','Target','prediction','error','absoulte_error','percentage_error'])
     methods = ['GBM', 'GLM', 'KNN', 'NN', 'MM_GLM', 'MM_NN']
     predictions = {i:template for i in methods}
